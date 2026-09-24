@@ -1,4 +1,5 @@
-// Models are added in Phase 1.
+// Data model for the Magic Potion Challenge. Rules: docs/GAME_RULES.md.
+// All money is Int. All times are UTC. Enum names match packages/shared/src/enums.ts.
 
 generator client {
   provider     = "prisma-client"
@@ -8,4 +9,513 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum GamePhase {
+  LOBBY
+  ROUND1
+  PAUSE
+  ROUND2
+  REVEAL
+}
+
+enum TeamStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum TaskType {
+  COMMON
+  UNIQUE
+}
+
+enum TeamTaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  DONE
+  FAILED
+}
+
+enum AttemptResult {
+  SOLVED
+  FAILED_TIMEOUT
+  GAVE_UP
+  STOPPED_AT_END
+}
+
+enum FragmentKind {
+  VAULT
+  FIND_CODE
+}
+
+enum Wallet {
+  TASK
+  SUPPORT
+}
+
+enum LedgerKind {
+  START
+  TRANSFER_OUT
+  TRANSFER_IN
+  FAIL_PENALTY
+  HINT
+  STAFF_ADJUST
+  UNDO
+}
+
+enum FundRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
+enum InboxKind {
+  PHOTO
+  QUESTION
+  ALERT
+}
+
+enum PhotoStatus {
+  ACCEPTED
+  REJECTED
+}
+
+enum PotionSnapshotKind {
+  HALFTIME
+  FINAL
+}
+
+enum StaffRole {
+  MAIN_ADMIN
+  CO_FACILITATOR
+}
+
+enum AdjustmentRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ---------- Staff ----------
+
+model StaffUser {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         StaffRole
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assignments          StaffAssignment[]
+  auditLogs            AuditLog[]
+  releasedFragments    Fragment[]
+  reviewedPhotos       InboxResponse[]
+  requestedAdjustments FundAdjustmentRequest[] @relation("AdjustmentRequestedBy")
+  decidedAdjustments   FundAdjustmentRequest[] @relation("AdjustmentDecidedBy")
+}
+
+model StaffAssignment {
+  id          String   @id @default(cuid())
+  gameId      String
+  staffUserId String
+  teamId      String
+  createdAt   DateTime @default(now())
+
+  game      Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  staffUser StaffUser @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, teamId, staffUserId])
+  @@index([staffUserId, gameId])
+}
+
+// ---------- Game ----------
+
+model Game {
+  id    String    @id @default(cuid())
+  name  String
+  phase GamePhase @default(LOBBY)
+
+  // Server time is the only clock. The engine (Phase 2) derives every countdown from these.
+  phaseStartedAt   DateTime?
+  phaseEndsAt      DateTime?
+  // Set while the admin has frozen the current phase; phaseEndsAt is pushed back on resume.
+  frozenAt         DateTime?
+  // Play seconds added by the admin, counted toward the end of play (GAME_RULES section 9).
+  extensionSeconds Int       @default(0)
+  startedAt        DateTime?
+  endedAt          DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  settings               GameSettings?
+  teams                  Team[]
+  taskContents           TaskContent[]
+  fragments              Fragment[]
+  transfers              Transfer[]
+  fundRequests           FundRequest[]
+  chatMessages           ChatMessage[]
+  inboxItems             InboxItem[]
+  potionSnapshots        PotionSnapshot[]
+  staffAssignments       StaffAssignment[]
+  auditLogs              AuditLog[]
+  fundAdjustmentRequests FundAdjustmentRequest[]
+}
+
+model GameSettings {
+  gameId          String    @id
+  // Validated by GameSettingsSchema in packages/shared.
+  data            Json
+  scoringLockedAt DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Teams ----------
+
+model Team {
+  id            String     @id @default(cuid())
+  gameId        String
+  code          String
+  name          String
+  passwordHash  String
+  status        TeamStatus @default(ACTIVE)
+  removedAt     DateTime?
+  // Random fragment chain position, set when the game starts (GAME_RULES section 4).
+  chainPosition Int?
+
+  // Cached balances. The FundTransaction ledger is the source of truth.
+  taskFunds    Int @default(0)
+  supportFunds Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  game               Game                    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  sessions           TeamSession[]
+  tasks              TeamTask[]
+  heldFragments      Fragment[]              @relation("FragmentHolder")
+  neededFragments    Fragment[]              @relation("FragmentNeededBy")
+  ledger             FundTransaction[]
+  sentTransfers      Transfer[]              @relation("TransferFrom")
+  receivedTransfers  Transfer[]              @relation("TransferTo")
+  madeRequests       FundRequest[]           @relation("RequestRequester")
+  payerRequests      FundRequest[]           @relation("RequestPayer")
+  chatMessages       ChatMessage[]
+  inboxResponses     InboxResponse[]
+  staffAssignments   StaffAssignment[]
+  auditLogs          AuditLog[]
+  adjustmentRequests FundAdjustmentRequest[]
+
+  @@unique([gameId, code])
+  @@unique([gameId, chainPosition])
+}
+
+model TeamSession {
+  id         String    @id @default(cuid())
+  teamId     String
+  // Id carried in the login token. Only one session per team has endedAt = null.
+  tokenId    String    @unique
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  endedAt    DateTime?
+  endReason  String?
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, endedAt])
+}
+
+// ---------- Tasks ----------
+
+model TaskDefinition {
+  id        String   @id @default(cuid())
+  // One of TASK_KEYS in packages/shared.
+  key       String   @unique
+  name      String
+  type      TaskType
+  sortOrder Int
+
+  contents  TaskContent[]
+  teamTasks TeamTask[]
+}
+
+model TaskContent {
+  id               String   @id @default(cuid())
+  gameId           String
+  taskDefinitionId String
+  variant          Int
+  // Safe to send to players.
+  publicData       Json
+  // Answers and hint material. Never sent to players.
+  secretData       Json
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  game           Game           @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  taskDefinition TaskDefinition @relation(fields: [taskDefinitionId], references: [id])
+  attempts       TaskAttempt[]
+
+  @@unique([gameId, taskDefinitionId, variant])
+}
+
+model TeamTask {
+  id               String         @id @default(cuid())
+  teamId           String
+  taskDefinitionId String
+  status           TeamTaskStatus @default(NOT_STARTED)
+  completedAt      DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  team           Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  taskDefinition TaskDefinition @relation(fields: [taskDefinitionId], references: [id])
+  attempts       TaskAttempt[]
+
+  @@unique([teamId, taskDefinitionId])
+}
+
+model TaskAttempt {
+  id            String @id @default(cuid())
+  teamTaskId    String
+  taskContentId String
+  // 1 for the first try, 2 after the first restart, and so on.
+  number        Int
+
+  startedAt         DateTime
+  endsAt            DateTime
+  // Set during the Pause: time left on the task timer and on a code lockout.
+  frozenRemainingMs Int?
+  frozenLockMs      Int?
+  hintsUsed         Int       @default(0)
+  wrongCount        Int       @default(0)
+  lockedUntil       DateTime?
+  // Task-specific progress (Hangman letters, Escape Room stage, Ethical Dilemma answer, ...).
+  progress          Json      @default("{}")
+
+  result  AttemptResult?
+  endedAt DateTime?
+
+  teamTask    TeamTask          @relation(fields: [teamTaskId], references: [id], onDelete: Cascade)
+  taskContent TaskContent       @relation(fields: [taskContentId], references: [id])
+  ledger      FundTransaction[]
+
+  @@unique([teamTaskId, number])
+}
+
+model Fragment {
+  id                String       @id @default(cuid())
+  gameId            String
+  kind              FragmentKind
+  holderTeamId      String
+  neededByTeamId    String
+  // Secret: only ever sent to the holder team (or the needing team after a staff release).
+  value             String
+  releasedAt        DateTime?
+  releasedByStaffId String?
+  createdAt         DateTime     @default(now())
+
+  game       Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  holder     Team       @relation("FragmentHolder", fields: [holderTeamId], references: [id], onDelete: Cascade)
+  neededBy   Team       @relation("FragmentNeededBy", fields: [neededByTeamId], references: [id], onDelete: Cascade)
+  releasedBy StaffUser? @relation(fields: [releasedByStaffId], references: [id])
+
+  @@unique([gameId, kind, neededByTeamId])
+  @@index([holderTeamId])
+}
+
+// ---------- Funds ----------
+
+// Every wallet change is one row. Balances on Team are a cache of these sums.
+model FundTransaction {
+  id            String     @id @default(cuid())
+  teamId        String
+  wallet        Wallet
+  // Signed: positive adds to the wallet, negative takes from it.
+  amount        Int
+  kind          LedgerKind
+  balanceAfter  Int
+  transferId    String?
+  taskAttemptId String?
+  auditLogId    String?
+  createdAt     DateTime   @default(now())
+
+  team        Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  transfer    Transfer?    @relation(fields: [transferId], references: [id])
+  taskAttempt TaskAttempt? @relation(fields: [taskAttemptId], references: [id])
+  auditLog    AuditLog?    @relation(fields: [auditLogId], references: [id])
+
+  @@index([teamId, wallet, createdAt])
+}
+
+model Transfer {
+  id                String    @id @default(cuid())
+  gameId            String
+  fromTeamId        String
+  toTeamId          String
+  amount            Int
+  sentAt            DateTime  @default(now())
+  arrivesAt         DateTime
+  // Set during the Pause: time left before arrival.
+  frozenRemainingMs Int?
+  arrivedAt         DateTime?
+  fundRequestId     String?   @unique
+
+  game        Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  fromTeam    Team              @relation("TransferFrom", fields: [fromTeamId], references: [id], onDelete: Cascade)
+  toTeam      Team              @relation("TransferTo", fields: [toTeamId], references: [id], onDelete: Cascade)
+  fundRequest FundRequest?      @relation(fields: [fundRequestId], references: [id])
+  ledger      FundTransaction[]
+
+  @@index([gameId, arrivedAt])
+  @@index([fromTeamId])
+  @@index([toTeamId])
+}
+
+model FundRequest {
+  id              String            @id @default(cuid())
+  gameId          String
+  requesterTeamId String
+  payerTeamId     String
+  amount          Int
+  status          FundRequestStatus @default(PENDING)
+  createdAt       DateTime          @default(now())
+  decidedAt       DateTime?
+
+  game      Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  requester Team      @relation("RequestRequester", fields: [requesterTeamId], references: [id], onDelete: Cascade)
+  payer     Team      @relation("RequestPayer", fields: [payerTeamId], references: [id], onDelete: Cascade)
+  transfer  Transfer?
+
+  @@index([gameId, createdAt])
+  @@index([payerTeamId, status])
+}
+
+model FundAdjustmentRequest {
+  id            String                  @id @default(cuid())
+  gameId        String
+  teamId        String
+  requestedById String
+  // Signed change to Task Funds.
+  amount        Int
+  reason        String
+  status        AdjustmentRequestStatus @default(PENDING)
+  decidedById   String?
+  decidedAt     DateTime?
+  createdAt     DateTime                @default(now())
+
+  game        Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  team        Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  requestedBy StaffUser  @relation("AdjustmentRequestedBy", fields: [requestedById], references: [id])
+  decidedBy   StaffUser? @relation("AdjustmentDecidedBy", fields: [decidedById], references: [id])
+
+  @@index([gameId, status])
+}
+
+// ---------- Chat and inbox ----------
+
+// Transfers and requests are shown in the chat feed from their own tables, so they never count toward the limit.
+model ChatMessage {
+  id        String   @id @default(cuid())
+  gameId    String
+  teamId    String
+  // 1 or 2. The per-round limit counts rows per team and round.
+  round     Int
+  body      String
+  createdAt DateTime @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([gameId, createdAt])
+  @@index([teamId, round])
+}
+
+model InboxItem {
+  id                   String    @id @default(cuid())
+  gameId               String
+  kind                 InboxKind
+  title                String
+  body                 String
+  publicData           Json      @default("{}")
+  // Accepted spellings for a QUESTION, as a JSON array of strings. Never sent to players.
+  secretAnswer         Json?
+  // Play-clock second to release at. Null for alerts, which are released when created.
+  releaseAtPlaySeconds Int?
+  releasedAt           DateTime?
+  reward               Int       @default(0)
+  createdAt            DateTime  @default(now())
+
+  game      Game            @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  responses InboxResponse[]
+
+  @@index([gameId, releasedAt])
+}
+
+model InboxResponse {
+  id                String       @id @default(cuid())
+  inboxItemId       String
+  teamId            String
+  attempts          Int          @default(0)
+  lastAnswer        String?
+  correct           Boolean      @default(false)
+  photoUrl          String?
+  photoStatus       PhotoStatus?
+  reviewedByStaffId String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  inboxItem  InboxItem  @relation(fields: [inboxItemId], references: [id], onDelete: Cascade)
+  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  reviewedBy StaffUser? @relation(fields: [reviewedByStaffId], references: [id])
+
+  @@unique([inboxItemId, teamId])
+}
+
+// ---------- Potion ----------
+
+model PotionSnapshot {
+  id             String             @id @default(cuid())
+  gameId         String
+  kind           PotionSnapshotKind
+  // Stored as an exact fraction; percent = completedTeams / totalTeams x 100.
+  completedTeams Int
+  totalTeams     Int
+  createdAt      DateTime           @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, kind])
+}
+
+// ---------- Audit ----------
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  gameId      String?
+  staffUserId String
+  teamId      String?
+  action      String
+  before      Json?
+  after       Json?
+  reason      String?
+  createdAt   DateTime  @default(now())
+  undoneAt    DateTime?
+  // Set on the entry that undoes another entry.
+  undoOfId    String?   @unique
+
+  game      Game?             @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  staffUser StaffUser         @relation(fields: [staffUserId], references: [id])
+  team      Team?             @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  undoOf    AuditLog?         @relation("AuditUndo", fields: [undoOfId], references: [id])
+  undoneBy  AuditLog?         @relation("AuditUndo")
+  ledger    FundTransaction[]
+
+  @@index([gameId, createdAt])
+  @@index([teamId])
 }
