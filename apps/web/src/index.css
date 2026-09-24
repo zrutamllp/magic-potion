@@ -1,0 +1,35 @@
+@import 'tailwindcss';
+
+/*
+ * Dark theme tokens taken from the designs in /design.
+ * Brand colours are CSS variables so game settings can override them at runtime (never hard-code a client brand).
+ */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --color-page: #0e0e20;
+  --color-sidebar: #161b3a;
+  --color-card: #1a1b30;
+  --color-card-raised: #232640;
+  --color-line: #2c2f4d;
+  --color-ink: #f4f4fb;
+  --color-ink-muted: #a3a6c2;
+
+  --color-brand: #7c3aed;
+  --color-brand-soft: #8b5cf6;
+  --color-success: #22c55e;
+  --color-info: #22d3ee;
+  --color-warning: #facc15;
+  --color-alert: #f97316;
+  --color-danger: #ef4444;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  @apply bg-page font-sans text-ink antialiased;
+}

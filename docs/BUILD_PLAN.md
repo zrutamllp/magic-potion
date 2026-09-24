@@ -2,7 +2,7 @@
 
 Work one phase at a time. Start each phase in plan mode, get approval, build, run tests, commit, then tick the phase off here. Each phase ends with something Sunny can click and check.
 
-## Phase 0: Project setup
+## Phase 0: Project setup ✅
 
 - npm workspaces monorepo: `apps/web`, `apps/server`, `packages/shared`.
 - TypeScript, ESLint, Prettier, Vitest in all packages.

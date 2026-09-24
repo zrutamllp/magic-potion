@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+package-lock.json
+design
+docs/ORIGINAL_BRIEF.txt
+CLAUDE.md
+START_HERE.md
+docs
+apps/server/src/generated
