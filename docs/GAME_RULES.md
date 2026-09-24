@@ -42,7 +42,7 @@ Every task follows the same rules:
 | Rule | Default |
 |---|---|
 | Points for solving | +10,000 |
-| Hint | 1 per attempt, costs 1,500, only while the timer is running. Paid from Support Funds; when Support Funds are used up, paid from Task Funds (see Open questions). |
+| Hint | 1 per attempt, costs 1,500, only while the timer is running. Paid from whatever is left in Support Funds first; the rest comes from Task Funds. Blocked if it would take Task Funds below zero. |
 | Timer runs out or Give up | Task fails and costs 3,500 Task Funds |
 | After failing | The team may restart the task with a fresh timer and a fresh hint. Each failure costs 3,500 again. (proposed) |
 | Content on restart | Use a new content variant for that task if one is unused, else reuse the same content |
@@ -85,13 +85,13 @@ Task content (images, words, riddles, audio, dashboards, answers) is uploaded pe
 - **Find the Code chain:** the team at position p holds the Find the Code fragment needed by the team at position (p + 2) mod n. With fewer than 3 teams, use offset 1.
 - A fragment appears on the holder's Home screen as a "Found item" card, for example "Fragment: 4-2-9". It gives no hint about which team or task it belongs to.
 - Fragment values for other teams are secret. A team only ever receives its own held fragments.
-- If a holder team is missing (never logged in, dropped out or removed), staff can release that fragment directly to the team that needs it. This is audited.
+- If a holder team is missing (never logged in, dropped out or removed), staff can release that fragment directly to the team that needs it. The main admin can do this for any team; a co-facilitator for their assigned teams. This is audited.
 
 ## 5. Wallets and funds
 
 | Wallet | Default start | Used for | Counts toward score |
 |---|---|---|---|
-| Task Funds | 10,000 | Transfers to other teams, fail penalties, hints once Support Funds are used up | Yes, x 2 |
+| Task Funds | 10,000 | Transfers to other teams, fail penalties, the part of a hint cost that Support Funds cannot cover | Yes, x 2 |
 | Support Funds | 4,500 (proposed) | Hints only | No |
 
 - Teams can send Task Funds to another team. A transfer needs enough balance and arrives 60 seconds after it is sent. The sender sees "Arriving in 0:45". The amount leaves the sender immediately.
@@ -164,7 +164,7 @@ Staff log in with their own name, email and password. The main admin creates co-
 | Adjust Task Funds | Any amount | Up to 2,000 up or down per change, reason required. Larger changes become a request the admin approves. |
 | Rename a team, reset its login | Yes | Assigned teams only |
 | Unlock or reopen a task | Yes | No |
-| Release a missing team's fragment | Yes | See Open questions |
+| Release a missing team's fragment | Yes | Assigned teams only |
 | Remove a team from a running game | Yes | No |
 | Start, pause, end or extend phases | Yes | No |
 | Send inbox messages to all teams | Yes | No |
@@ -203,7 +203,7 @@ The images in `design/` came from a generic gaming template. Where they differ f
 - Picture Puzzle ("The Shattered Blueprint"): 12-minute timer, not 20. The factory photo is sample content only.
 - Keep the dark theme, card style and colours from the designs.
 
-## 15. Open questions (answer before Phase 2)
+## 15. Answered questions
 
-1. **Hints paid from Task Funds:** if Support Funds have 1,000 left and a hint costs 1,500, is the cost split (1,000 Support + 500 Task) or taken fully from Task Funds? And is a hint blocked if Task Funds would go below zero, or allowed to push them negative?
-2. **Releasing a missing team's fragment:** can co-facilitators do this for their assigned teams, or only the main admin?
+1. **Hints paid from Task Funds:** the cost is split. Take whatever is left in Support Funds first, and the rest from Task Funds. Example: Support Funds 1,000, hint 1,500, so 1,000 comes from Support Funds and 500 from Task Funds. The hint is blocked if it would take Task Funds below zero.
+2. **Releasing a missing team's fragment:** co-facilitators can release it for their assigned teams (the team that needs the fragment). It is audited like every staff action.
