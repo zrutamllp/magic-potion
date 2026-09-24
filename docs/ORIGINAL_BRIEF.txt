@@ -1,0 +1,521 @@
+1. Executive Summary
+This document outlines the project plan and technical architecture for a real-time, team-based collaborative web game. The game is designed for a corporate or educational setting, played by 10-20 teams simultaneously in virtual breakout rooms. It masterfully blends competition (which team finishes fastest with the most resources) with collaboration (all teams contribute to a single, overarching goal). The primary objective is to complete a series of tasks within a 90-minute time limit, managing resources and communicating effectively with other teams. The entire experience will be delivered through a dynamic web application, with a focus on real-time data synchronization to create a lively and engaging event.
+
+2. Game Concept & Core Loop
+Each team, represented by a single operator in a breakout room, joins a unique game session using a provided code.
+
+Onboarding: Players are greeted with an introduction page and a brief instructional video explaining the rules, objectives, and the user interface.
+
+Initial State: Upon starting, each team is allocated a fixed amount of starting "Funds" (in-game currency) and presented with 5 "Task Cards".
+
+3 Unique Tasks: These are specific to each team, ensuring a varied experience.
+
+2 Common Tasks: These are identical for all teams, creating shared challenges and opportunities for collaboration.
+
+Gameplay: Teams work to solve the tasks. The nature of the tasks can be varied (e.g., logic puzzles, riddles, information retrieval).
+
+Resource Management: Teams can spend their Funds to receive hints for difficult tasks. The cost of hints could increase with each request.
+
+External Interaction: An in-game "Email" system will send teams opportunities. Responding correctly to these emails will award bonus Funds.
+
+Winning Conditions: The primary goal is twofold:
+
+Competitive: Be the team that completes all 5 tasks in the shortest amount of time with the maximum amount of Funds remaining.
+
+Collaborative: Successfully completing all 5 tasks allows the team to contribute their "Magic Potion" share to the collective goal.
+
+Game End: The game concludes when the 90-minute timer expires. A final results screen reveals the team rankings and the total completion percentage of the "Magic Potion".
+
+3. Key Features
+a. Real-Time Dashboard & Leaderboard
+A persistent, live-updating dashboard will be visible to all teams throughout the game. It will display:
+
+Team Standings: A list of all teams.
+
+Task Progress: A visual indicator (e.g., 5 empty/filled stars) showing how many tasks each team has completed.
+
+Funds Remaining: The current Fund balance for each team.
+
+Magic Potion Meter: A large, central visual (e.g., a filling bottle or a progress bar) showing the collective progress towards the final goal. This meter updates in real-time whenever a team completes all their tasks.
+
+b. Communication Hub
+Global Chat Room: A single chat room, similar to a Slack channel, where all teams can communicate.
+
+Strategic Limitation: Each team will be limited to sending only 5 outgoing messages for the entire game, making communication a valuable and strategic resource.
+
+Fund Transfers: Within the chat or a separate interface, teams can send and request Funds from one another, fostering negotiation and alliances.
+
+c. The "Magic Potion" - Collaborative Goal
+The "Magic Potion" is the ultimate collaborative goal. The total potion is 100%. Each team's potential contribution is calculated based on the number of participating teams.
+
+Formula: Contribution % = 100 / (Total Number of Teams)
+
+Example: With 10 teams, each team holds a 10% share. With 20 teams, each holds a 5% share.
+
+When a team completes its 5th and final task, its share is instantly added to the global potion meter, visible to everyone.
+
+4. Recommended Technical Architecture (Self-Hosted on VPS)
+To accommodate the need for a corporate-friendly, self-hosted solution on your Hostinger VPS, we will use a classic and powerful stack. This architecture provides full control over data and infrastructure.
+
+Backend Runtime & Framework: Node.js with Express.js. This is a highly popular and robust combination for building the application's backend API. It will handle all game logic, such as validating task submissions, processing fund transfers, and serving data to the clients.
+
+Database: PostgreSQL. A leading open-source object-relational database renowned for its reliability, data integrity, and performance. It is a standard choice for enterprise applications and will serve as the persistent storage for all game data (teams, tasks, progress, etc.). You will have full control over its installation and management on your VPS.
+
+Real-Time Communication: Socket.IO. To replicate the live, dynamic updates (like the dashboard and chat), we will use the Socket.IO library. It enables real-time, bidirectional communication between the server (your Node.js app) and all connected clients (the players' browsers) using WebSockets. When a team completes a task, the server will use Socket.IO to instantly "push" the updated game state to every player.
+
+Frontend Application: React.js. This remains the recommended choice for the frontend. Its component-based structure is ideal for building the complex, interactive UI of the game. It will communicate with your Express backend via standard API calls and a persistent Socket.IO connection.
+
+5. High-Level Data Models (PostgreSQL Schema)
+The data will be structured in a relational model using SQL tables.
+
+games table
+
+id: SERIAL PRIMARY KEY
+
+game_code: VARCHAR(10) UNIQUE NOT NULL
+
+status: VARCHAR(20) DEFAULT 'pending' -- (pending, active, finished)
+
+start_time: TIMESTAMP
+
+end_time: TIMESTAMP
+
+created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+teams table
+
+id: SERIAL PRIMARY KEY
+
+game_id: INTEGER REFERENCES games(id) ON DELETE CASCADE
+
+name: VARCHAR(100) NOT NULL
+
+funds: INTEGER DEFAULT 1000
+
+outgoing_messages_sent: INTEGER DEFAULT 0
+
+tasks table
+
+id: SERIAL PRIMARY KEY
+
+type: VARCHAR(20) NOT NULL -- (unique, common)
+
+title: VARCHAR(255)
+
+description: TEXT
+
+answer: VARCHAR(255)
+
+hints: JSONB -- (Stores an array of hint strings)
+
+team_tasks (Join Table)
+
+team_id: INTEGER REFERENCES teams(id) ON DELETE CASCADE
+
+task_id: INTEGER REFERENCES tasks(id) ON DELETE CASCADE
+
+status: VARCHAR(20) DEFAULT 'pending' -- (pending, complete)
+
+PRIMARY KEY (team_id, task_id)
+
+chat_messages table
+
+id: SERIAL PRIMARY KEY
+
+game_id: INTEGER REFERENCES games(id) ON DELETE CASCADE
+
+team_id: INTEGER REFERENCES teams(id)
+
+team_name: VARCHAR(100)
+
+text: TEXT
+
+created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+6. Next Steps
+Phase 1: Environment & Core Backend
+
+Set up the Hostinger VPS: Install Node.js, PostgreSQL, and a process manager like PM2.
+
+Design and create the PostgreSQL database schema.
+
+Develop the initial Express.js application with API endpoints for game and team management.
+
+Phase 2: Real-Time Integration
+
+Integrate Socket.IO into the Express server.
+
+Build the core React components for the dashboard, task cards, etc.
+
+Establish the Socket.IO connection from the React client to the server for receiving live updates.
+
+Phase 3: Feature Implementation & Polish
+
+Implement the game logic for tasks, hints, emails, and fund transfers through the API.
+
+Ensure all game state changes on the server are broadcast to clients via Socket.IO.
+
+Phase 4: Admin & Deployment
+
+Build a simple admin interface to create new games, manage tasks, and monitor progress.
+
+Deploy the React frontend as a static build and configure a web server (like Nginx) on the VPS to serve it and proxy API requests to the Node.js application.
+[03/07/25, 21:05:40] Sunny: Let us make a detailed project summary for a game which will be provided to give coding . Let me first explain the game . All I want is server side coding and data will be dynamic . You can choose the tech stacks , technology and other things . Let me explain the game . The game is where 10 / 15 / 20 teams depending on audience size will break into breakout rooms of zoom . Inside the room one person will operate the game . The game will be multi player . When the user log in with a code , the player will see an interface . An introduction . A brief video explaining the game will show then 5 cards will show . Each card is a task , 3 unique to each team and 2 common for all . When they log in they get fixed funds. For each task if they seek help they need to give some funds. . The aim of the game is which team can complete all the 5 assigned in shortest time and with maximum funds left . During the game each team can chat with each other . They all have access to email . If they respond to the activities in email they will get more funds . The chat is more like a slack room where all can everyone message and a fixed logic of 5 outgoing messages only . They can also send and request for funds . During the game when each team completes all the task they collect a magic portion . The magic portion is nothing but the percentage portion one team contributed towards the goal . For example if 5 teams are playing the contribution of each team will be 20% , if 10 teams then 10% each and if 20 teams 5% each . All equally distributed . The live tracking of each team on how many task completed how much fund left and overall bottle fill will also show real time . In the end of 90 minutes of game , the game stops and final filled magic potion shows up . You can ask me more questions if you have any questions
+[03/07/25, 22:16:38] Sunny: Of course. Here is a clear, verbal explanation of the scoring rules from the project summary, perfect for briefing the players.
+
+How Your Team's Score is Calculated
+Welcome, teams! Your final ranking in today's game will be determined by a Performance Score. This score is designed to reward the teams that are fast, efficient, and strategic.
+
+Your total score is calculated from four key areas:
+
+1. Task Score (Your Main Objective)
+This is the most important part of your score. Your goal is to complete all 5 tasks assigned to your team.
+
+You get a massive 10,000 points for every single task you complete.
+
+You also get a Time Bonus for finishing all 5 tasks before the 90-minute deadline. The faster you finish, the bigger this bonus will be!
+
+2. Funds Score (Your Efficiency)
+Every team starts with 10,000 Funds. How you manage this money is critical.
+
+At the end of the game, every Fund you have remaining in your balance will be converted into points. The more funds you save, the higher your score.
+
+3. Collaboration Bonus (Being a Good Neighbor)
+You have the ability to transfer funds to other teams. We want to reward this helpful behavior.
+
+You will earn bonus points for the funds you give away to help other teams.
+
+To keep the game fair, this bonus is capped at a maximum of 10,000 points. This means collaboration is helpful, but it won’t win the game on its own.
+
+4. Borrowing Penalty (The Cost of Help)
+Just as giving help is rewarded, receiving help has a cost.
+
+Your team will receive a penalty that deducts points from your score for any funds you receive from other teams.
+
+In short, the winning team will be the one that completes all its tasks the fastest, spends its money wisely, and strikes the right balance between helping others and helping themselves. Good luck!
+[03/07/25, 22:17:59] Sunny: Of course. Here is the updated scoring writeup with the specific multipliers included for extra clarity.
+
+How Your Team's Score is Calculated
+Welcome, teams! Your final ranking in today's game will be determined by a Performance Score. This score is designed to reward the teams that are fast, efficient, and strategic.
+
+Your total score is calculated from four key areas:
+
+1. Task Score (Your Main Objective)
+This is the most important part of your score. Your goal is to complete all 5 tasks assigned to your team.
+
+You get a massive 10,000 points for every single task you complete.
+
+You also get a Time Bonus for finishing all 5 tasks before the 90-minute deadline. The faster you finish, the bigger this bonus will be!
+
+2. Funds Score (Your Efficiency)
+Every team starts with 10,000 Funds. How you manage this money is critical.
+
+At the end of the game, every Fund you have remaining will be multiplied by two (2X) and added to your score. The more funds you save, the higher your score.
+
+3. Collaboration Bonus (Being a Good Neighbor)
+You have the ability to transfer funds to other teams. We want to reward this helpful behavior.
+
+You will earn bonus points for the funds you give away. Every fund you transfer will be multiplied by one and a half (1.5X) to calculate your bonus.
+
+To keep the game fair, this bonus is capped at a maximum of 10,000 points. This means collaboration is helpful, but it won’t win the game on its own.
+
+4. Borrowing Penalty (The Cost of Help)
+Just as giving help is rewarded, receiving help has a cost.
+
+Your team will receive a penalty for any funds you receive from other teams. Every fund you receive will be multiplied by two (2X) and deducted from your total score.
+
+In short, the winning team will be the one that completes all its tasks the fastest, spends its money wisely, and strikes the right balance between helping others and helping themselves.
+
+Let us make a detailed project summary for a game which will be provided to give coding. You can choose the tech stacks, technology and other things. Let me explain the game. The game is where 10 / 15 / 20 groups depending on audience size will participate. Means If we have 100 peoples then each group has 5 people and total 20 groups will form. I need a login page where one person of each team will login with their own credentials and if one member is logged in then no others will join the game with the same details. The game will be multi player means if 20 groups are form than 20 people will play the game simultaneously.
+When the user logs in with a code and the password, the player will see an interface. The Interface has a sidebar with home, chat, funds, email, leaderboard, gene rules tabs.
+We have 12 predefined tasks like
+1.	Picture Puzzle
+2.	Hangman
+3.	Find the code
+4.	Spot the difference
+5.	Aline Translator
+6.	Sound Sleuth
+7.	Vault
+8.	Pictionary
+9.	Escape room
+10.	Riddle
+11.	Ethical dilemma
+12.	Data Story
+Initial Fund and Scoring logic:
+Your total score is calculated from four key areas:
+1. Task Score (Your Main Objective)
+This is the most important part of your score. Your goal is to complete all 5 tasks assigned to your team.
+You get a massive 10,000 points for every single task you complete.
+You also get a Time Bonus for finishing all 5 tasks before the 90-minute deadline. The faster you finish, the bigger this bonus will be!
+
+2. Funds Score (Your Efficiency)
+Every team starts with 10,000 Funds. How you manage this money is critical.
+At the end of the game, every Fund you have remaining will be multiplied by two (2X) and added to your score. The more funds you save, the higher your score.
+
+3. Collaboration Bonus (Being a Good Neighbor)
+You have the ability to transfer funds to other teams. We want to reward this helpful behavior.
+
+You will earn bonus points for the funds you give away. Every fund you transfer will be multiplied by one and a half (1.5X) to calculate your bonus.
+To keep the game fair, this bonus is capped at a maximum of 10,000 points. This means collaboration is helpful, but it won’t win the game on its own.
+
+4. Borrowing Penalty (The Cost of Help)
+Just as giving help is rewarded, receiving help has a cost
+Your team will receive a penalty for any funds you receive from other teams. Every fund you receive will be multiplied by two (2X) and deducted from your total score.
+
+In short, the winning team will be the one that completes all its tasks the fastest, spends its money wisely, and strikes the right balance between helping others and helping themselves.
+
+Description of each tab
+Home Tab: -
+In home tab 5 cards will show. Each card represents a task, 3 unique tasks to each group and 2 tasks common for all among the predefined task. The group leader will play the tasks and if he or she complete the task then they get bonu point according to the scoring logic.
+
+Chat Tab: -
+In the chat tab one player who playing the game can chat with another group in real time. Every group must have 8 messages max. If some one sends more messages, then fund will deduct. And also, if one team request or send funds from funds tab then this should also appear here.
+
+Funds Tab: -
+From this tab groups can request or send fund. If some one request fund, then he or he will get a penalty and if some one sends fund, then they will get a bonus.
+
+Email Tab: -
+In this tab some pre generated emails will come at some point of time interval with some easy tasks. If Group leaders do this task then they will get a bonus.
+
+Leaderboard Tab: -
+In this tab every group can see there live real time fund report and completation report.
+
+Solve interconnected puzzles to escape a virtual room.
+
+Problem-Solving
+
+Yes
+
+2
+
+Picture Puzzle
+
+Reassemble a scrambled image (e.g., team photo, logo).
+
+Visual/Teamwork
+
+Yes
+
+3
+
+Hangman
+
+Guess letters to reveal a company-related word or phrase.
+
+Word Game
+
+Yes
+
+4
+
+Deepthink (GPTW)
+
+Rank company initiatives to foster valuable feedback.
+
+Strategic/Feedback
+
+Yes
+
+5
+
+The Sonic Sleuth
+
+Solve an audio-only mystery using sound cues.
+
+Logic/Auditory
+
+Yes
+
+6
+
+The Data Story
+
+Analyze a mock dashboard to find key insights.
+
+Analytical/Business
+
+Yes
+
+7
+
+Spot the Difference
+
+Find differences in two similar images.
+
+Visual/Detail
+
+Yes
+
+8
+
+Memory Tray (GPTW)
+
+Recall items shown briefly on a tray.
+
+Attention to Detail
+
+Yes
+
+9
+
+Ethical Dilemma
+
+Decide on a course of action for a tough scenario.
+
+Strategic
+
+yes
+
+10
+
+Find the Code
+
+Solve ciphers and puzzles to find a final code.
+
+Logic/Problem-Solving
+
+Of course. Here is a complete game introduction and instruction guide using the new theme and incorporating all your specific points.
+Welcome to the Coca-Cola Challenge!
+Welcome, teams! Today, you are part of a special project with a single mission: to work together to fill a giant Coca-Cola bottle.
+This is a game of competition and collaboration. You will compete against other teams for the top spot on the leaderboard, but you must also help each other to achieve the final goal.
+Remember, while there will be a leaderboard, if the Coca-Cola bottle is not completely filled by the end of the game, nobody wins.
+How to Play: Your Game Guide
+Your Mission
+Your primary goal is to solve the 5 unique tasks assigned to your team. These tasks will test your problem-solving, logic, and analytical skills.
+The Game Screen
+ * Tasks: Your 5 main challenges are displayed here. Read the instructions carefully before starting any task, as each one has different rules.
+ * Dashboard: This shows a live ranking of all teams, their task progress, and their funds.
+ * Inbox: Check your inbox periodically! New messages will appear with opportunities to earn bonus points.
+ * Chat: You can talk to other teams here, but you only have 5 outgoing messages. You can also use the chat to send or request Funds.
+Funds: Your Two Wallets
+You start with two separate pools of money:
+ * Main Funds (10,000): This is your primary wallet. The more of this you have left at the end, the higher your score.
+ * Hint Fund: This is a separate pool of money used only for paying for hints or penalties in certain tasks.
+The Ultimate Goal: Fill the Bottle!
+Every time a team successfully completes all 5 of their tasks, they contribute a large portion to filling the collective Coca-Cola bottle. You can track everyone's progress on the main screen.
+This is the most important rule: The leaderboard doesn't matter if the bottle isn't full. For anyone to be declared a winner, the entire group must succeed together.
+How Scoring Works
+The winning team is the one with the highest total score at the end. Here’s how your score is calculated:
+ * Task Score (Completion + Speed): You get +10,000 points for each of the 5 main tasks you complete, plus a Time Bonus for finishing early.
+ * Funds Score (Efficiency): Every Main Fund you have left is multiplied by 2 and added to your score.
+ * Inbox Bonus (Diligence): You can earn up to 4,500 bonus points by completing small tasks that arrive in your inbox.
+ * Collaboration Bonus (Giving Help): Any Main Funds you give to another team are multiplied by 1.5 and added to your score (this bonus is capped at 10,000 points).
+ * Borrowing Penalty (Getting Help): Any Main Funds you receive from another team are multiplied by 2 and deducted from your score.
+After You Finish Your 5 Tasks
+Once your team has completed all its tasks, your job isn't over. You can then choose to:
+ * Help other teams by sending them funds.
+ * Wait for all teams to finish and cheer them on as you watch the final bottle fill up.
+
+Welcome, teams! Today, you are part of a special project with a single mission: to work together to fill a giant Coca-Cola bottle.
+This is a game of competition and collaboration. You will compete against other teams for the top spot on the leaderboard, but you must also help each other to achieve the final goal.
+Remember, while there will be a leaderboard, if the Coca-Cola bottle is not completely filled by the end of the game, nobody wins.
+How to Play: Your Game Guide
+Your Mission
+Your primary goal is to solve the 5 unique tasks assigned to your team. These tasks will test your problem-solving, logic, and analytical skills.
+The Game Screen
+ * Tasks: Your 5 main challenges are displayed here. Read the instructions carefully before starting any task, as each one has different rules.
+ * Dashboard: This shows a live ranking of all teams, their task progress, and their funds.
+ * Inbox: Check your inbox periodically! New messages will appear with opportunities to earn bonus points.
+ * Chat: You can talk to other teams here, but you only have 8 outgoing messages. You can also use the chat to send or request Funds.
+Funds: Your Two Wallets
+You start with two separate pools of money:
+ * Initial Funds (10,000): This is your primary wallet. The more of this you have left at the end, the higher your score.
+ * Current Fund: This is a separate pool of money used only for paying for hints or penalties in certain tasks.
+The Ultimate Goal: Fill the Bottle!
+Every time a team successfully completes all 5 of their tasks, they contribute a large portion to filling the collective Coca-Cola bottle. You can track everyone's progress on the main screen.
+This is the most important rule: The leaderboard doesn't matter if the bottle isn't full. For anyone to be declared a winner, the entire group must succeed together.
+How Scoring Works
+The winning team is the one with the highest total score at the end. Here’s how your score is calculated:
+ * Task Score (Completion + Speed): You get +10,000 points for each of the 5 main tasks you complete, plus a Time Bonus [(5400 - Time Left in Sec.)*5] for finishing early.
+ * Funds Score (Efficiency): Every Initial Fund you have left is multiplied by 2 and added to your score.
+ * Inbox Bonus (Diligence): You can earn up to 3000 bonus (1000 each task) points by completing small tasks that arrive in your inbox.
+ * Collaboration Bonus (Giving Help): Any Funds you give to another team are multiplied by 1.5 and added to your score (this bonus is capped at 10,000 points).
+ * Borrowing Penalty (Getting Help): Any Funds you receive from another team are multiplied by 2 and deducted from your score.
+After You Finish Your 5 Tasks
+Once your team has completed all its tasks, your job isn't over. You can then choose to:
+ * Help other teams by sending them funds.
+ * Wait for all teams to finish and cheer them on as you watch the final bottle fill up.
+
+Bonus Mission: Capture Your Team Spirit!
+Hello Teams, we have a special bonus challenge for you.
+
+Complete this mission successfully within the 90-minute game time to earn an extra 1000 bonus funds for your team!
+
+The Goal: Submit a team photo with every member on camera in your breakout room.
+
+Instructions for the Team
+Step 1: Everyone, Cameras On!
+
+Please turn on your cameras so we can see your entire team.
+
+Step 2: Get Ready for the Photo!
+
+Arrange yourselves in the Zoom gallery view.
+
+Look at the camera and give us a great team smile, a thumbs-up, or a wave!
+
+Detailed Instructions for the 'Pilot' (The person managing the computer)
+Your role is to capture the moment and submit the photo. Please follow these steps carefully.
+
+Step 3: Take the Screenshot
+
+You will need to take a picture of your screen. Below are the best ways to do this on Windows and Mac.
+
+📸 How to Take a Screenshot 📸
+For Windows Users:
+Recommended Method: Snip & Sketch (Easiest!)
+
+Press Windows Key + Shift + S on your keyboard.
+
+Your screen will dim, and a small menu will appear at the top. It is already set to "Rectangular Snip."
+
+Use your mouse to click and drag a box around your team in the Zoom window.
+
+When you let go of the mouse, the image is automatically copied. A notification will pop up in the corner of your screen. Click on it.
+
+The image will open. Click the Save icon (looks like a floppy disk) and save the picture to your Desktop or Documents.
+
+Alternative Method: Print Screen (PrtScn) Key
+
+Press the PrtScn key (it might say Print Screen or PrtSc and you may need to press the Fn key at the same time on some laptops). This copies your entire screen.
+
+Open the Paint app (search for it in your Start Menu).
+
+Press Ctrl + V to paste the screenshot into Paint.
+
+Go to File > Save As and save the picture.
+
+For Mac Users:
+Recommended Method: Capture a Selected Area (Easiest!)
+
+Press Command + Shift + 4 on your keyboard.
+
+Your cursor will turn into a crosshair.
+
+Click and drag a box around your team in the Zoom window.
+
+When you let go, the screenshot is automatically saved as a file on your Desktop.
+
+Alternative Method: Capture the Entire Screen
+
+Press Command + Shift + 3.
+
+This will instantly take a screenshot of your entire screen and save it as a file on your Desktop.
+
+Step 4: Upload the Picture
+
+Find the saved image file on your computer.
+
+Upload it to the location we've specified: [Insert Upload Link, Slack Channel, or say "in the main Zoom chat"]
+
+Final Checklist:
+
+[ ] Everyone is on camera.
+
+[ ] Screenshot has been taken.
+
+[ ] Photo has been uploaded.
+
+[ ] Completed before the 90-minute timer ends.
+
+
