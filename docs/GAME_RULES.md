@@ -10,6 +10,7 @@ Every number below is a default setting that the admin can change per game befor
 - Online: each team is in a Zoom breakout room. One Pilot shares their screen and operates the game.
 - In the room: each team sits at a table around one laptop. Teams may talk to other teams only through the game chat.
 - One login per team (team code + password). Only one active session per team at a time. A new login on the same team ends the older session. Staff can reset a team's session.
+- Team passwords are stored hashed. Staff see a team's password only when it is created. If a team forgets it, staff reset the login, which sets a new password.
 
 ## 2. Game phases
 
@@ -134,7 +135,7 @@ score =
   + time bonus
   + 2 x Task Funds at the end
   + inbox bonus                      (1,000 per inbox task, up to 3,000)
-  + min(1.5 x funds given, 10,000)   (collaboration bonus)
+  + min(floor(1.5 x funds given), 10,000)   (collaboration bonus, rounded down)
   - 2 x funds received               (shown as "Funds received", not "penalty")
   + Full Potion Bonus                (15,000 to every team if the potion reaches 100%) (proposed)
 
@@ -142,7 +143,7 @@ time bonus = 5 x play seconds remaining when the team completes its 5th task, el
 ```
 
 - "Play seconds remaining" counts to the current end of play, including any extensions the admin has added.
-
+- All scores are whole numbers. The collaboration bonus is rounded down (1.5 x 333 = 499.5 becomes 499).
 - "Funds given" and "funds received" count only transfers that have arrived.
 - Staff fund adjustments change Task Funds but do not count as given or received.
 - Show a live provisional score during play. The Full Potion Bonus is added only at the Reveal.
@@ -207,3 +208,5 @@ The images in `design/` came from a generic gaming template. Where they differ f
 
 1. **Hints paid from Task Funds:** the cost is split. Take whatever is left in Support Funds first, and the rest from Task Funds. Example: Support Funds 1,000, hint 1,500, so 1,000 comes from Support Funds and 500 from Task Funds. The hint is blocked if it would take Task Funds below zero.
 2. **Releasing a missing team's fragment:** co-facilitators can release it for their assigned teams (the team that needs the fragment). It is audited like every staff action.
+3. **Team passwords:** stored hashed, like staff passwords. Staff see them only when created; "reset login" sets a new one.
+4. **Rounding the collaboration bonus:** round down, then apply the 10,000 cap. Any whole transfer amount is allowed.
