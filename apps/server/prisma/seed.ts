@@ -1,0 +1,137 @@
+import { randomBytes } from 'node:crypto';
+import bcrypt from 'bcryptjs';
+import {
+  DEFAULT_SETTINGS,
+  TASK_DEFINITIONS,
+  TaskKeySchema,
+  parseTaskContent,
+} from '@magic-potion/shared';
+import { createPrisma } from '../src/db';
+import { loadEnv } from '../src/env';
+import { SAMPLE_INBOX_ITEMS, SAMPLE_TASK_CONTENT } from './sampleContent';
+
+// Safe to run more than once: existing rows are left alone.
+// Pass --reset-demo to delete and recreate the demo game (prints new team passwords).
+
+const DEMO_GAME_NAME = 'Demo Game';
+const DEMO_TEAM_COUNT = 4;
+const BCRYPT_ROUNDS = 12;
+
+const env = loadEnv();
+if (!env.DATABASE_URL) throw new Error('DATABASE_URL is required to seed.');
+if (!env.ADMIN_SEED_EMAIL || !env.ADMIN_SEED_PASSWORD) {
+  throw new Error('ADMIN_SEED_EMAIL and ADMIN_SEED_PASSWORD are required to seed.');
+}
+const resetDemo = process.argv.includes('--reset-demo');
+const prisma = createPrisma(env.DATABASE_URL);
+
+async function seedAdmin(email: string, password: string) {
+  const existing = await prisma.staffUser.findUnique({ where: { email } });
+  if (existing) {
+    console.log(`Main admin ${email} already exists.`);
+    return;
+  }
+  await prisma.staffUser.create({
+    data: {
+      name: 'Main admin',
+      email,
+      passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS),
+      role: 'MAIN_ADMIN',
+    },
+  });
+  console.log(`Created main admin ${email}.`);
+}
+
+async function seedTaskDefinitions() {
+  for (const def of TASK_DEFINITIONS) {
+    await prisma.taskDefinition.upsert({
+      where: { key: def.key },
+      update: { name: def.name, type: def.type, sortOrder: def.sortOrder },
+      create: def,
+    });
+  }
+  console.log(`Task definitions: ${TASK_DEFINITIONS.length}.`);
+}
+
+async function seedDemoGame() {
+  const existing = await prisma.game.findFirst({ where: { name: DEMO_GAME_NAME } });
+  if (existing && !resetDemo) {
+    console.log(`${DEMO_GAME_NAME} already exists. Use --reset-demo to recreate it.`);
+    return;
+  }
+  if (existing) {
+    await prisma.game.delete({ where: { id: existing.id } });
+    console.log(`Deleted old ${DEMO_GAME_NAME}.`);
+  }
+
+  // Validate the whole pack before writing anything.
+  const content = SAMPLE_TASK_CONTENT.map((c) => ({
+    ...c,
+    ...parseTaskContent(TaskKeySchema.parse(c.key), c),
+  }));
+  const definitions = await prisma.taskDefinition.findMany();
+  const definitionId = new Map(definitions.map((d) => [d.key, d.id]));
+
+  const logins = await Promise.all(
+    Array.from({ length: DEMO_TEAM_COUNT }, async (_, i) => {
+      const password = randomBytes(4).toString('hex');
+      return {
+        code: `TEAM${i + 1}`,
+        name: `Team ${i + 1}`,
+        password,
+        passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS),
+      };
+    }),
+  );
+
+  await prisma.$transaction(async (tx) => {
+    const game = await tx.game.create({
+      data: { name: DEMO_GAME_NAME, settings: { create: { data: DEFAULT_SETTINGS } } },
+    });
+    await tx.team.createMany({
+      data: logins.map(({ code, name, passwordHash }) => ({
+        gameId: game.id,
+        code,
+        name,
+        passwordHash,
+      })),
+    });
+    await tx.taskContent.createMany({
+      data: content.map((c) => {
+        const taskDefinitionId = definitionId.get(c.key);
+        if (!taskDefinitionId) throw new Error(`Missing task definition ${c.key}`);
+        return {
+          gameId: game.id,
+          taskDefinitionId,
+          variant: c.variant,
+          publicData: c.publicData,
+          secretData: c.secretData,
+        };
+      }),
+    });
+    await tx.inboxItem.createMany({
+      data: SAMPLE_INBOX_ITEMS.map((item) => ({
+        gameId: game.id,
+        kind: item.kind,
+        title: item.title,
+        body: item.body,
+        secretAnswer: item.secretAnswer ?? undefined,
+        releaseAtPlaySeconds: DEFAULT_SETTINGS.inbox.releaseAtPlaySeconds[item.releaseSlot] ?? null,
+        reward: DEFAULT_SETTINGS.inbox.reward,
+      })),
+    });
+  });
+
+  console.log(
+    `Created ${DEMO_GAME_NAME} with ${DEMO_TEAM_COUNT} teams. Team logins (shown only now):`,
+  );
+  for (const l of logins) console.log(`  ${l.code}  ${l.password}`);
+}
+
+try {
+  await seedAdmin(env.ADMIN_SEED_EMAIL, env.ADMIN_SEED_PASSWORD);
+  await seedTaskDefinitions();
+  await seedDemoGame();
+} finally {
+  await prisma.$disconnect();
+}

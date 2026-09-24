@@ -47,6 +47,16 @@ Database (from `apps/server`, once the Neon strings are in `.env`):
 | ------------------------ | ------------------------------------------------ |
 | `npm run prisma:migrate` | Create and apply a migration (uses `DIRECT_URL`) |
 | `npm run prisma:deploy`  | Apply existing migrations (production)           |
+| `npm run db:seed`        | Create the main admin, task list and demo game   |
+| `npm run db:check`       | Print row counts and check wallet balances       |
+
+First-time database setup:
+
+1. `npm run prisma:migrate` applies the migrations to Neon.
+2. `npm run db:seed` creates the main admin from `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`, the 12 task definitions, and a "Demo Game" with 4 teams (`TEAM1` to `TEAM4`) and the sample content pack. Team passwords are random and printed only once. Run it again any time; it leaves existing rows alone.
+3. `npm run db:seed -- --reset-demo` deletes and recreates the demo game, printing new team passwords.
+
+`DIRECT_URL` must be Neon's direct host (no `-pooler` in the host name). Migrations through the pooler can leave a lock behind.
 
 ## Environment variables
 
