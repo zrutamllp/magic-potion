@@ -11,7 +11,7 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 - Health check endpoint `GET /healthz`.
 - **Done when:** `npm run dev` starts web and server locally; the web page shows "Server OK" from the API.
 
-## Phase 1: Data model and settings
+## Phase 1: Data model and settings ✅
 
 - Prisma schema: Game, GameSettings, Team, TeamSession, TaskDefinition, TaskContent (public and secret fields), TeamTask, TaskAttempt, Fragment, Wallet ledger (FundTransaction), Transfer, FundRequest, ChatMessage, InboxItem, InboxResponse, PotionSnapshot, StaffUser, StaffAssignment, AuditLog, FundAdjustmentRequest.
 - Money as integers. Every wallet change is a ledger row; balances are derived or cached with a check.
