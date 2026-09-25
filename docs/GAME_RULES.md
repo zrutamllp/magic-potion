@@ -1,6 +1,6 @@
 # Game rules (source of truth)
 
-Every number below is a default setting that the admin can change per game before it starts. Items marked **(proposed)** still need final sign-off from Sunny, but build them as shown.
+Every number below is a default setting that the admin can change per game before it starts.
 
 `docs/ORIGINAL_BRIEF.txt` is the first brief, kept for background only. Where it differs from this file, this file wins (for example: chat limit is 5, not 8; the time bonus formula is corrected; Deepthink and Memory Tray are not in the task pool).
 
@@ -45,7 +45,7 @@ Every task follows the same rules:
 | Points for solving | +10,000 |
 | Hint | 1 per attempt, costs 1,500, only while the timer is running. Paid from whatever is left in Support Funds first; the rest comes from Task Funds. Blocked if it would take Task Funds below zero. |
 | Timer runs out or Give up | Task fails and costs 3,500 Task Funds |
-| After failing | The team may restart the task with a fresh timer and a fresh hint. Each failure costs 3,500 again. (proposed) |
+| After failing | The team may restart the task with a fresh timer and a fresh hint. Each failure costs 3,500 again. |
 | Content on restart | Use a new content variant for that task if one is unused, else reuse the same content |
 | Code lockout | The Vault, Find the Code and Escape Room lock for 60 seconds after 3 wrong attempts |
 
@@ -93,7 +93,7 @@ Task content (images, words, riddles, audio, dashboards, answers) is uploaded pe
 | Wallet | Default start | Used for | Counts toward score |
 |---|---|---|---|
 | Task Funds | 10,000 | Transfers to other teams, fail penalties, the part of a hint cost that Support Funds cannot cover | Yes, x 2 |
-| Support Funds | 4,500 (proposed) | Hints only | No |
+| Support Funds | 4,500 | Hints only | No |
 
 - Teams can send Task Funds to another team. A transfer needs enough balance and arrives 60 seconds after it is sent. The sender sees "Arriving in 0:45". The amount leaves the sender immediately.
 - Teams can request funds from another team. A request carries only an amount and no free text. The receiving team accepts or declines.
@@ -106,7 +106,7 @@ Task content (images, words, riddles, audio, dashboards, answers) is uploaded pe
 ## 6. Chat
 
 - One channel shared by all teams.
-- 5 outgoing messages per team per round. After the 5th, the send box is blocked for the rest of that round. (proposed)
+- 5 outgoing messages per team per round. After the 5th, the send box is blocked for the rest of that round.
 - Show "Messages left: 3 of 5" beside the send box.
 - Maximum 300 characters per message.
 
@@ -122,7 +122,7 @@ Task content (images, words, riddles, audio, dashboards, answers) is uploaded pe
 
 - Each team's share = 100% / number of teams.
 - The admin can remove a team from a running game. Shares are then recalculated over the remaining teams.
-- A team's share pours into the potion when it completes all 5 tasks. There is no partial fill. (proposed)
+- A team's share pours into the potion when it completes all 5 tasks. There is no partial fill.
 - Save the potion % at the end of Round 1 as the halftime snapshot.
 
 ## 9. Scoring
@@ -137,7 +137,7 @@ score =
   + inbox bonus                      (1,000 per inbox task, up to 3,000)
   + min(floor(1.5 x funds given), 10,000)   (collaboration bonus, rounded down)
   - 2 x funds received               (shown as "Funds received", not "penalty")
-  + Full Potion Bonus                (15,000 to every team if the potion reaches 100%) (proposed)
+  + Full Potion Bonus                (15,000 to every team if the potion reaches 100%)
 
 time bonus = 5 x play seconds remaining when the team completes its 5th task, else 0
 ```
