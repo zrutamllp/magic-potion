@@ -6,7 +6,7 @@ A real-time multiplayer team game for corporate learning events. See `CLAUDE.md`
 
 ```
 apps/web         React + Vite + Tailwind (player app, admin, facilitator, projector)
-apps/server      Express API (Socket.IO from Phase 3), Prisma, game engine (src/engine)
+apps/server      Express API, Socket.IO (src/realtime), auth (src/auth), Prisma, game engine (src/engine)
 packages/shared  Types and zod schemas shared by web and server
 ```
 
@@ -24,7 +24,8 @@ cp apps/web/.env.example apps/web/.env
 npm run dev
 ```
 
-- Web: http://localhost:5173. It shows "Server OK" when the API answers.
+- Web: http://localhost:5173 (team login; it also shows "Server OK" when the API answers).
+- Staff test page: http://localhost:5173/dev/staff
 - API: http://localhost:4000/healthz
 
 The server runs without a database until `DATABASE_URL` is set; `/healthz` then reports `"db": "not_configured"`.
@@ -57,6 +58,26 @@ First-time database setup:
 3. `npm run db:seed -- --reset-demo` deletes and recreates the demo game, printing new team passwords.
 
 `DIRECT_URL` must be Neon's direct host (no `-pooler` in the host name). Migrations through the pooler can leave a lock behind.
+
+## Test Phase 3 by hand (two teams, live)
+
+The screens are plain test screens for now; the real player screens come in Phase 4.
+
+1. In `apps/server/.env`, set `JWT_SECRET` (any string of 32+ characters) and `ENABLE_DEV_TOOLS=true`.
+2. From `apps/server`, run `npm run db:seed -- --reset-demo`. Copy the 4 team codes and passwords it prints (they are shown only once).
+3. From the repo root, run `npm run dev`.
+4. **Window A:** open http://localhost:5173/dev/staff and log in with `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`. Choose "Demo Game" and press **Start**. It shows Round 1 and a 35:00 countdown.
+5. **Window B:** open http://localhost:5173 in a new window and log in as `TEAM1`.
+6. **Window C:** open http://localhost:5173 in another new window (or tab) and log in as `TEAM2`. Put B and C side by side. Each tab keeps its own login.
+7. **Chat:** send "hello" from Team 1. It shows at once in B, C and the staff page. Team 1 now shows "Messages left: 4 of 5".
+8. **Funds:** from Team 1, send 500 to Team 2. B shows Task Funds 9,500 and "Arriving in 0:59" counting down; C shows the incoming transfer. After 60 seconds C shows 10,500. A Team 3 window would not see this transfer line.
+9. **Request:** Team 2 requests 300 from Team 1. Team 1 sees Accept and Decline. Accepting starts a new 60-second transfer.
+10. **Potion:** on the staff page, press "Finish all 5 tasks" for Team 1. Both team windows show the potion at 25% straight away.
+11. **Refresh:** refresh window B mid-countdown. It stays logged in and shows the same time left.
+12. **Pause:** press Pause on the staff page. Countdowns stop, and chat and funds say "The game is paused. Please wait." Press Resume and they carry on from the same time.
+13. **One login per team:** log in as `TEAM1` in another window. Window B shows "Your team logged in on another device."
+
+To play again, run step 2 again (it makes a fresh Demo Game with new passwords). Turn `ENABLE_DEV_TOOLS` off when you are done; it is always off when `NODE_ENV=production`.
 
 ## Simulating a game
 

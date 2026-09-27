@@ -30,7 +30,7 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 - Pure scoring function with unit tests for every rule in section 9, including edge cases (negative funds, collaboration cap, time bonus only after 5 tasks, potion not full).
 - **Done when:** all engine tests pass and a script can simulate a full game for 20 teams and print a correct leaderboard.
 
-## Phase 3: Auth and real-time layer
+## Phase 3: Auth and real-time layer ✅
 
 - Team login (code + password) with one active session per team.
 - Staff login (email + password, bcrypt), roles: main admin, co-facilitator.
@@ -82,3 +82,6 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 - Multiple Render instances with a Redis adapter.
 - Hostinger VPS as a self-hosted option for clients who need it.
 - Languages other than English.
+- Unique team codes across games. Team login finds the team by code among games that have not ended, and refuses a code that two live games share. Phase 6 should generate codes that never clash.
+- Replace the Phase 3 test screens (`apps/web/src/pages/TeamPage.tsx`, `StaffDevPage.tsx`) with the real player screens (Phase 4) and admin panel (Phase 6), and remove the dev-only "finish all tasks" route (`ENABLE_DEV_TOOLS`) once the task screens exist.
+- Vercel rewrite so deep links such as `/dev/staff` load the app in production (Phase 7).
