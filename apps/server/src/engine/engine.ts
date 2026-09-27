@@ -15,9 +15,11 @@ import {
   resumeGame,
   startGame,
 } from './rules/phases';
+import { giveUp, startTask, submitAnswer, timeoutTask, useHint } from './rules/tasks';
 import { potionOf } from './rules/timers';
 import { nextDue, type DueEvent } from './scheduler';
 import { tasksDone, type GameContent, type GameState } from './state';
+import { teamView, type TeamView } from './views';
 
 export interface EngineOptions {
   state: GameState;
@@ -91,6 +93,24 @@ export class GameEngine {
     return this.run((d) => removeTeam(d, staffUserId, teamId, reason));
   }
 
+  // ---------- Team commands ----------
+
+  startTask(teamId: string, taskId: string) {
+    return this.run((d) => startTask(d, teamId, taskId));
+  }
+
+  useHint(teamId: string, taskId: string) {
+    return this.run((d) => useHint(d, teamId, taskId));
+  }
+
+  submit(teamId: string, taskId: string, submission: unknown) {
+    return this.run((d) => submitAnswer(d, teamId, taskId, submission));
+  }
+
+  giveUp(teamId: string, taskId: string) {
+    return this.run((d) => giveUp(d, teamId, taskId));
+  }
+
   // ---------- Scheduler ----------
 
   // Handles every event that is due by now, each at its own due time.
@@ -116,6 +136,10 @@ export class GameEngine {
 
   potion(): Potion {
     return potionOf(this.current);
+  }
+
+  teamView(teamId: string): TeamView | null {
+    return teamView(this.current, this.content, teamId, this.clock.now());
   }
 
   // The Full Potion Bonus is added only at the Reveal.
@@ -211,9 +235,11 @@ function handleDue(d: Draft, due: DueEvent): void {
       d.releaseInboxItem(due.itemId);
       d.emit({ type: 'inboxReleased', itemId: due.itemId });
       return;
-    case 'transferArrival':
     case 'taskTimeout':
-      // Added with the funds and task rules.
+      timeoutTask(d, due.teamId, due.taskId);
+      return;
+    case 'transferArrival':
+      // Added with the funds rules.
       throw new Error(`Unhandled due event ${due.kind}`);
   }
 }
