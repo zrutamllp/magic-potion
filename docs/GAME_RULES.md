@@ -46,7 +46,7 @@ Every task follows the same rules:
 | Hint | 1 per attempt, costs 1,500, only while the timer is running. Paid from whatever is left in Support Funds first; the rest comes from Task Funds. Blocked if it would take Task Funds below zero. |
 | Timer runs out or Give up | Task fails and costs 3,500 Task Funds |
 | After failing | The team may restart the task with a fresh timer and a fresh hint. Each failure costs 3,500 again. |
-| Content on restart | Use a new content variant for that task if one is unused, else reuse the same content |
+| Content on restart | Use a new content variant for that task if one is unused, else reuse the same content. Exception: Find the Code always keeps the same content, because the fragment another team holds is half of its key. The Vault changes its clues but keeps the same fragment digits. |
 | Code lockout | The Vault, Find the Code and Escape Room lock for 60 seconds after 3 wrong attempts |
 
 Ethical Dilemma is the exception: it has no hint, and any complete answer passes. The chosen option and reason are saved for the debrief.
@@ -121,7 +121,7 @@ Task content (images, words, riddles, audio, dashboards, answers) is uploaded pe
 ## 8. Potion
 
 - Each team's share = 100% / number of teams.
-- The admin can remove a team from a running game. Shares are then recalculated over the remaining teams.
+- The admin can remove a team from a running game. Shares are then recalculated over the remaining teams. A removed team does not count toward the potion.
 - A team's share pours into the potion when it completes all 5 tasks. There is no partial fill.
 - Save the potion % at the end of Round 1 as the halftime snapshot.
 
@@ -148,11 +148,14 @@ time bonus = 5 x play seconds remaining when the team completes its 5th task, el
 - Staff fund adjustments change Task Funds but do not count as given or received.
 - Show a live provisional score during play. The Full Potion Bonus is added only at the Reveal.
 - The final leaderboard is only valid if the potion reaches 100%. If it does not, the Reveal screen says that nobody wins and still shows the scores.
+- A removed team gets no score on the leaderboard and no Full Potion Bonus. Transfers it sent that already arrived still count for the teams that received them.
 
 ## 10. Leaderboard
 
 - Round 1: the team sees only its own row, with no rank. Hide the rank everywhere in Round 1 (including the top bar).
 - Round 2 and Reveal: all teams, ranked by score, showing tasks done (x/5), Task Funds, score and potion share.
+- Equal scores share a rank, and the next rank is skipped (1, 2, 2, 4). Tied teams are listed by more tasks done, then by team name.
+- Removed teams are not shown on the leaderboard.
 - The projector view always shows all teams and the potion.
 
 ## 11. Staff roles
@@ -210,3 +213,6 @@ The images in `design/` came from a generic gaming template. Where they differ f
 2. **Releasing a missing team's fragment:** co-facilitators can release it for their assigned teams (the team that needs the fragment). It is audited like every staff action.
 3. **Team passwords:** stored hashed, like staff passwords. Staff see them only when created; "reset login" sets a new one.
 4. **Rounding the collaboration bonus:** round down, then apply the 10,000 cap. Any whole transfer amount is allowed.
+5. **Tied scores:** teams share the rank (1, 2, 2, 4). See section 10.
+6. **Removed teams:** dropped from the leaderboard, the potion and the Full Potion Bonus. See sections 8 and 9.
+7. **Restarting Find the Code:** it keeps the same content, so the held fragment still works. See section 3.

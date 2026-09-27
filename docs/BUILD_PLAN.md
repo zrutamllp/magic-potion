@@ -25,6 +25,8 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 - Play clock from stored timestamps. Scheduler rebuilt from the database on server start.
 - Task assignment (2 common + 3 random unique) and fragment chains, exactly as in `GAME_RULES.md` sections 3 and 4.
 - Task lifecycle: start, hint, submit, lockout, fail, restart.
+- Server-side answer checkers, hints and public views for all 12 tasks (moved here from Phase 5).
+- Engine rules for transfers (delay, freeze in the Pause), fund requests, inbox answers and photo review, and the potion (moved here from Phase 3; Phase 3 connects them to Socket.IO).
 - Pure scoring function with unit tests for every rule in section 9, including edge cases (negative funds, collaboration cap, time bonus only after 5 tasks, potion not full).
 - **Done when:** all engine tests pass and a script can simulate a full game for 20 teams and print a correct leaderboard.
 
@@ -34,7 +36,7 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 - Staff login (email + password, bcrypt), roles: main admin, co-facilitator.
 - Socket.IO rooms: per game, per team, staff. Long-polling fallback on.
 - Server pushes state; client reconnects and reloads full state.
-- Chat with per-round limits; transfers with 60-second delay; fund requests; visibility rules per round; potion updates; inbox releases.
+- Chat with per-round limits; visibility rules per round. Connect the Phase 2 engine (transfers, fund requests, potion, inbox) to Socket.IO events.
 - **Done when:** two browser windows as two teams can chat, send funds and see the potion update live; refreshing never resets a timer.
 
 ## Phase 4: Player screens
@@ -47,12 +49,13 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 ## Phase 5: Task framework and tasks
 
 - One shared task shell: brief screen, Start Task, server timer, hint button, submit, lockout, result.
+- The answer checkers already exist from Phase 2. This phase builds the task screens on top of them.
 - Build in this order, one per commit:
   1. The Vault, Find the Code (chains)
   2. Riddle, Hangman, Ethical Dilemma
   3. Picture Puzzle, Spot the Difference, Data Story
   4. Alien Translator, Sound Sleuth, Pictionary, Escape Room
-- Every answer checked on the server (see `GAME_RULES.md` "Server-side checking").
+- Every answer checked on the server by the Phase 2 checkers (see `GAME_RULES.md` "Server-side checking").
 - **Done when:** all 12 tasks play end to end with the sample content pack.
 
 ## Phase 6: Admin, facilitator and projector

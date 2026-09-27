@@ -140,14 +140,16 @@ model Game {
   phase GamePhase @default(LOBBY)
 
   // Server time is the only clock. The engine (Phase 2) derives every countdown from these.
-  phaseStartedAt   DateTime?
-  phaseEndsAt      DateTime?
+  phaseStartedAt    DateTime?
+  phaseEndsAt       DateTime?
   // Set while the admin has frozen the current phase; phaseEndsAt is pushed back on resume.
-  frozenAt         DateTime?
+  frozenAt          DateTime?
   // Play seconds added by the admin, counted toward the end of play (GAME_RULES section 9).
-  extensionSeconds Int       @default(0)
-  startedAt        DateTime?
-  endedAt          DateTime?
+  extensionSeconds  Int       @default(0)
+  // Play time used in rounds that have finished, so play elapsed and remaining come from stored values.
+  playMsBeforePhase Int       @default(0)
+  startedAt         DateTime?
+  endedAt           DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -192,6 +194,10 @@ model Team {
   // Cached balances. The FundTransaction ledger is the source of truth.
   taskFunds    Int @default(0)
   supportFunds Int @default(0)
+
+  // Set when the team completes its 5th task. The time bonus is fixed at that moment (GAME_RULES section 9).
+  finishedAt                 DateTime?
+  finishPlaySecondsRemaining Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
