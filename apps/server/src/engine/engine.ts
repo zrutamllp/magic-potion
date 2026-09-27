@@ -23,6 +23,7 @@ import {
   requestFunds,
   sendFunds,
 } from './rules/funds';
+import { messagesLeft, sendChat } from './rules/chat';
 import { answerInbox, rejectPhoto, submitPhoto } from './rules/inbox';
 import { giveUp, startTask, submitAnswer, timeoutTask, useHint } from './rules/tasks';
 import { potionOf } from './rules/timers';
@@ -152,6 +153,10 @@ export class GameEngine {
     return this.run((d) => submitPhoto(d, teamId, itemId, photoUrl));
   }
 
+  sendChat(teamId: string, body: string) {
+    return this.run((d) => sendChat(d, teamId, body));
+  }
+
   // ---------- Scheduler ----------
 
   // Handles every event that is due by now, each at its own due time.
@@ -177,6 +182,10 @@ export class GameEngine {
 
   potion(): Potion {
     return potionOf(this.current);
+  }
+
+  messagesLeft(teamId: string): number {
+    return messagesLeft(this.current, teamId);
   }
 
   teamView(teamId: string): TeamView | null {

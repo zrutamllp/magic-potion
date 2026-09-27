@@ -13,6 +13,7 @@ import type { Potion } from './potion';
 import type { Rng } from './rng';
 import type {
   AttemptState,
+  ChatMessageState,
   FragmentState,
   FundRequestState,
   GameContent,
@@ -38,6 +39,7 @@ export type ChangeModel =
   | 'inboxItem'
   | 'inboxResponse'
   | 'potionSnapshot'
+  | 'chatMessage'
   | 'auditLog';
 
 // Field values are plain JSON; fields ending in "At" or "Until" hold epoch ms and become dates.
@@ -292,6 +294,17 @@ export class Draft {
       model: 'inboxResponse',
       data: { ...created, teamId: team.id },
     });
+  }
+
+  createChatMessage(message: Omit<ChatMessageState, 'id'>): ChatMessageState {
+    const created: ChatMessageState = { ...message, id: randomUUID() };
+    this.state.chat.push(created);
+    this.changes.push({
+      kind: 'create',
+      model: 'chatMessage',
+      data: { ...created, gameId: this.state.id },
+    });
+    return created;
   }
 
   savePotionSnapshot(kind: PotionSnapshotKind, potion: Potion): void {

@@ -44,6 +44,7 @@ export async function loadGame(
       fundRequests: true,
       inboxItems: true,
       potionSnapshots: true,
+      chatMessages: { orderBy: { createdAt: 'asc' } },
     },
   });
   if (!game.settings) throw new Error(`Game ${gameId} has no settings`);
@@ -209,6 +210,13 @@ export async function loadGame(
     transfers,
     requests,
     inboxItems,
+    chat: game.chatMessages.map((m) => ({
+      id: m.id,
+      teamId: m.teamId,
+      round: m.round,
+      body: m.body,
+      createdAt: m.createdAt.getTime(),
+    })),
     potionSnapshots,
   };
   return { state, content };

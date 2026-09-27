@@ -119,6 +119,15 @@ export interface InboxItemState {
   reward: number;
 }
 
+export interface ChatMessageState {
+  id: string;
+  teamId: string;
+  // 1 or 2. The per-round limit counts a team's messages in the current round.
+  round: number;
+  body: string;
+  createdAt: number;
+}
+
 export interface GameState {
   id: string;
   name: string;
@@ -137,6 +146,8 @@ export interface GameState {
   transfers: Record<string, TransferState>;
   requests: Record<string, FundRequestState>;
   inboxItems: Record<string, InboxItemState>;
+  // In the order they were sent.
+  chat: ChatMessageState[];
   potionSnapshots: Partial<Record<PotionSnapshotKind, Potion>>;
 }
 

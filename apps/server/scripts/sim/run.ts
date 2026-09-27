@@ -133,6 +133,7 @@ export async function runSimulation(setup: SimSetup, opts: SimOptions): Promise<
               inboxAnswered: 'inbox answers',
               photoReviewed: 'photos rejected',
               potionChanged: 'potion changes',
+              chatSent: 'chat messages',
             }[e.type] ?? e.type,
           );
       }

@@ -64,11 +64,15 @@ describe.skipIf(!url)('Prisma persistence', () => {
     // A give-up with its penalty.
     await ok(engine.startTask(a.id, findCode.id));
     await ok(engine.giveUp(a.id, findCode.id));
-    // Funds, a request, an inbox answer and a photo reject.
+    // Funds, a request, chat, an inbox answer and a photo reject.
     await ok(engine.sendFunds(a.id, b.id, 1_234));
     const req = await engine.requestFunds(b.id, c.id, 500);
     if (!req.ok) throw new Error(req.code);
     await ok(engine.acceptRequest(c.id, req.value.requestId));
+    // Two chat messages, a second apart so the reload keeps their order.
+    await ok(engine.sendChat(a.id, 'Who holds 4-2-9?'));
+    clock.advance(1_000);
+    await ok(engine.sendChat(b.id, 'We do!'));
     clock.set(T0 + 10 * MIN);
     await engine.tick();
     const photo = Object.values(engine.state.inboxItems).find((i) => i.kind === 'PHOTO');
