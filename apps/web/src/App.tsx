@@ -1,7 +1,7 @@
 import { StaffDevPage } from './pages/StaffDevPage';
-import { TeamPage } from './pages/TeamPage';
+import { PlayerApp } from './player/PlayerApp';
 
-// Two pages for now, chosen by the address. A router arrives with the real screens (Phase 4).
+// The player app, plus the staff test page from Phase 3 until the admin panel (Phase 6).
 export function App() {
-  return window.location.pathname.startsWith('/dev/staff') ? <StaffDevPage /> : <TeamPage />;
+  return window.location.pathname.startsWith('/dev/staff') ? <StaffDevPage /> : <PlayerApp />;
 }

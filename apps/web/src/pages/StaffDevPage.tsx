@@ -5,7 +5,7 @@ import { feedText } from '../lib/feed';
 import { useStaffLive } from '../lib/live';
 import { load, save } from '../lib/session';
 import { formatMs, money, msLeft, useTicker } from '../lib/time';
-import { Connection } from './TeamPage';
+import type { LiveStatus } from '../lib/live';
 
 // Phase 3 test page for staff: pick a game, start and pause it, watch every team live.
 // The real admin panel and facilitator dashboard come in Phase 6.
@@ -369,5 +369,19 @@ function ControlButton({ onClick, children }: { onClick: () => void; children: s
     >
       {children}
     </button>
+  );
+}
+
+function Connection({ status }: { status: LiveStatus }) {
+  const look = {
+    online: ['bg-success', 'Connected'],
+    connecting: ['bg-warning', 'Connecting…'],
+    offline: ['bg-danger', 'Reconnecting…'],
+  }[status];
+  return (
+    <span className="flex items-center gap-2 text-base">
+      <span className={`inline-block h-3 w-3 rounded-full ${look[0]}`} />
+      {look[1]}
+    </span>
   );
 }

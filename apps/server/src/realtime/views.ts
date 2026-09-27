@@ -43,7 +43,7 @@ function potionView(engine: GameEngine): PotionView {
     percent: potionPercent(p),
     completedTeams: p.completedTeams,
     totalTeams: p.totalTeams,
-    halftimePercent: halftime ? potionPercent(halftime) : null,
+    halftime: halftime ? { percent: potionPercent(halftime), ...halftime } : null,
   };
 }
 

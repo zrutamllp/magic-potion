@@ -32,7 +32,8 @@ export interface PotionView {
   percent: number;
   completedTeams: number;
   totalTeams: number;
-  halftimePercent: number | null;
+  // Saved at the end of Round 1. Null before then.
+  halftime: { percent: number; completedTeams: number; totalTeams: number } | null;
 }
 
 export interface PlayerTaskView {
