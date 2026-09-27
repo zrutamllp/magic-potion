@@ -107,7 +107,7 @@ describe('phase timers', () => {
     const g = await started();
     const released = () =>
       Object.values(g.engine.state.inboxItems)
-        .filter((i) => i.releasedAt !== null)
+        .filter((i) => i.kind !== 'ALERT' && i.releasedAt !== null)
         .map((i) => i.releasedAt);
     await at(g, T0 + 10 * MIN - 1);
     expect(released()).toEqual([]);

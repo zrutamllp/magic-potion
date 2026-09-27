@@ -23,6 +23,7 @@ import {
   requestFunds,
   sendFunds,
 } from './rules/funds';
+import { postAlert } from './rules/alerts';
 import { messagesLeft, sendChat } from './rules/chat';
 import { answerInbox, rejectPhoto, submitPhoto } from './rules/inbox';
 import { giveUp, startTask, submitAnswer, timeoutTask, useHint } from './rules/tasks';
@@ -280,6 +281,9 @@ function handleDue(d: Draft, due: DueEvent): void {
   switch (due.kind) {
     case 'phaseEnd':
       advancePhase(d);
+      return;
+    case 'roundWarning':
+      postAlert(d, due.key);
       return;
     case 'inboxRelease':
       d.releaseInboxItem(due.itemId);

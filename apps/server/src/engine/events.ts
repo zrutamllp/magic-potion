@@ -27,6 +27,7 @@ export type EngineEvent =
   | { type: 'inboxReleased'; itemId: string }
   | { type: 'inboxAnswered'; teamId: string; itemId: string; correct: boolean }
   | { type: 'photoReviewed'; teamId: string; itemId: string }
-  | { type: 'chatSent'; teamId: string; messageId: string };
+  | { type: 'chatSent'; teamId: string; messageId: string }
+  | { type: 'alertPosted'; itemId: string };
 
 export type EngineListener = (events: readonly EngineEvent[]) => void;

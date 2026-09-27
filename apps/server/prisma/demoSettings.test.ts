@@ -44,7 +44,9 @@ describe('demo settings', () => {
     clock.set(T0 + MIN);
     await engine.tick();
     expect(
-      Object.values(engine.state.inboxItems).filter((i) => i.releasedAt !== null),
+      Object.values(engine.state.inboxItems).filter(
+        (i) => i.kind !== 'ALERT' && i.releasedAt !== null,
+      ),
     ).toHaveLength(1);
     clock.set(T0 + 5 * MIN);
     await engine.tick();
@@ -56,6 +58,10 @@ describe('demo settings', () => {
     clock.set(T0 + 11 * MIN);
     await engine.tick();
     expect(engine.state.phase).toBe('REVEAL');
-    expect(Object.values(engine.state.inboxItems).every((i) => i.releasedAt !== null)).toBe(true);
+    expect(
+      Object.values(engine.state.inboxItems).every(
+        (i) => i.kind === 'ALERT' || i.releasedAt !== null,
+      ),
+    ).toBe(true);
   });
 });

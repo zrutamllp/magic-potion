@@ -134,6 +134,7 @@ export async function runSimulation(setup: SimSetup, opts: SimOptions): Promise<
               photoReviewed: 'photos rejected',
               potionChanged: 'potion changes',
               chatSent: 'chat messages',
+              alertPosted: 'game alerts',
             }[e.type] ?? e.type,
           );
       }

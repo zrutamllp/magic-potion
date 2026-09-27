@@ -17,6 +17,7 @@ import { fail, ok, type Draft } from '../draft';
 import { isPlayPhase, phasePlayMs } from '../playClock';
 import { activeTeams, runningAttempt } from '../state';
 import type { EngineResult } from '@magic-potion/shared';
+import { postAlert } from './alerts';
 import { freezeTimers, potionOf, unfreezeTimers, unfreezeTransfers } from './timers';
 
 const SORT_ORDER = Object.fromEntries(TASK_DEFINITIONS.map((t) => [t.key, t.sortOrder])) as Record<
@@ -103,6 +104,7 @@ export function startGame(d: Draft, staffUserId: string): EngineResult {
   });
   d.audit({ staffUserId, action: 'START_GAME', before, after: clockAudit(d) });
   d.emit({ type: 'phaseChanged', phase: 'ROUND1', at });
+  postAlert(d, 'ROUND1_START');
   return ok(undefined);
 }
 
@@ -154,6 +156,10 @@ export function advancePhase(d: Draft): void {
       return;
   }
   d.emit({ type: 'phaseChanged', phase: d.state.phase, at });
+  const alert = ({ PAUSE: 'PAUSE_START', ROUND2: 'ROUND2_START', REVEAL: 'PLAY_OVER' } as const)[
+    d.state.phase as 'PAUSE' | 'ROUND2' | 'REVEAL'
+  ];
+  if (alert) postAlert(d, alert);
 }
 
 // When play ends, a running task stops with no penalty and does not count as done.

@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
     logoUrl: null,
     primaryColor: '#7c3aed',
     accentColor: '#22d3ee',
+    introVideoUrl: null,
   },
   funds: {
     taskFundsStart: 10_000,

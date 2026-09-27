@@ -8,6 +8,12 @@ describe('DEFAULT_SETTINGS', () => {
     expect(GameSettingsSchema.parse(DEFAULT_SETTINGS)).toEqual(DEFAULT_SETTINGS);
   });
 
+  it('loads settings saved before the intro video existed', () => {
+    const old = structuredClone(DEFAULT_SETTINGS) as { branding: Record<string, unknown> };
+    delete old.branding.introVideoUrl;
+    expect(GameSettingsSchema.parse(old).branding.introVideoUrl).toBeNull();
+  });
+
   it('matches the numbers in GAME_RULES.md', () => {
     const s = DEFAULT_SETTINGS;
     expect(s.funds).toEqual({ taskFundsStart: 10_000, supportFundsStart: 4_500 });

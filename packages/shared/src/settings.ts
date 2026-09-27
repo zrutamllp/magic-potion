@@ -18,6 +18,8 @@ export const GameSettingsSchema = z.object({
     logoUrl: z.url().nullable(),
     primaryColor: hexColor,
     accentColor: hexColor,
+    // Played in the Lobby. Optional; games saved before it existed load with none.
+    introVideoUrl: z.url().nullable().default(null),
   }),
   funds: z.object({
     taskFundsStart: money,

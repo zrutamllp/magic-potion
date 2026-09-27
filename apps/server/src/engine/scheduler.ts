@@ -1,4 +1,5 @@
 import { timersRunning, wallTimeForPlayMs } from './playClock';
+import { warningDue, type AlertKey } from './rules/alerts';
 import { runningAttempt, type GameState } from './state';
 
 // Scheduled events are not stored in their own table. They come from the saved state:
@@ -7,17 +8,19 @@ import { runningAttempt, type GameState } from './state';
 
 export type DueEvent =
   | { kind: 'inboxRelease'; at: number; itemId: string }
+  | { kind: 'roundWarning'; at: number; key: AlertKey }
   | { kind: 'transferArrival'; at: number; transferId: string }
   | { kind: 'phaseEnd'; at: number }
   | { kind: 'taskTimeout'; at: number; teamId: string; taskId: string };
 
-// On equal times: inbox releases and arrivals first, then the phase end, then task timeouts.
+// On equal times: inbox releases, alerts and arrivals first, then the phase end, then task timeouts.
 // So a task whose timer ends exactly when play ends stops with no penalty.
 const PRIORITY: Record<DueEvent['kind'], number> = {
   inboxRelease: 0,
-  transferArrival: 1,
-  phaseEnd: 2,
-  taskTimeout: 3,
+  roundWarning: 1,
+  transferArrival: 2,
+  phaseEnd: 3,
+  taskTimeout: 4,
 };
 
 export function dueEvents(state: GameState): DueEvent[] {
@@ -28,6 +31,9 @@ export function dueEvents(state: GameState): DueEvent[] {
     const at = wallTimeForPlayMs(state, item.releaseAtPlaySeconds * 1000);
     if (at !== null) events.push({ kind: 'inboxRelease', at, itemId: item.id });
   }
+
+  const warning = warningDue(state);
+  if (warning) events.push({ kind: 'roundWarning', ...warning });
 
   for (const t of Object.values(state.transfers)) {
     if (t.arrivedAt === null && t.frozenRemainingMs === null) {

@@ -18,6 +18,7 @@ import type {
   FundRequestState,
   GameContent,
   GameState,
+  InboxItemState,
   InboxResponseState,
   TeamState,
   TeamTaskState,
@@ -251,6 +252,28 @@ export class Draft {
   ): void {
     Object.assign(request, patch);
     this.changes.push({ kind: 'update', model: 'fundRequest', id: request.id, data: patch });
+  }
+
+  // A game alert: an inbox item released at once. publicData.alert holds its key.
+  createAlert(key: string, text: { title: string; body: string }): InboxItemState {
+    const created: InboxItemState = {
+      id: randomUUID(),
+      kind: 'ALERT',
+      title: text.title,
+      body: text.body,
+      publicData: { alert: key },
+      secretAnswer: null,
+      releaseAtPlaySeconds: null,
+      releasedAt: this.now,
+      reward: 0,
+    };
+    this.state.inboxItems[created.id] = created;
+    this.changes.push({
+      kind: 'create',
+      model: 'inboxItem',
+      data: { ...created, gameId: this.state.id },
+    });
+    return created;
   }
 
   releaseInboxItem(itemId: string): void {

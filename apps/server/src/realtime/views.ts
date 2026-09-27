@@ -105,13 +105,18 @@ export function buildPlayerState(engine: GameEngine, teamId: string, now: number
   return {
     game: clockView(s, now),
     branding: s.settings.branding,
+    settings: s.settings,
     team: {
       id: view.id,
       name: view.name,
       taskFunds: view.taskFunds,
       supportFunds: view.supportFunds,
       tasksDone: view.tasksDone,
-      tasks: view.tasks,
+      tasks: view.tasks.map((t) => ({
+        ...t,
+        timerSeconds: s.settings.tasks.timerSeconds[t.key] ?? 0,
+        points: s.settings.scoring.pointsPerTask,
+      })),
       foundItems: view.foundItems,
     },
     potion: potionView(engine),

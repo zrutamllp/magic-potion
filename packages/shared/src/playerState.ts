@@ -42,6 +42,9 @@ export interface PlayerTaskView {
   type: TaskType;
   status: TeamTaskStatus;
   attempts: number;
+  // The task timer length and the points for solving it, from the game settings.
+  timerSeconds: number;
+  points: number;
   running: {
     number: number;
     msLeft: number;
@@ -101,6 +104,8 @@ export interface LeaderboardView {
 export interface PlayerState {
   game: GameClockView;
   branding: GameSettings['branding'];
+  // The game's rule numbers, for the Rules tab and the task cards. Nothing secret.
+  settings: GameSettings;
   team: {
     id: string;
     name: string;
