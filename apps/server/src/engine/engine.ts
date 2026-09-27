@@ -15,6 +15,15 @@ import {
   resumeGame,
   startGame,
 } from './rules/phases';
+import {
+  acceptRequest,
+  arriveTransfer,
+  cancelRequest,
+  declineRequest,
+  requestFunds,
+  sendFunds,
+} from './rules/funds';
+import { answerInbox, rejectPhoto, submitPhoto } from './rules/inbox';
 import { giveUp, startTask, submitAnswer, timeoutTask, useHint } from './rules/tasks';
 import { potionOf } from './rules/timers';
 import { nextDue, type DueEvent } from './scheduler';
@@ -93,6 +102,10 @@ export class GameEngine {
     return this.run((d) => removeTeam(d, staffUserId, teamId, reason));
   }
 
+  rejectPhoto(staffUserId: string, teamId: string, itemId: string, reason: string) {
+    return this.run((d) => rejectPhoto(d, staffUserId, teamId, itemId, reason));
+  }
+
   // ---------- Team commands ----------
 
   startTask(teamId: string, taskId: string) {
@@ -109,6 +122,34 @@ export class GameEngine {
 
   giveUp(teamId: string, taskId: string) {
     return this.run((d) => giveUp(d, teamId, taskId));
+  }
+
+  sendFunds(fromTeamId: string, toTeamId: string, amount: number) {
+    return this.run((d) => sendFunds(d, fromTeamId, toTeamId, amount));
+  }
+
+  requestFunds(requesterTeamId: string, payerTeamId: string, amount: number) {
+    return this.run((d) => requestFunds(d, requesterTeamId, payerTeamId, amount));
+  }
+
+  acceptRequest(payerTeamId: string, requestId: string) {
+    return this.run((d) => acceptRequest(d, payerTeamId, requestId));
+  }
+
+  declineRequest(payerTeamId: string, requestId: string) {
+    return this.run((d) => declineRequest(d, payerTeamId, requestId));
+  }
+
+  cancelRequest(requesterTeamId: string, requestId: string) {
+    return this.run((d) => cancelRequest(d, requesterTeamId, requestId));
+  }
+
+  answerInbox(teamId: string, itemId: string, answer: string) {
+    return this.run((d) => answerInbox(d, teamId, itemId, answer));
+  }
+
+  submitPhoto(teamId: string, itemId: string, photoUrl: string) {
+    return this.run((d) => submitPhoto(d, teamId, itemId, photoUrl));
   }
 
   // ---------- Scheduler ----------
@@ -239,7 +280,7 @@ function handleDue(d: Draft, due: DueEvent): void {
       timeoutTask(d, due.teamId, due.taskId);
       return;
     case 'transferArrival':
-      // Added with the funds rules.
-      throw new Error(`Unhandled due event ${due.kind}`);
+      arriveTransfer(d, due.transferId);
+      return;
   }
 }
