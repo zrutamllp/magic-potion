@@ -8,10 +8,12 @@ const EnvSchema = z.object({
   // Optional until Phase 1 adds the data model; /healthz reports "not_configured" without it.
   DATABASE_URL: z.url().optional(),
   DIRECT_URL: z.url().optional(),
-  // Used from Phase 3 (auth).
+  // Signs login tokens. Required when DATABASE_URL is set (checked on server start).
   JWT_SECRET: z.string().min(32).optional(),
   ADMIN_SEED_EMAIL: z.email().optional(),
   ADMIN_SEED_PASSWORD: z.string().min(8).optional(),
+  // Local testing helpers (such as "finish all tasks"). Ignored in production.
+  ENABLE_DEV_TOOLS: z.enum(['true', 'false']).optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
@@ -32,4 +34,8 @@ export function parseOrigins(value: string): string[] {
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
+}
+
+export function devToolsEnabled(env: Env): boolean {
+  return env.ENABLE_DEV_TOOLS === 'true' && env.NODE_ENV !== 'production';
 }

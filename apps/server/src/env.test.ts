@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadEnv, parseOrigins } from './env';
+import { devToolsEnabled, loadEnv, parseOrigins } from './env';
 
 describe('loadEnv', () => {
   it('applies defaults', () => {
@@ -16,6 +16,16 @@ describe('loadEnv', () => {
 
   it('rejects a short JWT secret', () => {
     expect(() => loadEnv({ JWT_SECRET: 'short' })).toThrow(/JWT_SECRET/);
+  });
+});
+
+describe('devToolsEnabled', () => {
+  it('is on only when asked for and not in production', () => {
+    expect(devToolsEnabled(loadEnv({}))).toBe(false);
+    expect(devToolsEnabled(loadEnv({ ENABLE_DEV_TOOLS: 'true' }))).toBe(true);
+    expect(devToolsEnabled(loadEnv({ ENABLE_DEV_TOOLS: 'true', NODE_ENV: 'production' }))).toBe(
+      false,
+    );
   });
 });
 
