@@ -9,7 +9,13 @@ export type TeamStatus = (typeof TEAM_STATUSES)[number];
 export const TEAM_TASK_STATUSES = ['NOT_STARTED', 'IN_PROGRESS', 'DONE', 'FAILED'] as const;
 export type TeamTaskStatus = (typeof TEAM_TASK_STATUSES)[number];
 
-export const ATTEMPT_RESULTS = ['SOLVED', 'FAILED_TIMEOUT', 'GAVE_UP', 'STOPPED_AT_END'] as const;
+export const ATTEMPT_RESULTS = [
+  'SOLVED',
+  'FAILED_TIMEOUT',
+  'GAVE_UP',
+  'FAILED_WRONG',
+  'STOPPED_AT_END',
+] as const;
 export type AttemptResult = (typeof ATTEMPT_RESULTS)[number];
 
 export const FRAGMENT_KINDS = ['VAULT', 'FIND_CODE'] as const;

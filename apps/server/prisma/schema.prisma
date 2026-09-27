@@ -40,6 +40,8 @@ enum AttemptResult {
   SOLVED
   FAILED_TIMEOUT
   GAVE_UP
+  // The task failed by its own rule (Hangman: too many wrong letters).
+  FAILED_WRONG
   STOPPED_AT_END
 }
 
