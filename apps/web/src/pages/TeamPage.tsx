@@ -149,7 +149,11 @@ function TeamScreen({
 
   // Runs an action and shows the server's answer.
   async function act(done: string, run: () => Promise<Ack>) {
-    const ack = await run();
+    // Never fail silently: a click must always show an answer.
+    const ack: Ack = await run().catch(() => ({
+      ok: false as const,
+      message: 'Something went wrong. Please try again.',
+    }));
     setMessage(ack.ok ? { ok: true, text: done } : { ok: false, text: ack.message });
     return ack.ok;
   }

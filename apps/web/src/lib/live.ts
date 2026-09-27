@@ -9,6 +9,7 @@ import type {
   StaffState,
 } from '@magic-potion/shared';
 import { SOCKET_URL } from '../config';
+import { emitWithAck } from './emit';
 import { upsertFeed } from './feed';
 import { monotonicNow } from './time';
 
@@ -101,20 +102,10 @@ function useLive<S>(
 
   const send = useCallback<Live<S>['send']>((event, payload) => {
     const socket = socketRef.current;
-    // Never queue an action while offline: it could happen much later without anyone seeing.
-    if (!socket?.connected) {
+    if (!socket) {
       return Promise.resolve({ ok: false, message: 'Not connected. Wait a moment and try again.' });
     }
-    return new Promise<Ack>((resolve) => {
-      const emit = socket.timeout(10_000).emit as (
-        e: string,
-        p: unknown,
-        cb: (err: Error | null, ack: Ack) => void,
-      ) => void;
-      emit(event, payload, (err, ack) =>
-        resolve(err ? { ok: false, message: 'The server did not answer. Please try again.' } : ack),
-      );
-    });
+    return emitWithAck(socket as unknown as Socket, event, payload);
   }, []);
 
   return { status, snapshot, feed, ended, problem, send };
