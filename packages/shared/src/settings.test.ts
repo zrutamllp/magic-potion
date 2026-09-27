@@ -9,7 +9,9 @@ describe('DEFAULT_SETTINGS', () => {
   });
 
   it('loads settings saved before the intro video existed', () => {
-    const old = structuredClone(DEFAULT_SETTINGS) as { branding: Record<string, unknown> };
+    const old = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as {
+      branding: Record<string, unknown>;
+    };
     delete old.branding.introVideoUrl;
     expect(GameSettingsSchema.parse(old).branding.introVideoUrl).toBeNull();
   });

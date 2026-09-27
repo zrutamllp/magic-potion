@@ -129,6 +129,15 @@ describe('finishAllTasks (dev tool)', () => {
     expect(g.engine.potion()).toEqual({ completedTeams: 1, totalTeams: 3 });
   });
 
+  it('can stop after a number of tasks', async () => {
+    const g = await started();
+    expect(await finishAllTasks(g.engine, A, 1)).toMatchObject({ ok: true, value: { solved: 1 } });
+    expect(
+      Object.values(g.engine.state.teams[A]!.tasks).filter((t) => t.status === 'DONE'),
+    ).toHaveLength(1);
+    expect(g.engine.potion().completedTeams).toBe(0);
+  });
+
   it('reports why it cannot run', async () => {
     const clock = new FakeClock(T0);
     const { engine } = memoryEngine({ teams: 3, clock });

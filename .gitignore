@@ -10,3 +10,8 @@ coverage/
 .vite/
 playwright-report/
 test-results/
+
+# Playwright
+screenshots/
+test-results/
+playwright-report/

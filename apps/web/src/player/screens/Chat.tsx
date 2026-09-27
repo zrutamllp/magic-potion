@@ -43,7 +43,7 @@ export function Chat() {
   return (
     <>
       <PageTitle title="Chat" tone="info" subtitle="One chat for all teams" />
-      <Card className="flex h-[calc(100vh-19rem)] min-h-[26rem] flex-col p-0">
+      <Card className="flex h-[calc(100vh-24rem)] min-h-[20rem] flex-col p-0 lg:h-[calc(100vh-14rem)]">
         <ol ref={listRef} className="flex-1 space-y-4 overflow-y-auto p-5" aria-label="Messages">
           {feed.length === 0 && (
             <li className="py-10 text-center text-xl text-ink-muted">No messages yet.</li>
@@ -69,8 +69,14 @@ export function Chat() {
               disabled={!canSend}
               onChange={(e) => setBody(e.target.value)}
             />
-            <Button type="submit" tone="brand" disabled={!canSend || body.trim() === ''}>
-              <Send className="h-5 w-5" aria-hidden /> Send
+            <Button
+              type="submit"
+              tone="brand"
+              disabled={!canSend || body.trim() === ''}
+              className="px-4 sm:px-5"
+            >
+              <Send className="h-5 w-5" aria-hidden />
+              <span className="sr-only sm:not-sr-only">Send</span>
             </Button>
           </div>
           <p
@@ -89,8 +95,8 @@ function FeedLine({ item, ownTeamId }: { item: FeedItem; ownTeamId: string }) {
     const Icon = item.kind === 'transfer' ? ArrowLeftRight : HandCoins;
     return (
       <li className="flex justify-center">
-        <span className="flex items-center gap-2 rounded-full border border-info/40 bg-info/10 px-4 py-1.5 text-base text-info">
-          <Icon className="h-4 w-4" aria-hidden />
+        <span className="flex w-full items-center gap-2 rounded-xl border border-info/40 bg-info/10 px-4 py-1.5 text-sm text-info sm:w-auto sm:rounded-full sm:text-base">
+          <Icon className="h-4 w-4 shrink-0" aria-hidden />
           {feedText(item, money)} · {clockTime(item.at)}
         </span>
       </li>

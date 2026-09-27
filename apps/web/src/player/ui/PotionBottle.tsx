@@ -30,8 +30,8 @@ export function potionLabel(percent: number): string {
 const SIZES = {
   sm: 'w-12',
   md: 'w-24',
-  lg: 'w-44',
-  xl: 'w-64',
+  lg: 'w-36',
+  xl: 'w-52',
 } as const;
 
 export function PotionBottle({

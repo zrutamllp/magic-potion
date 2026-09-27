@@ -19,14 +19,16 @@ export function Reveal() {
 
   return (
     <main className="mx-auto max-w-6xl p-4 md:p-8">
-      <header className="flex items-center justify-between">
+      <header className="grid grid-cols-3 items-center">
         <span className="text-xl font-bold text-ink-muted">{state.team.name}</span>
-        <ConnectionDot />
+        <h1 className="rise-in text-center text-4xl font-extrabold">The Reveal</h1>
+        <span className="justify-self-end">
+          <ConnectionDot />
+        </span>
       </header>
-      <h1 className="rise-in mt-4 text-center text-5xl font-extrabold">The Reveal</h1>
 
-      <section className="mt-8 grid grid-cols-2 gap-6">
-        <div className="rise-in rounded-3xl border border-line bg-card p-6" style={step(1)}>
+      <section className="mt-5 grid grid-cols-2 gap-5">
+        <div className="rise-in rounded-3xl border border-line bg-card p-4" style={step(1)}>
           <PotionMeter
             percent={potion.halftime?.percent ?? 0}
             completedTeams={potion.halftime?.completedTeams ?? 0}
@@ -36,7 +38,7 @@ export function Reveal() {
           />
         </div>
         <div
-          className={`rise-in rounded-3xl border p-6 ${full ? 'border-accent bg-accent/10' : 'border-line bg-card'}`}
+          className={`rise-in rounded-3xl border p-4 ${full ? 'border-accent bg-accent/10' : 'border-line bg-card'}`}
           style={step(2)}
         >
           <PotionMeter
@@ -50,7 +52,7 @@ export function Reveal() {
       </section>
 
       <section
-        className={`rise-in mt-8 flex items-center justify-center gap-4 rounded-3xl border-2 p-6 text-center ${
+        className={`rise-in mt-5 flex items-center justify-center gap-4 rounded-3xl border-2 p-5 text-center ${
           full ? 'border-success bg-success/15' : 'border-danger bg-danger/15'
         }`}
         style={step(3)}

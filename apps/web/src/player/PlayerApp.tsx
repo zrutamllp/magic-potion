@@ -6,7 +6,7 @@ import { load, save } from '../lib/session';
 import { msLeft, useTicker } from '../lib/time';
 import type { PlayerState } from '@magic-potion/shared';
 import { GameContext, type Game, type Notice } from './GameContext';
-import { useHashRoute, type Route } from './router';
+import { routeHash, useHashRoute, type Route } from './router';
 import { Shell } from './layout/Shell';
 import { Button, fieldClass } from './ui/basics';
 import { PotionBottle } from './ui/PotionBottle';
@@ -214,7 +214,12 @@ function Screens({
       ok: false as const,
       message: 'Something went wrong. Please try again.',
     }));
-    setNotice({ ok: ack.ok, text: ack.ok ? done : ack.message, id: Date.now() });
+    setNotice({
+      ok: ack.ok,
+      text: ack.ok ? done : ack.message,
+      id: Date.now(),
+      where: routeHash(route),
+    });
     return ack.ok;
   }
 
@@ -226,7 +231,8 @@ function Screens({
     phaseMsLeft: () => msLeft(state.game.phaseMsLeft, receivedAt, !state.game.frozen, now),
     timerMsLeft: (sent) => msLeft(sent, receivedAt, state.game.timersRunning, now) ?? 0,
     act,
-    notice,
+    // Only on the screen where the action happened, even after Back or a typed address.
+    notice: notice && notice.where === routeHash(route) ? notice : null,
     dismissNotice: () => setNotice(null),
     route,
     go: (next: Route) => {

@@ -10,6 +10,8 @@ export interface Notice {
   ok: boolean;
   text: string;
   id: number;
+  // The screen it belongs to (a route hash). It is not shown on other screens.
+  where: string;
 }
 
 export interface Game {

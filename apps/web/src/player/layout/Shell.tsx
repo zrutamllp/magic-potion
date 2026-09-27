@@ -15,7 +15,7 @@ import { formatMs, money } from '../../lib/time';
 import { ownRow, useGame } from '../GameContext';
 import type { Tab } from '../router';
 import { TONE_BG, TONE_TEXT, type Tone } from '../ui/basics';
-import { PotionBottle, PotionMeter } from '../ui/PotionBottle';
+import { PotionBottle, potionLabel } from '../ui/PotionBottle';
 
 // The in-game layout: sidebar on wide screens, tab bar on narrow ones (one navigation,
 // GAME_RULES section 14), a top bar with the team, timer, funds and score, and the potion.
@@ -158,20 +158,24 @@ function Sidebar({
           );
         })}
       </nav>
-      <div className="mt-auto border-t border-line p-5">
-        <p className="mb-3 text-sm font-bold tracking-wider text-ink-muted uppercase">
-          Magic Potion
-        </p>
-        <div className="rounded-2xl border border-line bg-card p-4">
-          <PotionMeter
-            percent={potion.percent}
-            completedTeams={potion.completedTeams}
-            totalTeams={potion.totalTeams}
-          />
+      <div className="mt-auto border-t border-line p-4">
+        <div className="flex items-center gap-4 rounded-2xl border border-line bg-card p-3">
+          <PotionBottle percent={potion.percent} size="sm" className="w-14" />
+          <div className="leading-tight">
+            <p className="text-sm font-bold tracking-wider text-ink-muted uppercase">
+              Magic Potion
+            </p>
+            <p className="nums text-3xl font-extrabold text-accent">
+              {potionLabel(potion.percent)}
+            </p>
+            <p className="text-sm text-ink-muted">
+              {potion.completedTeams} of {potion.totalTeams} teams done
+            </p>
+          </div>
         </div>
         <button
           onClick={() => onLogOut(null)}
-          className="mt-4 flex items-center gap-2 text-ink-muted hover:text-ink"
+          className="mt-3 flex items-center gap-2 text-ink-muted hover:text-ink"
         >
           <LogOut className="h-4 w-4" aria-hidden /> Log out
         </button>

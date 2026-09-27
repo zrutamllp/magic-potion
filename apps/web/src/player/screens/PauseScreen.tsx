@@ -10,14 +10,14 @@ export function PauseScreen() {
   const { potion } = state;
   const left = phaseMsLeft();
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-8 p-6 text-center">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-5 p-6 text-center">
       <div className="absolute top-5 left-6 text-xl font-bold text-ink-muted">
         {state.team.name}
       </div>
       <div className="absolute top-6 right-6">
         <ConnectionDot />
       </div>
-      <h1 className="text-6xl font-extrabold">Pause</h1>
+      <h1 className="text-5xl font-extrabold">Pause</h1>
       <PotionMeter
         percent={potion.percent}
         completedTeams={potion.completedTeams}

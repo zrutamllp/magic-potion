@@ -44,6 +44,7 @@ function bearer(req: Request): string | undefined {
 }
 
 const ExtendSchema = z.object({ seconds: z.number() });
+const FinishSchema = z.object({ limit: z.number().int().positive().optional() });
 
 export function createApiRouter({ auth, engine, devTools }: ApiDeps): Router {
   const api = express.Router();
@@ -137,8 +138,13 @@ export function createApiRouter({ auth, engine, devTools }: ApiDeps): Router {
       '/games/:gameId/dev/finish-tasks/:teamId',
       mainAdminOnly,
       async (req, res: Response<unknown, StaffLocals>) => {
+        const body = FinishSchema.safeParse(req.body ?? {});
+        if (!body.success) return invalid(res);
         const e = await gameEngine(req, res);
-        if (e) sendEngine(res, await finishAllTasks(e, String(req.params.teamId)));
+        if (e) {
+          const teamId = String(req.params.teamId);
+          sendEngine(res, await finishAllTasks(e, teamId, body.data.limit));
+        }
       },
     );
   }

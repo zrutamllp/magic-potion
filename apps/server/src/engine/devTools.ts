@@ -11,6 +11,8 @@ import { runningAttempt, openTask } from './state';
 export async function finishAllTasks(
   engine: GameEngine,
   teamId: string,
+  // Stop after this many tasks (for screenshots with some tasks done). All when omitted.
+  limit = Infinity,
 ): Promise<EngineResult<{ solved: number }>> {
   const team = engine.state.teams[teamId];
   if (!team) return fail('TEAM_NOT_FOUND');
@@ -23,6 +25,7 @@ export async function finishAllTasks(
   for (const taskId of ids) {
     const task = engine.state.teams[teamId]?.tasks[taskId];
     if (!task || task.status === 'DONE') continue;
+    if (solved >= limit) break;
     if (!runningAttempt(task)) {
       const started = await engine.startTask(teamId, taskId);
       if (!started.ok) return started;
