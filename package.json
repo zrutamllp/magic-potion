@@ -17,7 +17,8 @@
     "test": "npm run test --workspaces --if-present",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "screenshots": "playwright test e2e/screenshots.spec.ts"
+    "screenshots": "playwright test e2e/screenshots.spec.ts",
+    "screenshots:batch1": "playwright test e2e/tasks-batch1.spec.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

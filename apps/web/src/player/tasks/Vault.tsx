@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { KeyRound, Lightbulb } from 'lucide-react';
+import { Lightbulb } from 'lucide-react';
 import { Button, Card } from '../ui/basics';
 import { DigitBoxes } from './DigitBoxes';
 import { LockoutBanner, SubmitFeedback, useLockLeft, useTaskSubmit } from './parts';
@@ -30,59 +30,50 @@ export function Vault({ task, running, view }: TaskPlayProps) {
   }
 
   return (
-    <>
-      <Card>
-        <p className="text-2xl font-semibold">{content.intro}</p>
-        <ol className="mt-5 grid gap-4 md:grid-cols-3">
+    <Card>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <p className="text-xl font-semibold">{content.intro}</p>
+        <ol className="space-y-2">
           {content.clues.map((clue, i) => (
-            <li key={i} className="flex flex-col rounded-2xl border border-line bg-card-raised p-4">
-              <span className="text-sm font-bold tracking-wider text-warning uppercase">
-                Clue {i + 1}
+            <li
+              key={i}
+              className="flex items-center gap-3 rounded-xl border border-line bg-card-raised px-4 py-2"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning/20 text-lg font-extrabold text-warning">
+                {i + 1}
               </span>
               {clue.imageUrl && (
-                <img
-                  src={clue.imageUrl}
-                  alt=""
-                  className="mt-2 max-h-32 rounded-lg object-contain"
-                />
+                <img src={clue.imageUrl} alt="" className="h-16 rounded-lg object-contain" />
               )}
-              <p className="mt-2 text-xl">{clue.text}</p>
+              <p className="flex-1 text-xl">{clue.text}</p>
               {hint?.position === i && (
-                <p className="mt-auto flex items-center gap-2 pt-3 text-lg font-bold text-info">
+                <span className="flex items-center gap-1 text-lg font-bold text-info">
                   <Lightbulb className="h-5 w-5" aria-hidden /> Hint: {hint.digit}
-                </p>
+                </span>
               )}
             </li>
           ))}
         </ol>
-      </Card>
-
-      <Card>
-        <form onSubmit={onSubmit} className="flex flex-col gap-5">
-          <h2 className="flex items-center gap-2 text-2xl font-bold">
-            <KeyRound className="h-6 w-6 text-warning" aria-hidden /> Enter the code
-          </h2>
-          <DigitBoxes
-            label="Digit"
-            values={shown}
-            locked={shown.map((_, i) => hint?.position === i)}
-            captions={['Clue 1', 'Clue 2', 'Clue 3']}
-            gapAfter={[2]}
-            onChange={setDigits}
-            disabled={locked}
-          />
-          <LockoutBanner running={running} />
-          <SubmitFeedback feedback={feedback} />
-          <Button
-            type="submit"
-            tone="success"
-            className="py-3 text-2xl"
-            disabled={!complete || locked || busy}
-          >
-            Open the vault
-          </Button>
-        </form>
-      </Card>
-    </>
+        <DigitBoxes
+          label="Digit"
+          values={shown}
+          locked={shown.map((_, i) => hint?.position === i)}
+          captions={['Clue 1', 'Clue 2', 'Clue 3']}
+          gapAfter={[2]}
+          onChange={setDigits}
+          disabled={locked}
+        />
+        <LockoutBanner running={running} />
+        <SubmitFeedback feedback={feedback} />
+        <Button
+          type="submit"
+          tone="success"
+          className="py-3 text-2xl"
+          disabled={!complete || locked || busy}
+        >
+          Open the vault
+        </Button>
+      </form>
+    </Card>
   );
 }

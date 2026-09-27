@@ -46,14 +46,19 @@ export function FindCode({ task, running, view }: TaskPlayProps) {
   return (
     <>
       <Card>
-        <p className="text-2xl font-semibold">{content.intro}</p>
+        <p className="text-xl font-semibold">{content.intro}</p>
         <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-5">
-          <div className="flex flex-wrap gap-3" aria-label="Secret message">
+          {/* One row for the whole word: tiles shrink to fit long words. */}
+          <div
+            className="grid gap-2"
+            style={{ gridTemplateColumns: `repeat(${encodedMessage.length}, minmax(0, 4rem))` }}
+            aria-label="Secret message"
+          >
             {encodedMessage.map((symbol, i) => {
               const fixed = known.has(symbol);
               return (
-                <div key={i} className="flex flex-col items-center gap-2">
-                  <span className="flex h-20 w-16 items-center justify-center rounded-xl border-2 border-warning/50 bg-warning/10 text-5xl">
+                <div key={i} className="flex min-w-0 flex-col gap-2">
+                  <span className="flex h-18 w-full items-center justify-center rounded-xl border-2 border-warning/50 bg-warning/10 text-4xl">
                     {symbol}
                   </span>
                   <input
@@ -65,7 +70,7 @@ export function FindCode({ task, running, view }: TaskPlayProps) {
                     autoComplete="off"
                     onChange={(e) => onType(symbol, e.target.value)}
                     onFocus={(e) => e.target.select()}
-                    className={`h-16 w-16 rounded-xl border-2 text-center text-4xl font-extrabold uppercase focus:border-brand focus:outline-none disabled:opacity-50 ${
+                    className={`h-16 w-full min-w-0 rounded-xl border-2 text-center text-4xl font-extrabold uppercase focus:border-brand focus:outline-none disabled:opacity-50 ${
                       fixed ? 'border-info/60 bg-info/15 text-info' : 'border-line bg-page'
                     }`}
                   />

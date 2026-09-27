@@ -84,6 +84,16 @@ About 15 minutes for a whole game.
 
 Turn `ENABLE_DEV_TOOLS` off when you are done; it is always off when `NODE_ENV=production`.
 
+## Play the tasks (Phase 5, built in batches)
+
+Batch 1 (The Vault, Find the Code) is playable; the other tasks show a placeholder until their batch is built. Use the short demo from the section above (reset it once: the sample words and intros changed).
+
+- **The Vault:** answer the 3 clues for the first 3 digits (8, 3, 6 in the sample). The last 3 digits are a Found item ("Fragment: 1-4-3") on another team's Home. With 4 teams any team can hold it, so compare the Found items of the other team windows. Type all 6 digits and press **Open the vault**. Three wrong codes lock the task for 60 seconds.
+- **Find the Code:** the known letters are filled in; typing a letter under one symbol fills every copy of it. The key shows "?" for symbols with no known letter; the missing pairs ("⌘ = R, ❖ = T") are a Found item on another team's Home. Submit the word.
+- **Shell:** try **Use hint** (it shows how the 1,500 is paid: Support Funds first), **Give up** (−3,500 Task Funds) and **Try again**. The Funds tab lists the hint and fail lines.
+
+`npm run screenshots:batch1` saves the Batch 1 screens (brief, playing, hint, locked, failed, solved, Funds lines) to `screenshots/phase5/batch1/`.
+
 ## Screenshots
 
 `npm run screenshots` saves a PNG of every player screen to `screenshots/phase4/` (git-ignored), at 1280×720 (a typical Zoom share) plus two at phone width. It uses the real server and database with two throwaway games that it creates and deletes; the Demo Game is not touched. It needs `ENABLE_DEV_TOOLS=true`, and runs `npm run dev` itself if it is not already running. First time only: `npx playwright install chromium`.

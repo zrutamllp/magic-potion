@@ -51,7 +51,7 @@ export function TaskScreen({ taskId }: { taskId: string }) {
   const running = task.running;
   const Play = PLAY[task.key];
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <TaskHeader task={task} />
       {task.status === 'DONE' ? (
         <Solved task={task} />
@@ -83,11 +83,11 @@ function TaskHeader({ task }: { task: PlayerTaskView }) {
   const look = TASK_LOOK[task.key];
   const Icon = look.icon;
   return (
-    <Card className="flex flex-wrap items-center gap-5 py-4">
+    <Card className="flex flex-wrap items-center gap-4 py-3">
       <span
-        className={`flex h-16 w-16 items-center justify-center rounded-2xl ${TONE_BG[look.tone]} ${TONE_TEXT[look.tone]}`}
+        className={`flex h-12 w-12 items-center justify-center rounded-xl ${TONE_BG[look.tone]} ${TONE_TEXT[look.tone]}`}
       >
-        <Icon className="h-9 w-9" aria-hidden />
+        <Icon className="h-7 w-7" aria-hidden />
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -96,7 +96,7 @@ function TaskHeader({ task }: { task: PlayerTaskView }) {
           </Chip>
           <Chip tone="warning">{money(task.points)} points</Chip>
         </div>
-        <h1 className="mt-1 text-3xl font-extrabold">{task.name}</h1>
+        <h1 className="text-3xl leading-tight font-extrabold">{task.name}</h1>
       </div>
       {task.running && (
         <div className="text-right leading-tight">
@@ -176,11 +176,7 @@ function Brief({ task }: { task: PlayerTaskView }) {
           className="py-4 text-2xl"
           tone="success"
           disabled={Boolean(blocked) || paused}
-          onClick={() =>
-            act('Task started. The timer is running.', () =>
-              send('task:start', { taskId: task.id }),
-            )
-          }
+          onClick={() => act(null, () => send('task:start', { taskId: task.id }))}
         >
           {failed ? (
             <>

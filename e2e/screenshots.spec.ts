@@ -1,79 +1,29 @@
-import { execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
-import { expect, request, test, type Browser, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import {
+  createGames,
+  deleteGames,
+  login as loginAs,
+  shooter,
+  staff as staffAs,
+  tab,
+  type Games,
+  type Team,
+} from './helpers';
 
 // Screenshots of every player screen for review: `npm run screenshots`.
-// Runs against the real server and database with two throwaway games (created and deleted by
-// apps/server/scripts/screenshotGames.ts). The Demo Game is not touched.
-// Needs ENABLE_DEV_TOOLS=true on the server (for "finish tasks").
+// Runs against the real server and database with two throwaway games; see e2e/helpers.ts.
 
-const OUT = 'screenshots/phase4';
-const API = 'http://localhost:4000';
-
-interface Team {
-  id: string;
-  code: string;
-  name: string;
-}
-interface Games {
-  staffToken: string;
-  password: string;
-  a: { id: string; teams: Team[] };
-  b: { id: string; teams: Team[] };
-}
-
-function script(...args: string[]): string {
-  return execFileSync(
-    'node',
-    ['--env-file-if-exists=.env', '--import', 'tsx', 'scripts/screenshotGames.ts', ...args],
-    { cwd: 'apps/server', encoding: 'utf8' },
-  );
-}
-
+const shot = shooter('screenshots/phase4');
 let games: Games;
 
 test.beforeAll(() => {
-  mkdirSync(OUT, { recursive: true });
-  const lines = script('create').trim().split('\n');
-  games = JSON.parse(lines[lines.length - 1] ?? '{}') as Games;
+  games = createGames();
 });
 
-test.afterAll(() => {
-  if (games) script('delete', games.a.id, games.b.id);
-});
+test.afterAll(() => deleteGames(games));
 
-async function staff(path: string, body: object = {}) {
-  const api = await request.newContext({
-    baseURL: API,
-    extraHTTPHeaders: { Authorization: `Bearer ${games.staffToken}` },
-  });
-  const res = await api.post(`/api/staff${path}`, { data: body });
-  const json = (await res.json()) as { ok?: boolean; message?: string };
-  await api.dispose();
-  if (!res.ok()) throw new Error(`${path}: ${json.message ?? res.status()}`);
-  return json;
-}
-
-async function shot(page: Page, name: string, fullPage = false) {
-  // Let the potion liquid settle.
-  await page.waitForTimeout(1600);
-  await page.screenshot({ path: `${OUT}/${name}.png`, fullPage });
-}
-
-async function login(browser: Browser, team: Team): Promise<Page> {
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  await page.goto('/');
-  await page.getByLabel('Team code').fill(team.code);
-  await page.getByLabel('Password').fill(games.password);
-  await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page.getByText(team.name).first()).toBeVisible();
-  return page;
-}
-
-async function tab(page: Page, name: string) {
-  await page.evaluate((h) => (window.location.hash = h), `#/${name}`);
-}
+const staff = (path: string, body: object = {}) => staffAs(games, path, body);
+const login = (browser: Parameters<typeof loginAs>[0], team: Team) => loginAs(browser, games, team);
 
 async function sendChat(page: Page, text: string) {
   await tab(page, 'chat');
@@ -134,7 +84,7 @@ test('every player screen', async ({ browser }) => {
   await p1.getByRole('button', { name: 'Start Task' }).click();
   await p1.getByRole('button', { name: 'Give up' }).click();
   await p1.getByRole('button', { name: 'Yes, give up' }).click();
-  await expect(p1.getByText('This task failed.')).toBeVisible();
+  await expect(p1.getByText('You gave up.')).toBeVisible();
   await tab(p1, 'home');
   await p1
     .getByRole('button', { name: /: Not started$/ })

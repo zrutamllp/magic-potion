@@ -23,8 +23,9 @@ export interface Game {
   // admin pauses; "timer" (tasks, transfers) stops whenever play is not running.
   phaseMsLeft: () => number | null;
   timerMsLeft: (sentMsLeft: number) => number;
-  // Runs an action, then shows the server's answer (or `done` when it worked).
-  act: (done: string, run: () => Promise<Ack>) => Promise<boolean>;
+  // Runs an action, then shows the server's answer (or `done` when it worked). With `done`
+  // null, success shows nothing: the screen itself changes (task screens).
+  act: (done: string | null, run: () => Promise<Ack>) => Promise<boolean>;
   notice: Notice | null;
   dismissNotice: () => void;
   route: Route;

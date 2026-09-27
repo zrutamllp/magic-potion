@@ -116,7 +116,7 @@ export function renderGame(
     send: send as unknown as Game['send'],
     phaseMsLeft: () => state.game.phaseMsLeft,
     timerMsLeft: (ms) => ms,
-    act: async (_done, run) => (await run()).ok,
+    act: async (_done: string | null, run: () => Promise<Ack>) => (await run()).ok,
     notice: null,
     dismissNotice: () => undefined,
     route: opts.route ?? { tab: 'home' },

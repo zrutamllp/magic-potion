@@ -208,15 +208,19 @@ function Screens({
   const [notice, setNotice] = useState<Notice | null>(null);
   const { state, receivedAt } = snapshot;
 
-  async function act(done: string, run: () => Promise<Ack>) {
+  async function act(done: string | null, run: () => Promise<Ack>) {
     // Never fail silently: a click must always show an answer.
     const ack: Ack = await run().catch(() => ({
       ok: false as const,
       message: 'Something went wrong. Please try again.',
     }));
+    if (ack.ok && done === null) {
+      setNotice(null);
+      return true;
+    }
     setNotice({
       ok: ack.ok,
-      text: ack.ok ? done : ack.message,
+      text: ack.ok ? (done ?? '') : ack.message,
       id: Date.now(),
       where: routeHash(route),
     });

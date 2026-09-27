@@ -106,7 +106,10 @@ export function LockoutBanner({ running }: { running: Running }) {
       className="flex items-center gap-3 rounded-xl border border-danger/60 bg-danger/15 px-4 py-3 text-xl font-bold text-danger"
     >
       <Lock className="h-6 w-6 shrink-0" aria-hidden />
-      Locked after too many wrong tries. Try again in <span className="nums">{formatMs(left)}</span>
+      <span>
+        Locked after too many wrong tries. Try again in{' '}
+        <span className="nums">{formatMs(left)}</span>
+      </span>
     </p>
   );
 }
@@ -158,7 +161,7 @@ export function HintCard({ task, running }: { task: PlayerTaskView; running: Run
                 tone="brand"
                 onClick={async () => {
                   setConfirming(false);
-                  await act('Hint used.', () => send('task:hint', { taskId: task.id }));
+                  await act(null, () => send('task:hint', { taskId: task.id }));
                 }}
               >
                 Yes, use hint
@@ -223,7 +226,7 @@ export function GiveUpCard({ task }: { task: PlayerTaskView }) {
             tone="danger"
             onClick={async () => {
               setConfirming(false);
-              await act('You gave up this task.', () => send('task:giveUp', { taskId: task.id }));
+              await act(null, () => send('task:giveUp', { taskId: task.id }));
             }}
           >
             Yes, give up
