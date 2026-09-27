@@ -219,3 +219,12 @@ The images in `design/` came from a generic gaming template. Where they differ f
 6. **Removed teams:** dropped from the leaderboard, the potion and the Full Potion Bonus. See sections 8 and 9.
 7. **Restarting Find the Code:** it keeps the same content, so the held fragment still works. See section 3.
 8. **Find the Code fragments:** each team gets its own word and cipher, so a team never holds the fragment it needs itself. See section 3.
+
+## 16. Player-facing text (learning design)
+
+Teams must discover for themselves that they depend on each other. So everything players read (the Rules tab, screens, buttons, alerts, empty states and error messages):
+
+- Never tells teams to cooperate, help, share or talk to other teams, and never suggests using the chat for that.
+- Never explains why Round 1 and Round 2 differ (for example, that other teams appear on the leaderboard in Round 2).
+- Never explains what Found items are for or who needs them. The cards on Home show the value only.
+- States facts only: what a thing is, what it costs, and the limits. Facilitators give any guidance in the room or in Zoom.
