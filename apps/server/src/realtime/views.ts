@@ -94,6 +94,8 @@ function leaderboardView(engine: GameEngine, teamId: string): LeaderboardView | 
       taskFunds: e.taskFunds,
       score: e.score.total,
       potionShare: e.tasksCompleted >= TASKS_PER_TEAM ? share : 0,
+      fundsGiven: phase === 'REVEAL' ? e.fundsGiven : null,
+      fundsReceived: phase === 'REVEAL' ? e.fundsReceived : null,
     }));
   return { final: phase === 'REVEAL', valid: board.valid, rows };
 }

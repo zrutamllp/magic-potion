@@ -93,6 +93,9 @@ export interface LeaderboardRowView {
   taskFunds: number;
   score: number;
   potionShare: number;
+  // Arrived transfers only. Sent at the Reveal for the debrief; null before then.
+  fundsGiven: number | null;
+  fundsReceived: number | null;
 }
 
 export interface LeaderboardView {

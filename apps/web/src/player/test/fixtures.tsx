@@ -91,6 +91,8 @@ export function playerState(overrides: Partial<PlayerState> = {}): PlayerState {
           taskFunds: 10_000,
           score: 30_000,
           potionShare: 0,
+          fundsGiven: null,
+          fundsReceived: null,
         },
       ],
     },

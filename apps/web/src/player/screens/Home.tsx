@@ -40,33 +40,28 @@ export function Home() {
           </span>
         }
       />
+      {foundItems.length > 0 && (
+        <section
+          aria-label="Found items"
+          className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-warning/40 bg-warning/5 px-4 py-2.5"
+        >
+          <h2 className="text-sm font-bold tracking-wider text-ink-muted uppercase">Found items</h2>
+          {foundItems.map((value) => (
+            <span
+              key={value}
+              className="nums flex items-center gap-2 rounded-xl border border-warning/50 bg-warning/10 px-3 py-1 text-xl font-extrabold tracking-wide"
+            >
+              <Gem className="h-5 w-5 text-warning" aria-hidden />
+              Fragment: {value}
+            </span>
+          ))}
+        </section>
+      )}
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {tasks.map((task) => (
           <TaskCard key={task.id} task={task} />
         ))}
       </div>
-
-      {foundItems.length > 0 && (
-        <section className="mt-10">
-          <h2 className="mb-4 text-2xl font-bold">Found items</h2>
-          <div className="flex flex-wrap gap-4">
-            {foundItems.map((value) => (
-              <div
-                key={value}
-                className="flex items-center gap-3 rounded-2xl border border-warning/50 bg-warning/10 px-5 py-4"
-              >
-                <Gem className="h-7 w-7 text-warning" aria-hidden />
-                <div className="leading-tight">
-                  <span className="text-sm font-bold tracking-wider text-ink-muted uppercase">
-                    Found item
-                  </span>
-                  <p className="nums text-2xl font-extrabold tracking-wide">Fragment: {value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </>
   );
 }

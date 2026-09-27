@@ -27,6 +27,8 @@ const round2Board: PlayerState['leaderboard'] = {
       taskFunds: 8_000,
       score: 50_000,
       potionShare: 0,
+      fundsGiven: null,
+      fundsReceived: null,
     },
     {
       teamId: 'team-1',
@@ -36,6 +38,8 @@ const round2Board: PlayerState['leaderboard'] = {
       taskFunds: 10_000,
       score: 30_000,
       potionShare: 0,
+      fundsGiven: null,
+      fundsReceived: null,
     },
     {
       teamId: 'team-3',
@@ -45,6 +49,8 @@ const round2Board: PlayerState['leaderboard'] = {
       taskFunds: 9_000,
       score: 18_000,
       potionShare: 0,
+      fundsGiven: null,
+      fundsReceived: null,
     },
   ],
 };
@@ -97,6 +103,18 @@ describe('top bar', () => {
       { state },
     );
     expect(within(screen.getByRole('banner')).getByText('#2')).toBeInTheDocument();
+  });
+
+  it('calls the leaderboard "Scores" in the phone tab bar', () => {
+    renderGame(
+      <Shell onLogOut={() => undefined}>
+        <p>content</p>
+      </Shell>,
+    );
+    const [sidebar, tabBar] = screen.getAllByRole('navigation', { name: 'Main' });
+    expect(within(sidebar!).getByRole('button', { name: /Leaderboard/ })).toBeInTheDocument();
+    expect(within(tabBar!).getByRole('button', { name: /Scores/ })).toBeInTheDocument();
+    expect(within(tabBar!).queryByText('Leaderboard')).toBeNull();
   });
 
   it('has one navigation with all six tabs and the potion', () => {
@@ -153,11 +171,14 @@ describe('Home', () => {
     ).toHaveLength(4);
   });
 
-  it('shows Found items with the value only', () => {
+  it('shows Found items above the tasks, with the value only', () => {
     renderGame(<Home />);
-    expect(screen.getByText('Fragment: 4-2-9')).toBeInTheDocument();
-    const section = screen.getByText('Found items').closest('section')!;
-    expect(section.textContent).toBe('Found itemsFound itemFragment: 4-2-9');
+    const strip = screen.getByRole('region', { name: 'Found items' });
+    expect(strip.textContent).toBe('Found itemsFragment: 4-2-9');
+    const firstCard = screen.getByRole('button', { name: 'The Vault: Not started' });
+    expect(
+      strip.compareDocumentPosition(firstCard) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
 
@@ -235,6 +256,21 @@ describe('Chat', () => {
     fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Ready' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     expect(send).toHaveBeenCalledWith('chat:send', { body: 'Ready' });
+  });
+
+  it('uses a short placeholder on phone-width screens', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('max-width'),
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    renderGame(<Chat />);
+    expect(screen.getByPlaceholderText('Message…')).toBeInTheDocument();
+  });
+
+  it('uses the full placeholder on wider screens', () => {
+    renderGame(<Chat />);
+    expect(screen.getByPlaceholderText('Type your message…')).toBeInTheDocument();
   });
 
   it('blocks the send box when no messages are left', () => {
@@ -324,10 +360,11 @@ describe('Leaderboard', () => {
     expect(screen.queryByText('Rank')).toBeNull();
   });
 
-  it('shows every team ranked in Round 2', () => {
+  it('shows every team ranked in Round 2, without the funds columns', () => {
     renderGame(<Leaderboard />, { state: playerState({ leaderboard: round2Board }) });
     expect(screen.getAllByRole('row')).toHaveLength(4);
     expect(screen.getByText('1st')).toBeInTheDocument();
+    expect(screen.queryByText('Funds given')).toBeNull();
   });
 });
 
@@ -385,6 +422,23 @@ describe('Lobby, Pause and Reveal', () => {
     expect(screen.getByRole('img', { name: 'Magic Potion 50% full' })).toBeInTheDocument();
     expect(screen.getByText('The potion is not full. Nobody wins.')).toBeInTheDocument();
     expect(screen.getByText('Final leaderboard')).toBeInTheDocument();
+  });
+
+  it('Reveal: shows funds given and received for the debrief', () => {
+    const rows = round2Board!.rows.map((r, i) => ({
+      ...r,
+      fundsGiven: 100 * (i + 1),
+      fundsReceived: 50,
+    }));
+    const state = playerState({
+      potion: { percent: 50, completedTeams: 2, totalTeams: 4, halftime: null },
+      leaderboard: { final: true, valid: false, rows },
+    });
+    state.game = { ...state.game, phase: 'REVEAL', phaseMsLeft: null };
+    renderGame(<Reveal />, { state });
+    expect(screen.getByRole('columnheader', { name: 'Funds given' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Funds received' })).toBeInTheDocument();
+    expect(screen.getByRole('row', { name: /Team 3/ })).toHaveTextContent('30050');
   });
 
   it('Reveal: celebrates a full potion with the bonus', () => {

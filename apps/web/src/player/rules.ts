@@ -73,6 +73,7 @@ export function rulesSections(s: GameSettings): RulesSection[] {
       bullets: [
         `You can use ${hints} per try, while the timer is running. A hint costs ${n(tasks.hintCost)}.`,
         'The hint is paid from your Support Funds first. If they are not enough, the rest comes from your Task Funds.',
+        'A hint is blocked if it would take your Task Funds below zero.',
       ],
     },
     {

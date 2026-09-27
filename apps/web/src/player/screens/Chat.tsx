@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowLeftRight, HandCoins, Send } from 'lucide-react';
 import type { FeedItem } from '@magic-potion/shared';
 import { feedText } from '../../lib/feed';
+import { useIsNarrow } from '../../lib/media';
 import { money } from '../../lib/time';
 import { useGame } from '../GameContext';
 import { Button, Card, PageTitle, fieldClass } from '../ui/basics';
@@ -28,6 +29,7 @@ export function Chat() {
   const { messagesLeft, messagesPerRound, maxLength } = state.chat;
   const open = state.game.timersRunning;
   const canSend = open && messagesLeft > 0;
+  const narrow = useIsNarrow();
 
   // Keep the newest line in view.
   useEffect(() => {
@@ -60,7 +62,9 @@ export function Chat() {
                 !open
                   ? 'Chat is closed right now'
                   : messagesLeft > 0
-                    ? 'Type your message…'
+                    ? narrow
+                      ? 'Message…'
+                      : 'Type your message…'
                     : 'No messages left this round'
               }
               aria-label="Message"

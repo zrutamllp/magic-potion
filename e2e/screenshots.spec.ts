@@ -178,6 +178,11 @@ test('every player screen', async ({ browser }) => {
   await tab(p1, 'home');
   await shot(p1, '11-home-round2');
 
+  // Let the Round 1 transfers arrive (they were frozen in the Pause), so the Reveal
+  // shows real "Funds given" and "Funds received" numbers.
+  await tab(p1, 'funds');
+  await expect(p1.getByText(/Arriving in/)).toHaveCount(0, { timeout: 90_000 });
+
   // Reveal with a full potion.
   for (const t of [a1, a2, a3]) await staff(`${gameA}/dev/finish-tasks/${t.id}`);
   await staff(`${gameA}/end-phase`);

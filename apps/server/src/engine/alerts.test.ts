@@ -154,4 +154,26 @@ describe('player state additions', () => {
     expect(vault).toMatchObject({ timerSeconds: 720, points: 10_000 });
     expect(state.team.tasks.every((t) => t.timerSeconds > 0)).toBe(true);
   });
+
+  it('sends funds given and received only at the Reveal', async () => {
+    const clock = new FakeClock(T0);
+    const { engine } = memoryEngine({ teams: 3, clock });
+    await engine.startGame(ADMIN);
+    await engine.sendFunds('team-1', 'team-2', 400);
+    await at({ clock, engine }, T0 + MIN);
+    await engine.endPhase(ADMIN);
+    await engine.endPhase(ADMIN);
+    const round2 = buildPlayerState(engine, 'team-1', clock.now()).leaderboard?.rows ?? [];
+    expect(round2.every((r) => r.fundsGiven === null && r.fundsReceived === null)).toBe(true);
+    await engine.endPhase(ADMIN);
+    const rows = buildPlayerState(engine, 'team-1', clock.now()).leaderboard?.rows ?? [];
+    expect(rows.find((r) => r.teamId === 'team-1')).toMatchObject({
+      fundsGiven: 400,
+      fundsReceived: 0,
+    });
+    expect(rows.find((r) => r.teamId === 'team-2')).toMatchObject({
+      fundsGiven: 0,
+      fundsReceived: 400,
+    });
+  });
 });

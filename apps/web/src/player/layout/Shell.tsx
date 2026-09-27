@@ -23,6 +23,8 @@ import { PotionBottle, potionLabel } from '../ui/PotionBottle';
 interface NavItem {
   tab: Tab;
   label: string;
+  // Used in the phone tab bar, where space is tight.
+  shortLabel?: string;
   icon: LucideIcon;
   tone: Tone;
 }
@@ -32,7 +34,7 @@ export const NAV: NavItem[] = [
   { tab: 'chat', label: 'Chat', icon: MessagesSquare, tone: 'info' },
   { tab: 'funds', label: 'Funds', icon: Coins, tone: 'success' },
   { tab: 'inbox', label: 'Inbox', icon: InboxIcon, tone: 'warning' },
-  { tab: 'leaderboard', label: 'Leaderboard', icon: Trophy, tone: 'alert' },
+  { tab: 'leaderboard', label: 'Leaderboard', shortLabel: 'Scores', icon: Trophy, tone: 'alert' },
   { tab: 'rules', label: 'Rules', icon: BookOpen, tone: 'brand' },
 ];
 
@@ -211,7 +213,7 @@ function TabBar({
             }`}
           >
             <Icon className="h-6 w-6" aria-hidden />
-            {item.label}
+            {item.shortLabel ?? item.label}
             {counts[item.tab] ? (
               <span className="absolute top-1 right-[22%] h-3 w-3 rounded-full bg-danger" />
             ) : null}

@@ -28,6 +28,7 @@ describe('Rules text', () => {
       'you lose 3,500 Task Funds',
       'lock for 60 seconds after 3 wrong tries',
       'A hint costs 1,500',
+      'A hint is blocked if it would take your Task Funds below zero.',
       'Task Funds start at 10,000',
       'Support Funds start at 4,500',
       'They arrive 60 seconds after you send them',

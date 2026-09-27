@@ -33,6 +33,8 @@ export function LeaderboardBody({ state }: { state: PlayerState }) {
     );
   }
   const ranked = board.rows.some((r) => r.rank !== null);
+  // Sent only at the Reveal, for the debrief.
+  const funds = board.rows.some((r) => r.fundsGiven !== null);
   const top = ranked ? board.rows.filter((r) => r.rank !== null && r.rank <= 3).slice(0, 3) : [];
 
   return (
@@ -56,11 +58,19 @@ export function LeaderboardBody({ state }: { state: PlayerState }) {
               <th className="px-5 py-3 text-right">Task Funds</th>
               <th className="px-5 py-3 text-right">Score</th>
               <th className="px-5 py-3 text-right">Potion share</th>
+              {funds && <th className="px-5 py-3 text-right">Funds given</th>}
+              {funds && <th className="px-5 py-3 text-right">Funds received</th>}
             </tr>
           </thead>
           <tbody>
             {board.rows.map((r) => (
-              <Row key={r.teamId} row={r} ranked={ranked} own={r.teamId === state.team.id} />
+              <Row
+                key={r.teamId}
+                row={r}
+                ranked={ranked}
+                funds={funds}
+                own={r.teamId === state.team.id}
+              />
             ))}
           </tbody>
         </table>
@@ -69,7 +79,17 @@ export function LeaderboardBody({ state }: { state: PlayerState }) {
   );
 }
 
-function Row({ row, ranked, own }: { row: LeaderboardRowView; ranked: boolean; own: boolean }) {
+function Row({
+  row,
+  ranked,
+  funds,
+  own,
+}: {
+  row: LeaderboardRowView;
+  ranked: boolean;
+  funds: boolean;
+  own: boolean;
+}) {
   return (
     <tr className={`border-b border-line last:border-0 ${own ? 'bg-brand/15' : ''}`}>
       {ranked && <td className="nums px-5 py-4 text-xl font-extrabold text-warning">{row.rank}</td>}
@@ -85,6 +105,8 @@ function Row({ row, ranked, own }: { row: LeaderboardRowView; ranked: boolean; o
       <td className="nums px-5 py-4 text-right">
         {row.potionShare > 0 ? `${Math.round(row.potionShare)}%` : '–'}
       </td>
+      {funds && <td className="nums px-5 py-4 text-right">{money(row.fundsGiven ?? 0)}</td>}
+      {funds && <td className="nums px-5 py-4 text-right">{money(row.fundsReceived ?? 0)}</td>}
     </tr>
   );
 }
