@@ -13,6 +13,11 @@ const digit = z.string().regex(/^[0-9]$/);
 const keyPair = z.object({ symbol: text, letter: text });
 const point = z.tuple([z.number(), z.number()]);
 
+// The different letters of a word, uppercased, in order of first use.
+export function distinctLetters(word: string): string[] {
+  return [...new Set(word.toUpperCase())];
+}
+
 export const TaskContentSchemas = {
   vault: {
     public: z.object({
@@ -23,9 +28,23 @@ export const TaskContentSchemas = {
     secret: z.object({ clueDigits: z.array(digit).length(3) }),
   },
   find_code: {
-    public: z.object({ intro: text, encodedMessage: text, visibleKey: z.array(keyPair).min(1) }),
-    // hiddenKey is the half of the key given out as fragments; hints also reveal from it.
-    secret: z.object({ answer: acceptedAnswer, hiddenKey: z.array(keyPair).min(1) }),
+    public: z.object({ intro: text }),
+    // At game start the engine gives each team its own word and a random cipher made from
+    // the symbol pool. Half the key is on screen; the other half is the fragment another team holds.
+    secret: z
+      .object({
+        words: z.array(z.string().regex(/^[a-zA-Z]+$/)).min(1),
+        symbols: z.array(text).min(1),
+      })
+      .refine((s) => new Set(s.symbols).size === s.symbols.length, 'Symbols must be different')
+      .refine(
+        (s) => s.words.every((w) => distinctLetters(w).length >= 4),
+        'Each word needs at least 4 different letters',
+      )
+      .refine(
+        (s) => s.words.every((w) => distinctLetters(w).length <= s.symbols.length),
+        'Need at least one symbol per different letter in each word',
+      ),
   },
   picture_puzzle: {
     public: z.object({
@@ -121,6 +140,15 @@ export type TaskPublicContent<K extends TaskKey> = z.infer<
 export type TaskSecretContent<K extends TaskKey> = z.infer<
   (typeof TaskContentSchemas)[K]['secret']
 >;
+
+// One team's Find the Code puzzle, made at game start. Stored on the team's fragment row.
+// Only encodedMessage and visibleKey are shown to the team; hiddenKey is the fragment.
+export interface FindCodeCipher {
+  word: string;
+  encodedMessage: string[];
+  visibleKey: { symbol: string; letter: string }[];
+  hiddenKey: { symbol: string; letter: string }[];
+}
 
 export function parseTaskContent<K extends TaskKey>(
   key: K,

@@ -418,8 +418,14 @@ describe('public views', () => {
     const g = await started(3);
     const { team: t, taskId } = withTask(g.engine, 'find_code');
     await g.engine.startTask(t.id, taskId);
+    const own = Object.values(g.engine.state.fragments).find(
+      (f) => f.kind === 'FIND_CODE' && f.neededByTeamId === t.id,
+    );
+    const cipher = own?.secretData as { word: string } | null;
     const json = JSON.stringify(g.engine.teamView(t.id));
-    expect(json).not.toContain('teamwork');
+    expect(cipher?.word).toBeTruthy();
+    expect(json).not.toContain(cipher?.word);
+    expect(json).not.toContain(own?.value);
     expect(json).not.toContain('hiddenKey');
   });
 });

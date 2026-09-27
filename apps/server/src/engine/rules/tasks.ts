@@ -3,6 +3,7 @@ import {
   NO_HINT_TASK_KEYS,
   TASKS_PER_TEAM,
   type AttemptResult,
+  type FindCodeCipher,
   type EngineResult,
   type TaskKey,
 } from '@magic-potion/shared';
@@ -56,6 +57,8 @@ export function checkerContext(
     publicData: c.publicData,
     secretData: c.secretData,
     fragment: fragment?.value ?? null,
+    cipher:
+      task.key === 'find_code' ? ((fragment?.secretData ?? null) as FindCodeCipher | null) : null,
     tasks: state.settings.tasks,
     rng,
   } as CheckerContext<TaskKey>;

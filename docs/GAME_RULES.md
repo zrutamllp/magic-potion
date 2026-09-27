@@ -31,6 +31,8 @@ Every number below is a default setting that the admin can change per game befor
 
 - Each team gets 5 tasks: 2 common and 3 unique.
 - Common tasks: **The Vault** and **Find the Code** (the same task for every team, except for their fragments).
+- The Vault: every team has the same 3 clues, but its 3 fragment digits are random per team, so every team's code is different.
+- Find the Code: at game start each team gets its own word (from the content's word list) and its own random cipher. The team sees its encoded message and half of the key (rounded up). The other half is its fragment, held by another team. So every team's answer and fragment are different.
 - Unique tasks: 3 drawn at random from the other 10. Several teams may draw the same unique task.
 - Only one task can be open at a time.
 - The task timer starts when the team presses Start Task and stops when they solve it, the timer runs out, or they give up.
@@ -216,3 +218,4 @@ The images in `design/` came from a generic gaming template. Where they differ f
 5. **Tied scores:** teams share the rank (1, 2, 2, 4). See section 10.
 6. **Removed teams:** dropped from the leaderboard, the potion and the Full Potion Bonus. See sections 8 and 9.
 7. **Restarting Find the Code:** it keeps the same content, so the held fragment still works. See section 3.
+8. **Find the Code fragments:** each team gets its own word and cipher, so a team never holds the fragment it needs itself. See section 3.

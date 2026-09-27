@@ -324,6 +324,8 @@ model Fragment {
   neededByTeamId    String
   // Secret: only ever sent to the holder team (or the needing team after a staff release).
   value             String
+  // Per-team secret data. For Find the Code: the needing team's word and cipher. Never sent to players.
+  secretData        Json?
   releasedAt        DateTime?
   releasedByStaffId String?
   createdAt         DateTime     @default(now())

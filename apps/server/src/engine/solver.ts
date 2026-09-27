@@ -46,7 +46,7 @@ export function correctSubmissions(
         },
       ];
     case 'find_code':
-      return [{ answer: secret<'find_code'>(ctx).answer[0] }];
+      return [{ answer: ctx.cipher?.word ?? '' }];
     case 'alien_translator':
       return [{ answer: secret<'alien_translator'>(ctx).answer[0] }];
     case 'picture_puzzle': {

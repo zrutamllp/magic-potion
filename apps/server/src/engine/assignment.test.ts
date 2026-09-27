@@ -4,17 +4,15 @@ import {
   buildFragments,
   chainOrder,
   drawTasks,
+  makeCipher,
   pickContent,
   vaultFragmentDigits,
 } from './assignment';
 import { seededRng } from './rng';
 
 const findCodeSecret = {
-  answer: ['teamwork'],
-  hiddenKey: [
-    { symbol: '■', letter: 'W' },
-    { symbol: '✚', letter: 'O' },
-  ],
+  words: ['teamwork', 'together', 'trust'],
+  symbols: ['★', '◆', '●', '▲', '■', '✚', '☾', '✿', '♣', '♠'],
 };
 
 describe('drawTasks', () => {
@@ -90,15 +88,57 @@ describe('fragment chains', () => {
     ]);
   });
 
-  it('makes Vault fragments of 3 digits and Find the Code fragments from the hidden key', () => {
+  it('makes Vault fragments of 3 digits', () => {
     const plans = buildFragments(seededRng(2), ['a', 'b', 'c'], findCodeSecret);
     for (const f of plans.filter((p) => p.kind === 'VAULT')) {
       expect(f.value).toMatch(/^\d-\d-\d$/);
       expect(vaultFragmentDigits(f.value)).toHaveLength(3);
+      expect(f.secretData).toBeNull();
     }
-    for (const f of plans.filter((p) => p.kind === 'FIND_CODE')) {
-      expect(f.value).toBe('■ = W, ✚ = O');
+  });
+
+  it('gives each team its own Find the Code word and cipher, with the hidden key as the fragment', () => {
+    const plans = buildFragments(seededRng(2), ['a', 'b', 'c'], findCodeSecret);
+    const code = plans.filter((p) => p.kind === 'FIND_CODE');
+    expect(new Set(code.map((f) => f.secretData?.word)).size).toBe(3);
+    for (const f of code) {
+      const hidden = f.secretData?.hiddenKey.map((k) => `${k.symbol} = ${k.letter}`).join(', ');
+      expect(f.value).toBe(hidden);
     }
+    // A team's own fragment never solves its own puzzle.
+    const neededBy = new Map(code.map((f) => [f.neededByTeamId, f.value]));
+    for (const f of code) expect(neededBy.get(f.holderTeamId)).not.toBe(f.value);
+  });
+});
+
+describe('makeCipher', () => {
+  const symbols = findCodeSecret.symbols;
+
+  it('encodes the word with one symbol per different letter', () => {
+    const c = makeCipher(seededRng(4), 'teamwork', symbols);
+    expect(c.word).toBe('TEAMWORK');
+    expect(c.encodedMessage).toHaveLength(8);
+    const key = new Map([...c.visibleKey, ...c.hiddenKey].map((k) => [k.symbol, k.letter]));
+    expect(c.encodedMessage.map((s) => key.get(s)).join('')).toBe('TEAMWORK');
+    expect(new Set(key.keys()).size).toBe(8);
+  });
+
+  it('shows half the key (rounded up) and hides the rest', () => {
+    const c = makeCipher(seededRng(4), 'unity', symbols); // 5 different letters
+    expect(c.visibleKey).toHaveLength(3);
+    expect(c.hiddenKey).toHaveLength(2);
+  });
+
+  it('cannot be decoded from the visible half alone', () => {
+    const c = makeCipher(seededRng(4), 'trust', symbols);
+    const visible = new Set(c.visibleKey.map((k) => k.symbol));
+    expect(c.encodedMessage.some((s) => !visible.has(s))).toBe(true);
+  });
+
+  it('uses different symbols for different teams', () => {
+    const a = makeCipher(seededRng(1), 'teamwork', symbols);
+    const b = makeCipher(seededRng(2), 'teamwork', symbols);
+    expect(a.encodedMessage).not.toEqual(b.encodedMessage);
   });
 });
 

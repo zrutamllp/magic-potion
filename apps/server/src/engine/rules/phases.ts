@@ -6,6 +6,7 @@ import {
   drawTasks,
   pickContent,
 } from '../assignment';
+import type { Json } from '../checkers';
 import { fail, ok, type Draft } from '../draft';
 import { isPlayPhase, phasePlayMs } from '../playClock';
 import { activeTeams, runningAttempt } from '../state';
@@ -33,7 +34,7 @@ export function startGame(d: Draft, staffUserId: string): EngineResult {
   if (!vault || findCodeVariants.length === 0 || availableUnique.length < 3) {
     return fail('MISSING_CONTENT');
   }
-  // Find the Code always uses its first variant, so its hidden key is the fragment.
+  // Find the Code always uses its first variant: its word list and symbols make each team's cipher.
   const findCode = byKey.find_code?.find(
     (c) => c.id === pickContent('find_code', findCodeVariants, []).id,
   );
@@ -55,7 +56,12 @@ export function startGame(d: Draft, staffUserId: string): EngineResult {
     if (team) d.updateTeam(team, { chainPosition: position });
   });
   for (const plan of buildFragments(d.rng, order, findCodeSecret)) {
-    d.createFragment({ ...plan, releasedAt: null, releasedByStaffId: null });
+    d.createFragment({
+      ...plan,
+      secretData: plan.secretData as Json | null,
+      releasedAt: null,
+      releasedByStaffId: null,
+    });
   }
 
   for (const team of teams) {

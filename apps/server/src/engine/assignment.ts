@@ -3,6 +3,8 @@ import {
   FIXED_CONTENT_TASK_KEYS,
   TASK_DEFINITIONS,
   UNIQUE_TASKS_PER_TEAM,
+  distinctLetters,
+  type FindCodeCipher,
   type FragmentKind,
   type TaskKey,
   type TaskSecretContent,
@@ -46,6 +48,8 @@ export interface FragmentPlan {
   holderTeamId: string;
   neededByTeamId: string;
   value: string;
+  // For Find the Code: the needing team's word and cipher.
+  secretData: FindCodeCipher | null;
 }
 
 // The Vault fragment is 3 random digits per team, shown as "4-2-9".
@@ -53,32 +57,66 @@ export function vaultFragmentValue(rng: Rng): string {
   return Array.from({ length: 3 }, () => String(randInt(rng, 10))).join('-');
 }
 
-// The Find the Code fragment is the hidden half of the cipher key, shown as "■ = W, ✚ = O".
-export function findCodeFragmentValue(secret: TaskSecretContent<'find_code'>): string {
-  return secret.hiddenKey.map((k) => `${k.symbol} = ${k.letter}`).join(', ');
-}
-
 // The digits a Vault fragment adds to the end of the code.
 export function vaultFragmentDigits(value: string): string {
   return value.replace(/\D/g, '');
 }
 
+// One team's Find the Code puzzle: a random symbol for each different letter of the word.
+// Half the letters (rounded up) are on screen; the rest are the fragment.
+export function makeCipher(rng: Rng, word: string, symbols: readonly string[]): FindCodeCipher {
+  const letters = distinctLetters(word);
+  const pool = shuffle(rng, symbols);
+  const symbolOf = new Map(letters.map((l, i) => [l, pool[i] as string]));
+  const pairs = shuffle(rng, letters).map((letter) => ({
+    symbol: symbolOf.get(letter) as string,
+    letter,
+  }));
+  const visibleCount = Math.ceil(pairs.length / 2);
+  return {
+    word: word.toUpperCase(),
+    encodedMessage: [...word.toUpperCase()].map((l) => symbolOf.get(l) as string),
+    visibleKey: pairs.slice(0, visibleCount),
+    hiddenKey: pairs.slice(visibleCount),
+  };
+}
+
+// The Find the Code fragment is the hidden half of a cipher key, shown as "■ = W, ✚ = O".
+export function findCodeFragmentValue(cipher: FindCodeCipher): string {
+  return cipher.hiddenKey.map((k) => `${k.symbol} = ${k.letter}`).join(', ');
+}
+
 // The team at position p holds the fragment needed by the team at (p + offset) mod n.
+// Each team gets its own Find the Code word (spread across the word list) and cipher.
 export function buildFragments(
   rng: Rng,
   order: readonly string[],
-  findCodeSecret: TaskSecretContent<'find_code'>,
+  findCode: TaskSecretContent<'find_code'>,
 ): FragmentPlan[] {
   const n = order.length;
+  const words = shuffle(rng, findCode.words);
   const plans: FragmentPlan[] = [];
   for (const kind of ['VAULT', 'FIND_CODE'] as const) {
     const offset = chainOffset(kind, n);
     for (let p = 0; p < n; p++) {
+      const needer = (p + offset) % n;
+      if (kind === 'VAULT') {
+        plans.push({
+          kind,
+          holderTeamId: order[p] as string,
+          neededByTeamId: order[needer] as string,
+          value: vaultFragmentValue(rng),
+          secretData: null,
+        });
+        continue;
+      }
+      const cipher = makeCipher(rng, words[needer % words.length] as string, findCode.symbols);
       plans.push({
         kind,
         holderTeamId: order[p] as string,
-        neededByTeamId: order[(p + offset) % n] as string,
-        value: kind === 'VAULT' ? vaultFragmentValue(rng) : findCodeFragmentValue(findCodeSecret),
+        neededByTeamId: order[needer] as string,
+        value: findCodeFragmentValue(cipher),
+        secretData: cipher,
       });
     }
   }

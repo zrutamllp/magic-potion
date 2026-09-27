@@ -78,6 +78,8 @@ export interface FragmentState {
   holderTeamId: string;
   neededByTeamId: string;
   value: string;
+  // For Find the Code: the needing team's word and cipher. Never sent to players.
+  secretData: Json | null;
   releasedAt: number | null;
   releasedByStaffId: string | null;
 }

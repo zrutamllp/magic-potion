@@ -27,7 +27,8 @@ export const vaultChecker = defineChecker<'vault', VaultProgress>({
   publicView: (ctx, progress) => ({ content: asJson(ctx.publicData), hint: progress.hint }),
 });
 
-// Find the Code: decode a message. Half the key is on screen, the other half is a fragment.
+// Find the Code: decode a message. Each team has its own word and cipher (made at game start).
+// Half the key is on screen; the other half is the fragment held by another team.
 export type FindCodeProgress = { hint: { symbol: string; letter: string } | null };
 
 const answerSubmission = z.object({ answer: z.string().max(200) });
@@ -37,17 +38,25 @@ export const findCodeChecker = defineChecker<'find_code', FindCodeProgress>({
   init: () => ({ hint: null }),
   submit(ctx, progress, raw) {
     const parsed = answerSubmission.safeParse(raw);
-    if (!parsed.success || parsed.data.answer.trim() === '') return { status: 'invalid' };
-    return matchesAny(parsed.data.answer, ctx.secretData.answer)
+    if (!parsed.success || parsed.data.answer.trim() === '' || !ctx.cipher) {
+      return { status: 'invalid' };
+    }
+    return matchesAny(parsed.data.answer, [ctx.cipher.word])
       ? { status: 'solved', progress }
       : { status: 'wrong', progress };
   },
-  hint(ctx) {
-    const key = ctx.secretData.hiddenKey;
-    const pair = key[randInt(ctx.rng, key.length)] as { symbol: string; letter: string };
-    return { hint: { symbol: pair.symbol, letter: pair.letter } };
+  // Reveals one more letter of the hidden half of the key.
+  hint(ctx, progress) {
+    const key = ctx.cipher?.hiddenKey ?? [];
+    const pair = key[randInt(ctx.rng, key.length)];
+    return pair ? { hint: { symbol: pair.symbol, letter: pair.letter } } : progress;
   },
-  publicView: (ctx, progress) => ({ content: asJson(ctx.publicData), hint: progress.hint }),
+  publicView: (ctx, progress) => ({
+    content: asJson(ctx.publicData),
+    encodedMessage: ctx.cipher?.encodedMessage ?? [],
+    visibleKey: asJson(ctx.cipher?.visibleKey ?? []),
+    hint: progress.hint,
+  }),
 });
 
 // Alien Translator: translate symbols with a partial legend. The hint decodes 3 more symbols.

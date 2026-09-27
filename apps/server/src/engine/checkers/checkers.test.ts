@@ -7,6 +7,7 @@ import {
 } from '@magic-potion/shared';
 import { describe, expect, it } from 'vitest';
 import { SAMPLE_TASK_CONTENT } from '../../../prisma/sampleContent';
+import { makeCipher } from '../assignment';
 import { seededRng } from '../rng';
 import {
   applyHint,
@@ -18,12 +19,15 @@ import {
   type SubmitResult,
 } from './index';
 
+const SYMBOLS = ['★', '◆', '●', '▲', '■', '✚', '☾', '✿', '♣', '♠'];
+
 function ctxFor(key: TaskKey, fragment: string | null = null): CheckerContext<TaskKey> {
   const sample = SAMPLE_TASK_CONTENT.find((c) => c.key === key && c.variant === 1);
   if (!sample) throw new Error(`No sample for ${key}`);
   return {
     ...parseTaskContent(TaskKeySchema.parse(key), sample),
     fragment,
+    cipher: key === 'find_code' ? makeCipher(seededRng(3), 'teamwork', SYMBOLS) : null,
     tasks: DEFAULT_SETTINGS.tasks,
     rng: seededRng(1),
   } as CheckerContext<TaskKey>;
@@ -84,7 +88,27 @@ describe('Find the Code', () => {
     const p = applyHint('find_code', ctx, initProgress('find_code', ctx)) as {
       hint: { symbol: string; letter: string };
     };
-    expect(['W', 'O', 'R', 'K']).toContain(p.hint.letter);
+    expect(ctx.cipher?.hiddenKey).toContainEqual(p.hint);
+  });
+
+  it('shows the team its encoded message and the visible half of its key only', () => {
+    const view = publicView('find_code', ctx, initProgress('find_code', ctx)) as {
+      encodedMessage: string[];
+      visibleKey: unknown[];
+    };
+    expect(view.encodedMessage).toEqual(ctx.cipher?.encodedMessage);
+    expect(view.visibleKey).toEqual(ctx.cipher?.visibleKey);
+    const json = JSON.stringify(view);
+    expect(json).not.toContain('TEAMWORK');
+    for (const k of ctx.cipher?.hiddenKey ?? []) {
+      expect(json).not.toContain(JSON.stringify(k));
+    }
+  });
+
+  it('cannot be checked without the team cipher', () => {
+    expect(play('find_code', { ...ctx, cipher: null }, [{ answer: 'teamwork' }]).statuses).toEqual([
+      'invalid',
+    ]);
   });
 });
 

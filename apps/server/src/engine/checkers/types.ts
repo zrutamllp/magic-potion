@@ -1,4 +1,5 @@
 import type {
+  FindCodeCipher,
   GameSettings,
   TaskKey,
   TaskPublicContent,
@@ -18,6 +19,8 @@ export interface CheckerContext<K extends TaskKey> {
   secretData: TaskSecretContent<K>;
   // The fragment value this team needs (Vault and Find the Code), or null.
   fragment: string | null;
+  // This team's own Find the Code cipher, made at game start, or null for other tasks.
+  cipher: FindCodeCipher | null;
   tasks: GameSettings['tasks'];
   rng: Rng;
 }
