@@ -1,15 +1,7 @@
-import { ServerStatus } from './components/ServerStatus';
+import { StaffDevPage } from './pages/StaffDevPage';
+import { TeamPage } from './pages/TeamPage';
 
+// Two pages for now, chosen by the address. A router arrives with the real screens (Phase 4).
 export function App() {
-  return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-2xl border border-line bg-card p-8 text-center shadow-xl">
-        <h1 className="text-3xl font-extrabold">Magic Potion Challenge</h1>
-        <p className="mt-2 text-ink-muted">Setup check</p>
-        <div className="mt-8">
-          <ServerStatus />
-        </div>
-      </div>
-    </main>
-  );
+  return window.location.pathname.startsWith('/dev/staff') ? <StaffDevPage /> : <TeamPage />;
 }
