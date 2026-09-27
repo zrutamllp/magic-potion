@@ -310,7 +310,8 @@ model TaskAttempt {
   endedAt DateTime?
 
   teamTask    TeamTask          @relation(fields: [teamTaskId], references: [id], onDelete: Cascade)
-  taskContent TaskContent       @relation(fields: [taskContentId], references: [id])
+  // NoAction and DEFERRABLE (see migration 20260927120100) so deleting a game can cascade to its attempts.
+  taskContent TaskContent       @relation(fields: [taskContentId], references: [id], onDelete: NoAction)
   ledger      FundTransaction[]
 
   @@unique([teamTaskId, number])

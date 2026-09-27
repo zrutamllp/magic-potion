@@ -52,6 +52,8 @@ export type Change =
       wallet: Wallet;
       amount: number;
       ledgerKind: LedgerKind;
+      // The wallet balance after this row, as computed in memory.
+      balanceAfter: number;
       transferId?: string;
       taskAttemptId?: string;
       auditLogId?: string;
@@ -141,7 +143,16 @@ export class Draft {
     if (amount === 0) return;
     if (wallet === 'TASK') team.taskFunds += amount;
     else team.supportFunds += amount;
-    this.changes.push({ kind: 'ledger', teamId: team.id, wallet, amount, ledgerKind, ...refs });
+    const balanceAfter = wallet === 'TASK' ? team.taskFunds : team.supportFunds;
+    this.changes.push({
+      kind: 'ledger',
+      teamId: team.id,
+      wallet,
+      amount,
+      ledgerKind,
+      balanceAfter,
+      ...refs,
+    });
   }
 
   createTeamTask(team: TeamState, task: Omit<TeamTaskState, 'id' | 'attempts'>): TeamTaskState {

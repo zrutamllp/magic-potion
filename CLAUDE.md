@@ -56,6 +56,7 @@ Server (`apps/server/.env`):
 - `CLIENT_ORIGIN`: the Vercel frontend URL, for CORS
 - `PORT`: provided by Render
 - `ADMIN_SEED_EMAIL`, `ADMIN_SEED_PASSWORD`: creates the first main admin on first run
+- `TEST_DATABASE_URL` (optional): a Neon branch for the database integration test; skipped when empty
 
 Web (`apps/web/.env`):
 - `VITE_API_URL`: the Render backend URL

@@ -1,4 +1,10 @@
-import { MIN_TEAMS, TaskKeySchema, parseTaskContent } from '@magic-potion/shared';
+import {
+  MIN_TEAMS,
+  TASK_DEFINITIONS,
+  TaskKeySchema,
+  parseTaskContent,
+  type TaskKey,
+} from '@magic-potion/shared';
 import {
   UNIQUE_TASK_KEYS,
   buildFragments,
@@ -12,6 +18,11 @@ import { isPlayPhase, phasePlayMs } from '../playClock';
 import { activeTeams, runningAttempt } from '../state';
 import type { EngineResult } from '@magic-potion/shared';
 import { freezeTimers, potionOf, unfreezeTimers, unfreezeTransfers } from './timers';
+
+const SORT_ORDER = Object.fromEntries(TASK_DEFINITIONS.map((t) => [t.key, t.sortOrder])) as Record<
+  TaskKey,
+  number
+>;
 
 // The game state machine (GAME_RULES section 2):
 // Lobby -> Round 1 -> Pause -> Round 2 -> Reveal. Each timed phase moves on by itself
@@ -64,8 +75,11 @@ export function startGame(d: Draft, staffUserId: string): EngineResult {
     });
   }
 
+  // Tasks are kept in list order (common first), the same order the database loads them in.
+  // Rows of one kind are written together so the database can save them in one batch.
   for (const team of teams) {
-    for (const key of drawTasks(d.rng, availableUnique)) {
+    const keys = drawTasks(d.rng, availableUnique).sort((a, b) => SORT_ORDER[a] - SORT_ORDER[b]);
+    for (const key of keys) {
       d.createTeamTask(team, {
         key,
         type: UNIQUE_TASK_KEYS.includes(key) ? 'UNIQUE' : 'COMMON',
@@ -73,6 +87,8 @@ export function startGame(d: Draft, staffUserId: string): EngineResult {
         completedAt: null,
       });
     }
+  }
+  for (const team of teams) {
     d.ledger(team, 'TASK', settings.funds.taskFundsStart, 'START');
     d.ledger(team, 'SUPPORT', settings.funds.supportFundsStart, 'START');
   }
