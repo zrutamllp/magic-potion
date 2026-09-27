@@ -60,25 +60,33 @@ First-time database setup:
 
 `DIRECT_URL` must be Neon's direct host (no `-pooler` in the host name). Migrations through the pooler can leave a lock behind.
 
-## Test Phase 3 by hand (two teams, live)
+## Test the player screens with the short demo
 
-The screens are plain test screens for now; the real player screens come in Phase 4.
+About 15 minutes for a whole game.
 
 1. In `apps/server/.env`, set `JWT_SECRET` (any string of 32+ characters) and `ENABLE_DEV_TOOLS=true`.
 2. From `apps/server`, run `npm run db:seed -- --reset-demo --short`. Copy the 4 team codes and passwords it prints (they are shown only once). `--short` gives 5-minute rounds and a 1-minute pause; leave it out for the real 35/10/35 timings.
 3. From the repo root, run `npm run dev`.
-4. **Window A:** open http://localhost:5173/dev/staff and log in with `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`. Choose "Demo Game" and press **Start**. It shows Round 1 and a 5:00 countdown (35:00 without `--short`).
-5. **Window B:** open http://localhost:5173 in a new window and log in as `TEAM1`.
-6. **Window C:** open http://localhost:5173 in another new window (or tab) and log in as `TEAM2`. Put B and C side by side. Each tab keeps its own login.
-7. **Chat:** send "hello" from Team 1. It shows at once in B, C and the staff page. Team 1 now shows "Messages left: 4 of 5".
-8. **Funds:** from Team 1, send 500 to Team 2. B shows Task Funds 9,500 and "Arriving in 0:59" counting down; C shows the incoming transfer. After 60 seconds C shows 10,500. A Team 3 window would not see this transfer line.
-9. **Request:** Team 2 requests 300 from Team 1. Team 1 sees Accept and Decline. Accepting starts a new 60-second transfer.
-10. **Potion:** on the staff page, press "Finish all 5 tasks" for Team 1. Both team windows show the potion at 25% straight away.
-11. **Refresh:** refresh window B mid-countdown. It stays logged in and shows the same time left.
-12. **Pause:** press Pause on the staff page. Countdowns stop, and chat and funds say "The game is paused. Please wait." Press Resume and they carry on from the same time.
-13. **One login per team:** log in as `TEAM1` in another window. Window B shows "Your team logged in on another device."
+4. **Team windows:** open http://localhost:5173 in two new windows (or tabs) and log in as `TEAM1` and `TEAM2`. Each tab keeps its own login. Both show the **Lobby** with the rules and the empty potion.
+5. **Staff window:** open http://localhost:5173/dev/staff, log in with `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`, choose "Demo Game" and press **Start**. Both team windows switch to **Home** with a 5:00 countdown.
+6. **Round 1:** try each tab in the sidebar:
+   - **Home:** open a task and press **Start Task** (its timer runs), **Exit** (the timer keeps running, and the other cards say another task is open), then **Give up** (Task Funds drop by 3,500).
+   - **Chat:** send a message from Team 1. It appears at once for Team 2, and "Messages left" goes to 4 of 5.
+   - **Funds:** send 500 to the other team, and request funds back. Watch "Arriving in 0:59", the Accept/Decline buttons and the transaction list.
+   - **Inbox:** "Round 1 has started" is there, and "5 minutes left" arrives in full-length games. The first bonus task arrives at 1 minute of play.
+   - **Leaderboard:** your own row only, with no rank. **Rules:** the approved text.
+   - **Potion:** on the staff page press "Finish all 5 tasks" for Team 1. The bottle fills to 25% in both windows.
+7. **Pause:** after 5 minutes (or press **Next phase** on the staff page) both windows show only the potion and the Pause countdown.
+8. **Round 2:** after 1 minute (or **Next phase**) play carries on with the same task time left. The top bar now shows a rank and the leaderboard shows every team.
+9. **Reveal, full potion:** press "Finish all 5 tasks" for every team, then **Next phase**. The Reveal shows the halftime and final potions, "The potion is full!", then the leaderboard.
+10. **Reveal, nobody wins:** run step 2 again, start, finish tasks for only one team, and press **Next phase** three times. The Reveal says "The potion is not full. Nobody wins."
+11. **Refresh** any window at any time: it stays logged in on the same screen and time. **One login per team:** logging in as the same team elsewhere sends the old window to "Your team logged in on another device."
 
-To play again, run step 2 again (it makes a fresh Demo Game with new passwords). Turn `ENABLE_DEV_TOOLS` off when you are done; it is always off when `NODE_ENV=production`.
+Turn `ENABLE_DEV_TOOLS` off when you are done; it is always off when `NODE_ENV=production`.
+
+## Screenshots
+
+`npm run screenshots` saves a PNG of every player screen to `screenshots/phase4/` (git-ignored), at 1280×720 (a typical Zoom share) plus two at phone width. It uses the real server and database with two throwaway games that it creates and deletes; the Demo Game is not touched. It needs `ENABLE_DEV_TOOLS=true`, and runs `npm run dev` itself if it is not already running. First time only: `npx playwright install chromium`.
 
 ## Simulating a game
 

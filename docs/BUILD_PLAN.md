@@ -39,7 +39,7 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 - Chat with per-round limits; visibility rules per round. Connect the Phase 2 engine (transfers, fund requests, potion, inbox) to Socket.IO events.
 - **Done when:** two browser windows as two teams can chat, send funds and see the potion update live; refreshing never resets a timer.
 
-## Phase 4: Player screens
+## Phase 4: Player screens ✅
 
 - Rebuild the designs in `design/` with the corrections in `GAME_RULES.md` section 14.
 - Screens: Login, Lobby (intro video + rules), Home (5 task cards, fragments, potion), Chat, Funds, Inbox, Leaderboard, Rules, Pause screen, Reveal screen.
@@ -85,3 +85,7 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 - Unique team codes across games. Team login finds the team by code among games that have not ended, and refuses a code that two live games share. Phase 6 should generate codes that never clash.
 - Replace the Phase 3 test screens (`apps/web/src/pages/TeamPage.tsx`, `StaffDevPage.tsx`) with the real player screens (Phase 4) and admin panel (Phase 6), and remove the dev-only "finish all tasks" route (`ENABLE_DEV_TOOLS`) once the task screens exist.
 - Vercel rewrite so deep links such as `/dev/staff` load the app in production (Phase 7).
+- Team photo upload in the Inbox (needs Vercel Blob storage): Phase 6, with content upload. The card shows its status until then.
+- Hint, fail penalty and facilitator adjustment lines in the Funds transaction list (needs ledger rows in the player state): Phase 5 for hints and fails, Phase 6 for adjustments.
+- Facilitator messages in the inbox: Phase 6.
+- The Escape Room "Ask for Help" button opens the shared chat (GAME_RULES section 14). Check its label against section 16 in Phase 5.
