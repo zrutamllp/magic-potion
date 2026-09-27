@@ -124,6 +124,7 @@ export function startTask(
     frozenLockMs: null,
     hintsUsed: 0,
     wrongCount: 0,
+    lockouts: 0,
     lockedUntil: null,
     progress: {},
     result: null,
@@ -208,7 +209,15 @@ export function submitAnswer(
   });
 }
 
-// The Vault, Find the Code and Escape Room lock for 60 seconds after 3 wrong attempts.
+// How long the next lock on this task lasts. Locks on earlier tries count too, so giving up
+// does not reset it. The last length in the setting repeats (GAME_RULES section 3).
+export function nextLockSeconds(task: TeamTaskState, lengths: readonly number[]): number {
+  const locksSoFar = task.attempts.reduce((sum, a) => sum + a.lockouts, 0);
+  return lengths[Math.min(locksSoFar, lengths.length - 1)] ?? 60;
+}
+
+// The Vault, Find the Code and Escape Room lock after 3 wrong attempts: 60 seconds the first
+// time, then 2 minutes, then 4 minutes each time (all settings).
 function recordWrong(
   d: Draft,
   team: TeamState,
@@ -226,7 +235,13 @@ function recordWrong(
     d.updateAttempt(attempt, { progress, wrongCount });
     return;
   }
-  d.updateAttempt(attempt, { progress, wrongCount: 0, lockedUntil: d.now + lockoutSeconds * 1000 });
+  const seconds = nextLockSeconds(task, lockoutSeconds);
+  d.updateAttempt(attempt, {
+    progress,
+    wrongCount: 0,
+    lockouts: attempt.lockouts + 1,
+    lockedUntil: d.now + seconds * 1000,
+  });
   d.emit({ type: 'lockedOut', teamId: team.id, key: task.key });
 }
 

@@ -4,7 +4,7 @@ import { Button, Card } from '../ui/basics';
 import { LockoutBanner, SubmitFeedback, useLockLeft, useTaskSubmit } from './parts';
 import type { TaskPlayProps } from './TaskShell';
 
-// Find the Code: decode a word written in symbols. The key shows the letters the team knows;
+// Find the Code: decode a letter code written in symbols. The key shows the letters the team knows;
 // symbols with no known letter show "?". Facts only (GAME_RULES section 16).
 
 interface Pair {
@@ -48,7 +48,7 @@ export function FindCode({ task, running, view }: TaskPlayProps) {
       <Card>
         <p className="text-xl font-semibold">{content.intro}</p>
         <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-5">
-          {/* One row for the whole word: tiles shrink to fit long words. */}
+          {/* One row for the whole code: tiles shrink to fit long codes. */}
           <div
             className="grid gap-2"
             style={{ gridTemplateColumns: `repeat(${encodedMessage.length}, minmax(0, 4rem))` }}
@@ -87,7 +87,7 @@ export function FindCode({ task, running, view }: TaskPlayProps) {
             className="py-3 text-2xl"
             disabled={!complete || locked || busy}
           >
-            Submit the word
+            Submit the code
           </Button>
         </form>
       </Card>

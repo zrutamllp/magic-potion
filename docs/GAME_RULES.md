@@ -32,8 +32,8 @@ Every number below is a default setting that the admin can change per game befor
 - Each team gets 5 tasks: 2 common and 3 unique.
 - Common tasks: **The Vault** and **Find the Code** (the same task for every team, except for their fragments).
 - The Vault: every team has the same 3 clues, but its 3 fragment digits are random per team, so every team's code is different.
-- Find the Code: at game start each team gets its own word (from the content's word list) and its own random cipher. The team sees its encoded message and part of the key; the rest of the key is its fragment, held by another team. So every team's answer and fragment are different.
-- **Find the Code must not be guessable without the fragment.** From its own key a team sees at most half of the different letters (rounded down), never the first letter, only the letters used least often, and never more than half of the letters in the word. Words must also be ones whose visible pattern fits many English words (for example "_ A _ _ _ R" fits hammer, ladder, banner, batter…); a test checks every sample word against an English word list (at least 15 fitting words for every pattern a team can see). Everyday words with repeated letters work best; distinctive words such as "trampoline" do not.
+- Find the Code: at game start each team gets its own **random letter code** (6 or 7 letters with no repeated letter, for example KRVTBLE; never a real word) and its own random cipher. The team sees its encoded code and part of the key; the rest of the key is its fragment, held by another team. So every team's answer and fragment are different. The code length is part of the task content (default 6 to 7 letters).
+- **Find the Code must not be guessable without the fragment.** From its own key a team sees at most half of the different letters (rounded down), never the first letter, only the letters used least often, and never more than half of the letters in the code. Because the code is random letters, the hidden letters cannot be guessed from the visible ones.
 - Unique tasks: 3 drawn at random from the other 10. Several teams may draw the same unique task.
 - Only one task can be open at a time.
 - The task timer starts when the team presses Start Task and stops when they solve it, the timer runs out, or they give up.
@@ -50,7 +50,7 @@ Every task follows the same rules:
 | Timer runs out or Give up | Task fails and costs 3,500 Task Funds |
 | After failing | The team may restart the task with a fresh timer and a fresh hint. Each failure costs 3,500 again. |
 | Content on restart | Use a new content variant for that task if one is unused, else reuse the same content. Exception: Find the Code always keeps the same content, because the fragment another team holds is half of its key. The Vault changes its clues but keeps the same fragment digits. |
-| Code lockout | The Vault, Find the Code and Escape Room lock for 60 seconds after 3 wrong attempts |
+| Code lockout | The Vault, Find the Code and Escape Room lock after 3 wrong attempts: 60 seconds the first time, 2 minutes the second time, 4 minutes each time after that. Locks on earlier tries of the same task count, so giving up does not reset the lock length. The lengths are a setting. |
 
 Ethical Dilemma is the exception: it has no hint, and any complete answer passes. The chosen option and reason are saved for the debrief.
 
@@ -59,7 +59,7 @@ Ethical Dilemma is the exception: it has no hint, and any complete answer passes
 | # | Task | Type | Players do | Solved when | Timer | Hint gives |
 |---|---|---|---|---|---|---|
 | 1 | The Vault | Common | Solve 3 on-screen clues for 3 digits of a 6-digit code. The other 3 digits are a fragment held by another team. | All 6 digits entered | 12 min | One of the 3 on-screen digits |
-| 2 | Find the Code | Common | Decode a message. Part of the cipher key is on screen; the rest is a fragment held by another team. | Decoded word entered | 12 min | One more letter of the key |
+| 2 | Find the Code | Common | Decode a message. Part of the cipher key is on screen; the rest is a fragment held by another team. | Decoded code entered | 12 min | One more letter of the key |
 | 3 | Picture Puzzle | Unique | Drag scrambled tiles to rebuild an image | Image complete | 12 min | Numbers on correctly placed tiles |
 | 4 | Hangman | Unique | Guess letters of a phrase. 6 wrong guesses fail the task. | Phrase revealed | 8 min | One letter revealed |
 | 5 | Spot the Difference | Unique | Click 7 differences between two images | All 7 found | 8 min | One area highlighted |
@@ -185,7 +185,7 @@ Staff log in with their own name, email and password. The main admin creates co-
 
 ## 12. Game settings (all editable per game)
 
-Client name, logo and colours; number of teams; team names and passwords; task content; starting funds for both wallets; hint cost; fail penalty; lockout attempts and duration; task timers; round and pause lengths; chat limit and message length; transfer delay; inbox release times, reward and answer attempts; scoring multipliers; collaboration cap; Full Potion Bonus.
+Client name, logo and colours; number of teams; team names and passwords; task content; starting funds for both wallets; hint cost; fail penalty; lockout attempts and lock lengths; task timers; round and pause lengths; chat limit and message length; transfer delay; inbox release times, reward and answer attempts; scoring multipliers; collaboration cap; Full Potion Bonus.
 
 Scoring settings lock when Round 1 starts. Team names, funds and phase timing can still change live.
 
@@ -219,7 +219,7 @@ The images in `design/` came from a generic gaming template. Where they differ f
 5. **Tied scores:** teams share the rank (1, 2, 2, 4). See section 10.
 6. **Removed teams:** dropped from the leaderboard, the potion and the Full Potion Bonus. See sections 8 and 9.
 7. **Restarting Find the Code:** it keeps the same content, so the held fragment still works. See section 3.
-8. **Find the Code fragments:** each team gets its own word and cipher, so a team never holds the fragment it needs itself. See section 3.
+8. **Find the Code fragments:** each team gets its own random code and cipher, so a team never holds the fragment it needs itself. See section 3.
 
 ## 16. Player-facing text (learning design)
 

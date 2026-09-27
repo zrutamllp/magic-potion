@@ -190,7 +190,7 @@ export function TriesCard({ task, running }: { task: PlayerTaskView; running: Ru
   const { state } = useGame();
   const left = useLockLeft(running);
   if (!hasLockout(task)) return null;
-  const { lockoutAttempts, lockoutSeconds } = state.settings.tasks;
+  const { lockoutAttempts } = state.settings.tasks;
   const triesLeft = Math.max(0, lockoutAttempts - running.wrongCount);
   return (
     <Card tone={left > 0 ? 'danger' : 'muted'}>
@@ -205,7 +205,7 @@ export function TriesCard({ task, running }: { task: PlayerTaskView; running: Ru
         ) : (
           <>
             <strong className="nums">{triesLeft}</strong> of {lockoutAttempts} tries left before a{' '}
-            {shortLengthAdjective(lockoutSeconds)} lock.
+            {shortLengthAdjective(running.nextLockSeconds)} lock.
           </>
         )}
       </p>

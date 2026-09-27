@@ -62,6 +62,18 @@ export function vaultFragmentDigits(value: string): string {
   return value.replace(/\D/g, '');
 }
 
+// Letters for Find the Code codes. I and O are left out: they look like 1 and 0.
+export const CODE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+// A random letter code with no repeated letter, for example KRVTBLE (GAME_RULES section 3).
+// Not a real word, so it cannot be guessed from part of the key.
+export function makeCode(rng: Rng, length: { min: number; max: number }): string {
+  const n = length.min + randInt(rng, length.max - length.min + 1);
+  return shuffle(rng, [...CODE_LETTERS])
+    .slice(0, n)
+    .join('');
+}
+
 // Which letters of a Find the Code word the team sees (GAME_RULES section 3). So the word cannot
 // be guessed without the fragment: never the first letter, at most half of the different letters
 // (rounded down), the ones used least often, and never more than half of the word.
@@ -112,14 +124,13 @@ export function findCodeFragmentValue(cipher: FindCodeCipher): string {
 }
 
 // The team at position p holds the fragment needed by the team at (p + offset) mod n.
-// Each team gets its own Find the Code word (spread across the word list) and cipher.
+// Each team gets its own random Find the Code code and cipher.
 export function buildFragments(
   rng: Rng,
   order: readonly string[],
   findCode: TaskSecretContent<'find_code'>,
 ): FragmentPlan[] {
   const n = order.length;
-  const words = shuffle(rng, findCode.words);
   const plans: FragmentPlan[] = [];
   for (const kind of ['VAULT', 'FIND_CODE'] as const) {
     const offset = chainOffset(kind, n);
@@ -135,7 +146,7 @@ export function buildFragments(
         });
         continue;
       }
-      const cipher = makeCipher(rng, words[needer % words.length] as string, findCode.symbols);
+      const cipher = makeCipher(rng, makeCode(rng, findCode.codeLength), findCode.symbols);
       plans.push({
         kind,
         holderTeamId: order[p] as string,

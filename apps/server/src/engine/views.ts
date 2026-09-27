@@ -7,7 +7,7 @@ import {
 } from '@magic-potion/shared';
 import { publicView, type Json } from './checkers';
 import { seededRng } from './rng';
-import { checkerContext } from './rules/tasks';
+import { checkerContext, nextLockSeconds } from './rules/tasks';
 import { runningAttempt, tasksDone, type GameContent, type GameState } from './state';
 
 // What one team may see. Only public fields: no answers, no other teams' fragments.
@@ -25,6 +25,7 @@ export interface TeamTaskView {
     lockMsLeft: number;
     hintsUsed: number;
     wrongCount: number;
+    nextLockSeconds: number;
     view: Json;
   } | null;
   lastResult: AttemptResult | null;
@@ -72,6 +73,7 @@ export function teamView(
               : Math.max(0, (attempt.lockedUntil ?? 0) - now),
             hintsUsed: attempt.hintsUsed,
             wrongCount: attempt.wrongCount,
+            nextLockSeconds: nextLockSeconds(task, state.settings.tasks.lockoutSeconds),
             view: publicView(
               task.key,
               checkerContext(state, content, team, task, attempt, rng),

@@ -31,6 +31,8 @@ export interface AttemptState {
   frozenLockMs: number | null;
   hintsUsed: number;
   wrongCount: number;
+  // How many times this try has locked after too many wrong tries.
+  lockouts: number;
   lockedUntil: number | null;
   progress: Json;
   result: AttemptResult | null;

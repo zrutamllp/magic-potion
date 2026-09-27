@@ -3,7 +3,7 @@ import { ArrowLeft, CheckCircle2, Hourglass, Play, RotateCcw, XCircle } from 'lu
 import type { AttemptResult, PlayerTaskView } from '@magic-potion/shared';
 import { formatMs, money } from '../../lib/time';
 import { useGame } from '../GameContext';
-import { secondsText } from '../rules';
+import { lockTimesText } from '../rules';
 import { startBlock } from '../screens/Home';
 import { TASK_LOOK } from '../tasks';
 import { Button, Card, Chip, TONE_BG, TONE_TEXT } from '../ui/basics';
@@ -157,8 +157,8 @@ function Brief({ task }: { task: PlayerTaskView }) {
           <li>Timer runs out or Give up: −{money(tasks.failPenalty)} Task Funds.</li>
           {hasLockout(task) && (
             <li>
-              {tasks.lockoutAttempts} wrong tries lock the task for{' '}
-              {secondsText(tasks.lockoutSeconds)}.
+              {tasks.lockoutAttempts} wrong tries lock the task:{' '}
+              {lockTimesText(tasks.lockoutSeconds)}.
             </li>
           )}
           {failed && (

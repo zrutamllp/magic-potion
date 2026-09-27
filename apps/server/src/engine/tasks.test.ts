@@ -192,6 +192,49 @@ describe('code lockout', () => {
     expect(taskOf(g.engine, t.id, taskId).attempts[0]?.wrongCount).toBe(1);
   });
 
+  it('locks longer each time: 60 seconds, 2 minutes, then 4 minutes', async () => {
+    const g = await started(3);
+    const { team: t, taskId } = withTask(g.engine, 'find_code');
+    await g.engine.startTask(t.id, taskId);
+    const lockAfter3Wrong = async () => {
+      let last: unknown;
+      for (let i = 0; i < 3; i++) last = await g.engine.submit(t.id, taskId, { answer: 'nope' });
+      return (last as { value: { lockedUntil: number } }).value.lockedUntil - g.clock.now();
+    };
+    expect(await lockAfter3Wrong()).toBe(60_000);
+    g.clock.advance(60_000);
+    expect(await lockAfter3Wrong()).toBe(120_000);
+    g.clock.advance(120_000);
+    expect(await lockAfter3Wrong()).toBe(240_000);
+    g.clock.advance(240_000);
+    expect(await lockAfter3Wrong()).toBe(240_000);
+    expect(taskOf(g.engine, t.id, taskId).attempts[0]?.lockouts).toBe(4);
+  });
+
+  it('keeps growing after a restart, so giving up does not reset the lock', async () => {
+    const g = await started(3);
+    const { team: t, taskId } = withTask(g.engine, 'vault');
+    await g.engine.startTask(t.id, taskId);
+    for (let i = 0; i < 3; i++) await g.engine.submit(t.id, taskId, { code: '000000' });
+    await g.engine.giveUp(t.id, taskId);
+    await g.engine.startTask(t.id, taskId);
+    let last: unknown;
+    for (let i = 0; i < 3; i++) last = await g.engine.submit(t.id, taskId, { code: '000000' });
+    expect((last as { value: { lockedUntil: number } }).value.lockedUntil).toBe(T0 + 120_000);
+  });
+
+  it('uses the lock lengths from the settings', async () => {
+    const clock = new FakeClock(T0);
+    const { engine } = memoryEngine({ teams: 3, clock });
+    engine.state.settings.tasks.lockoutSeconds = [30];
+    await engine.startGame(ADMIN);
+    const { team: t, taskId } = withTask(engine, 'vault');
+    await engine.startTask(t.id, taskId);
+    let last: unknown;
+    for (let i = 0; i < 3; i++) last = await engine.submit(t.id, taskId, { code: '000000' });
+    expect((last as { value: { lockedUntil: number } }).value.lockedUntil).toBe(T0 + 30_000);
+  });
+
   it('does not lock tasks without a code lockout', async () => {
     const g = await started();
     const { team: t, taskId } = withTask(g.engine, 'riddle');

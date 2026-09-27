@@ -20,7 +20,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
     hintsPerAttempt: 1,
     failPenalty: 3_500,
     lockoutAttempts: 3,
-    lockoutSeconds: 60,
+    // 1st lock 60 seconds, 2nd 2 minutes, 3rd and later 4 minutes.
+    lockoutSeconds: [60, 120, 240],
     hangmanMaxWrong: 6,
     timerSeconds: {
       vault: minutes(12),

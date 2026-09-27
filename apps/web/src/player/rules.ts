@@ -34,6 +34,19 @@ export function lengthAdjective(seconds: number): string {
   return seconds % 60 === 0 ? `${seconds / 60}-minute` : `${seconds}-second`;
 }
 
+const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth'];
+
+// "60 seconds the first time, 2 minutes the second time, and 4 minutes each time after that".
+export function lockTimesText(lengths: readonly number[]): string {
+  if (lengths.length === 1) return `${secondsText(lengths[0] ?? 60)} each time`;
+  const parts = lengths.map((s, i) =>
+    i === lengths.length - 1
+      ? `${secondsText(s)} each time after that`
+      : `${secondsText(s)} the ${ORDINALS[i] ?? `${i + 1}th`} time`,
+  );
+  return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+}
+
 function times(k: number): string {
   if (k === 1) return 'once';
   if (k === 2) return 'twice';
@@ -70,7 +83,7 @@ export function rulesSections(s: GameSettings): RulesSection[] {
         '**Exit** takes you back to Home. The timer keeps running, and your other tasks stay locked until this task is solved or fails.',
         '**Give up** counts as a fail.',
         `If the timer runs out or you give up, you lose ${n(tasks.failPenalty)} Task Funds. You can try the task again with a new timer.`,
-        `The Vault, Find the Code and Escape Room lock for ${secondsText(tasks.lockoutSeconds)} after ${n(tasks.lockoutAttempts)} wrong tries.`,
+        `The Vault, Find the Code and Escape Room lock after ${n(tasks.lockoutAttempts)} wrong tries: ${lockTimesText(tasks.lockoutSeconds)}.`,
       ],
     },
     {

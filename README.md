@@ -88,8 +88,8 @@ Turn `ENABLE_DEV_TOOLS` off when you are done; it is always off when `NODE_ENV=p
 
 Batch 1 (The Vault, Find the Code) is playable; the other tasks show a placeholder until their batch is built. Use the short demo from the section above (reset it once: the sample words and intros changed).
 
-- **The Vault:** answer the 3 clues for the first 3 digits (8, 3, 6 in the sample). The last 3 digits are a Found item ("Fragment: 1-4-3") on another team's Home. With 4 teams any team can hold it, so compare the Found items of the other team windows. Type all 6 digits and press **Open the vault**. Three wrong codes lock the task for 60 seconds.
-- **Find the Code:** the known letters are filled in; typing a letter under one symbol fills every copy of it. The key shows "?" for symbols with no known letter; the missing pairs ("⌘ = R, ❖ = T") are a Found item on another team's Home. Submit the word.
+- **The Vault:** answer the 3 clues for the first 3 digits (8, 3, 6 in the sample). The last 3 digits are a Found item ("Fragment: 1-4-3") on another team's Home. With 4 teams any team can hold it, so compare the Found items of the other team windows. Type all 6 digits and press **Open the vault**. Three wrong codes lock the task: 60 seconds the first time, 2 minutes the second, 4 minutes after that.
+- **Find the Code:** each team decodes its own random 6- or 7-letter code (not a word, so it cannot be guessed). The known letters are filled in; typing a letter under one symbol fills every copy of it. The key shows "?" for symbols with no known letter; the missing pairs ("⌘ = R, ❖ = T") are a Found item on another team's Home. Submit the code.
 - **Shell:** try **Use hint** (it shows how the 1,500 is paid: Support Funds first), **Give up** (−3,500 Task Funds) and **Try again**. The Funds tab lists the hint and fail lines.
 
 `npm run screenshots:batch1` saves the Batch 1 screens (brief, playing, hint, locked, failed, solved, Funds lines) to `screenshots/phase5/batch1/`.

@@ -54,6 +54,8 @@ export interface PlayerTaskView {
     hintsUsed: number;
     // Wrong tries since the last lockout (lockout tasks only).
     wrongCount: number;
+    // How long the next lock would last, in seconds (it grows with each lock).
+    nextLockSeconds: number;
     view: unknown;
   } | null;
   // How the latest finished try ended, or null if none has.

@@ -302,6 +302,8 @@ model TaskAttempt {
   frozenLockMs      Int?
   hintsUsed         Int       @default(0)
   wrongCount        Int       @default(0)
+  // How many times this try has locked. Lock lengths grow with each lock on the task.
+  lockouts          Int       @default(0)
   lockedUntil       DateTime?
   // Task-specific progress (Hangman letters, Escape Room stage, Ethical Dilemma answer, ...).
   progress          Json      @default("{}")

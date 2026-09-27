@@ -30,7 +30,9 @@ export const GameSettingsSchema = z.object({
     hintsPerAttempt: z.number().int().nonnegative(),
     failPenalty: money,
     lockoutAttempts: count,
-    lockoutSeconds: seconds,
+    // Lock lengths after each run of wrong tries: the 1st lock, the 2nd, ... The last one repeats.
+    // Games saved when this was a single number still load.
+    lockoutSeconds: z.union([seconds.transform((s) => [s]), z.array(seconds).min(1)]),
     hangmanMaxWrong: count,
     timerSeconds: z.record(TaskKeySchema, seconds),
   }),

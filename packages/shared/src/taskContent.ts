@@ -29,21 +29,22 @@ export const TaskContentSchemas = {
   },
   find_code: {
     public: z.object({ intro: text }),
-    // At game start the engine gives each team its own word and a random cipher made from
-    // the symbol pool. Half the key is on screen; the other half is the fragment another team holds.
+    // At game start the engine gives each team its own random letter code (never a real word,
+    // so it cannot be guessed) and a random cipher from the symbol pool. Part of the key is on
+    // screen; the rest is the fragment another team holds. Content saved with the old word list
+    // still loads: unknown fields are ignored.
     secret: z
       .object({
-        words: z.array(z.string().regex(/^[a-zA-Z]+$/)).min(1),
         symbols: z.array(text).min(1),
+        codeLength: z
+          .object({ min: z.number().int().min(4).max(12), max: z.number().int().min(4).max(12) })
+          .refine((l) => l.min <= l.max, 'min must not be above max')
+          .default({ min: 6, max: 7 }),
       })
       .refine((s) => new Set(s.symbols).size === s.symbols.length, 'Symbols must be different')
       .refine(
-        (s) => s.words.every((w) => distinctLetters(w).length >= 4),
-        'Each word needs at least 4 different letters',
-      )
-      .refine(
-        (s) => s.words.every((w) => distinctLetters(w).length <= s.symbols.length),
-        'Need at least one symbol per different letter in each word',
+        (s) => s.symbols.length >= s.codeLength.max,
+        'Need at least one symbol per letter of the longest code',
       ),
   },
   picture_puzzle: {

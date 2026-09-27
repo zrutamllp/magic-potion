@@ -105,6 +105,7 @@ export async function loadGame(
               frozenLockMs: a.frozenLockMs,
               hintsUsed: a.hintsUsed,
               wrongCount: a.wrongCount,
+              lockouts: a.lockouts,
               lockedUntil: ms(a.lockedUntil),
               progress: a.progress as Json,
               result: a.result,

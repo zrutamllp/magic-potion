@@ -5,6 +5,7 @@ import {
   chainOrder,
   drawTasks,
   makeCipher,
+  makeCode,
   visibleLetters,
   pickContent,
   vaultFragmentDigits,
@@ -12,7 +13,7 @@ import {
 import { seededRng } from './rng';
 
 const findCodeSecret = {
-  words: ['teamwork', 'together', 'trust'],
+  codeLength: { min: 6, max: 7 },
   symbols: ['★', '◆', '●', '▲', '■', '✚', '☾', '✿', '♣', '♠'],
 };
 
@@ -98,7 +99,7 @@ describe('fragment chains', () => {
     }
   });
 
-  it('gives each team its own Find the Code word and cipher, with the hidden key as the fragment', () => {
+  it('gives each team its own Find the Code code and cipher, with the hidden key as the fragment', () => {
     const plans = buildFragments(seededRng(2), ['a', 'b', 'c'], findCodeSecret);
     const code = plans.filter((p) => p.kind === 'FIND_CODE');
     expect(new Set(code.map((f) => f.secretData?.word)).size).toBe(3);
@@ -109,6 +110,33 @@ describe('fragment chains', () => {
     // A team's own fragment never solves its own puzzle.
     const neededBy = new Map(code.map((f) => [f.neededByTeamId, f.value]));
     for (const f of code) expect(neededBy.get(f.holderTeamId)).not.toBe(f.value);
+  });
+});
+
+describe('makeCode', () => {
+  it('makes random 6- or 7-letter codes with no repeated letter and no I or O', () => {
+    const lengths = new Set<number>();
+    const codes = new Set<string>();
+    for (let seed = 1; seed <= 200; seed++) {
+      const code = makeCode(seededRng(seed), { min: 6, max: 7 });
+      lengths.add(code.length);
+      codes.add(code);
+      expect(code).toMatch(/^[A-HJ-NP-Z]{6,7}$/);
+      expect(new Set(code).size).toBe(code.length);
+    }
+    expect([...lengths].sort()).toEqual([6, 7]);
+    expect(codes.size).toBeGreaterThan(190);
+  });
+
+  it('keeps the team key rule for codes: the first letter and at least half are hidden', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const rng = seededRng(seed);
+      const c = makeCipher(rng, makeCode(rng, { min: 6, max: 7 }), findCodeSecret.symbols);
+      const visible = new Set(c.visibleKey.map((k) => k.letter));
+      expect(visible.has(c.word[0]!)).toBe(false);
+      expect(c.hiddenKey.length).toBeGreaterThanOrEqual(Math.ceil(c.word.length / 2));
+      expect(c.visibleKey.length).toBe(Math.floor(c.word.length / 2));
+    }
   });
 });
 

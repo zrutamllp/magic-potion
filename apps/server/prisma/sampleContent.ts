@@ -28,26 +28,11 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
     key: 'find_code',
     variant: 1,
     publicData: {
-      intro: 'Decode the secret word with the key below.',
+      intro: 'Decode the secret code with the key below.',
     },
-    // Each team gets its own word from this list and its own random cipher.
+    // Each team gets its own random 6- or 7-letter code (no real words) and its own cipher.
     secretData: {
-      // Everyday words with repeated letters: the visible letters fit many English words,
-      // so the word cannot be guessed without the fragment (checked in sampleContent.test.ts).
-      words: [
-        'hammer',
-        'ladder',
-        'dinner',
-        'summer',
-        'puddle',
-        'paddle',
-        'waffle',
-        'bottles',
-        'kitten',
-        'letters',
-        'muffin',
-        'pollen',
-      ],
+      codeLength: { min: 6, max: 7 },
       symbols: [
         '★',
         '◆',

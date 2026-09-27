@@ -31,6 +31,7 @@ function running(overrides: Partial<NonNullable<PlayerTaskView['running']>> = {}
     lockMsLeft: 0,
     hintsUsed: 0,
     wrongCount: 0,
+    nextLockSeconds: 60,
     view: vaultView,
     ...overrides,
   };
@@ -54,7 +55,11 @@ describe('task shell', () => {
     );
     expect(screen.getByText('Hint: 1 per try, costs 1,500.')).toBeInTheDocument();
     expect(screen.getByText('Timer runs out or Give up: −3,500 Task Funds.')).toBeInTheDocument();
-    expect(screen.getByText('3 wrong tries lock the task for 60 seconds.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '3 wrong tries lock the task: 60 seconds the first time, 2 minutes the second time, and 4 minutes each time after that.',
+      ),
+    ).toBeInTheDocument();
     // The puzzle is not shown before Start.
     expect(screen.queryByText(/How many legs/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Start Task' }));
@@ -129,6 +134,15 @@ describe('task shell', () => {
     });
     expect(screen.getByRole('alert')).toHaveTextContent('Try again in 0:42');
     expect(screen.getByRole('button', { name: 'Open the vault' })).toBeDisabled();
+  });
+
+  it('tries card: says the next lock is longer after earlier locks', () => {
+    renderGame(<TaskScreen taskId="v" />, {
+      state: withTasks([
+        vault({ status: 'IN_PROGRESS', running: running({ nextLockSeconds: 120 }) }),
+      ]),
+    });
+    expect(screen.getByText(/tries left before a 2-minute lock/)).toBeInTheDocument();
   });
 
   it('never tells teams to cooperate', () => {
@@ -232,7 +246,7 @@ describe('Find the Code', () => {
     expect(screen.getByText('● = ?')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Letter 2'), { target: { value: 'e' } });
     fireEvent.change(screen.getByLabelText('Letter 3'), { target: { value: 's' } });
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Submit the word' })));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Submit the code' })));
     expect(send).toHaveBeenCalledWith('task:submit', {
       taskId: 'f',
       submission: { answer: 'TEST' },
@@ -251,6 +265,6 @@ describe('Find the Code', () => {
 
   it('cannot submit until every letter is filled', () => {
     renderGame(<TaskScreen taskId="f" />, { state: playing() });
-    expect(screen.getByRole('button', { name: 'Submit the word' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Submit the code' })).toBeDisabled();
   });
 });

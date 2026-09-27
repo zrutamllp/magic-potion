@@ -158,6 +158,7 @@ describe('Home', () => {
                 lockMsLeft: 0,
                 hintsUsed: 0,
                 wrongCount: 0,
+                nextLockSeconds: 60,
                 view: {},
               },
             }
@@ -213,6 +214,7 @@ describe('task screen', () => {
             lockMsLeft: 0,
             hintsUsed: 0,
             wrongCount: 0,
+            nextLockSeconds: 60,
             view: {},
           },
         }),
@@ -240,6 +242,7 @@ describe('task screen', () => {
             lockMsLeft: 0,
             hintsUsed: 0,
             wrongCount: 0,
+            nextLockSeconds: 60,
             view: {},
           },
         }),

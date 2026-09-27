@@ -5,10 +5,7 @@ import {
   parseTaskContent,
 } from '@magic-potion/shared';
 import { describe, expect, it } from 'vitest';
-import englishWords from 'an-array-of-english-words';
 import { forbiddenPhrases } from '@magic-potion/shared';
-import { visibleLetters } from '../src/engine/assignment';
-import { seededRng } from '../src/engine/rng';
 import { SAMPLE_INBOX_ITEMS, SAMPLE_TASK_CONTENT } from './sampleContent';
 
 describe('sample content pack', () => {
@@ -65,55 +62,10 @@ describe('sample content pack', () => {
     expect(bad).toEqual([]);
   });
 
-  // GAME_RULES section 3: Find the Code cannot be guessed from the team's own half of the key.
-  // For every pattern a team can see, count the English words that fit it.
-  describe('Find the Code words cannot be guessed without the fragment', () => {
-    const MIN_FITTING_WORDS = 15;
+  // GAME_RULES section 3: Find the Code uses random letter codes made at game start, never words.
+  it('has no Find the Code word list, only a code length', () => {
     const findCode = SAMPLE_TASK_CONTENT.find((c) => c.key === 'find_code');
-    const words = (findCode?.secretData as { words: string[] }).words;
-    const byLength = new Map<number, string[]>();
-    for (const w of englishWords as string[]) {
-      if (/^[a-z]+$/.test(w)) byLength.set(w.length, [...(byLength.get(w.length) ?? []), w]);
-    }
-
-    // English words that fit what the team sees: shown letters in place, and each hidden symbol
-    // one letter that is not shown, different symbols different letters.
-    function fitting(word: string, shown: Set<string>): string[] {
-      const w = word.toLowerCase();
-      return (byLength.get(w.length) ?? []).filter((candidate) => {
-        const map = new Map<string, string>();
-        const used = new Set<string>();
-        for (let i = 0; i < w.length; i++) {
-          const real = w[i] as string;
-          const letter = candidate[i] as string;
-          if (shown.has(real)) {
-            if (letter !== real) return false;
-          } else if (shown.has(letter)) {
-            return false;
-          } else if (map.has(real)) {
-            if (map.get(real) !== letter) return false;
-          } else {
-            if (used.has(letter)) return false;
-            map.set(real, letter);
-            used.add(letter);
-          }
-        }
-        return true;
-      });
-    }
-
-    for (const word of words) {
-      it(word, () => {
-        const patterns = new Set<string>();
-        for (let seed = 1; seed <= 60; seed++) {
-          patterns.add(visibleLetters(seededRng(seed), word).sort().join(''));
-        }
-        for (const pattern of patterns) {
-          const shown = new Set([...pattern.toLowerCase()]);
-          expect(shown.has(word[0] as string)).toBe(false);
-          expect(fitting(word, shown).length).toBeGreaterThanOrEqual(MIN_FITTING_WORDS);
-        }
-      });
-    }
+    expect(findCode?.secretData).not.toHaveProperty('words');
+    expect(findCode?.secretData).toMatchObject({ codeLength: { min: 6, max: 7 } });
   });
 });

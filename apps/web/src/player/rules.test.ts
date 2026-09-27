@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '@magic-potion/shared';
-import { minutesText, rulesPlainText, rulesSections } from './rules';
+import { lockTimesText, minutesText, rulesPlainText, rulesSections } from './rules';
 import { FORBIDDEN } from './test/forbidden';
 
 describe('Rules text', () => {
@@ -26,7 +26,7 @@ describe('Rules text', () => {
       'two rounds of 35 minutes, with a 10-minute pause',
       'worth 10,000 points',
       'you lose 3,500 Task Funds',
-      'lock for 60 seconds after 3 wrong tries',
+      'lock after 3 wrong tries: 60 seconds the first time, 2 minutes the second time, and 4 minutes each time after that.',
       'A hint costs 1,500',
       'A hint is blocked if it would take your Task Funds below zero.',
       'Task Funds start at 10,000',
@@ -65,6 +65,16 @@ describe('Rules text', () => {
   it('never tells teams to cooperate or explains the rounds', () => {
     const text = rulesPlainText(DEFAULT_SETTINGS);
     for (const pattern of FORBIDDEN) expect(text).not.toMatch(pattern);
+  });
+
+  it('states the growing lock times plainly', () => {
+    expect(lockTimesText([60, 120, 240])).toBe(
+      '60 seconds the first time, 2 minutes the second time, and 4 minutes each time after that',
+    );
+    expect(lockTimesText([60, 300])).toBe(
+      '60 seconds the first time, and 5 minutes each time after that',
+    );
+    expect(lockTimesText([90])).toBe('90 seconds each time');
   });
 
   it('writes times in plain words', () => {

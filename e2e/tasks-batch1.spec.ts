@@ -98,7 +98,7 @@ test('Batch 1 tasks', async ({ browser }) => {
     if ((await box.inputValue()) === '') await box.fill('X');
   }
   for (let i = 0; i < 3; i++) {
-    await page.getByRole('button', { name: 'Submit the word' }).click();
+    await page.getByRole('button', { name: 'Submit the code' }).click();
     // The third wrong try locks the task; then only the lock banner shows.
     if (i < 2)
       await expect(page.getByRole('status').filter({ hasText: /Not right/ })).toBeVisible();

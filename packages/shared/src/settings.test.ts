@@ -16,6 +16,12 @@ describe('DEFAULT_SETTINGS', () => {
     expect(GameSettingsSchema.parse(old).branding.introVideoUrl).toBeNull();
   });
 
+  it('loads a single lock length saved by an older version', () => {
+    const old = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as { tasks: Record<string, unknown> };
+    old.tasks.lockoutSeconds = 90;
+    expect(GameSettingsSchema.parse(old).tasks.lockoutSeconds).toEqual([90]);
+  });
+
   it('matches the numbers in GAME_RULES.md', () => {
     const s = DEFAULT_SETTINGS;
     expect(s.funds).toEqual({ taskFundsStart: 10_000, supportFundsStart: 4_500 });
@@ -23,7 +29,7 @@ describe('DEFAULT_SETTINGS', () => {
     expect(s.tasks.hintsPerAttempt).toBe(1);
     expect(s.tasks.failPenalty).toBe(3_500);
     expect(s.tasks.lockoutAttempts).toBe(3);
-    expect(s.tasks.lockoutSeconds).toBe(60);
+    expect(s.tasks.lockoutSeconds).toEqual([60, 120, 240]);
     expect(s.tasks.hangmanMaxWrong).toBe(6);
     expect(s.phases).toEqual({ round1Seconds: 2_100, pauseSeconds: 600, round2Seconds: 2_100 });
     expect(s.phases.round1Seconds + s.phases.round2Seconds).toBe(4_200);
