@@ -3,6 +3,7 @@ export * from './engineErrors';
 export * from './enums';
 export * from './health';
 export * from './playerState';
+export * from './playerText';
 export * from './realtime';
 export * from './settings';
 export * from './taskContent';

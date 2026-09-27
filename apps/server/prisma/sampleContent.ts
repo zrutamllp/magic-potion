@@ -15,8 +15,7 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
     key: 'vault',
     variant: 1,
     publicData: {
-      intro:
-        'Crack the 6-digit code. Solve the 3 clues for the first 3 digits. Another team holds the last 3.',
+      intro: 'Crack the 6-digit code. The 3 clues give 3 of the digits.',
       clues: [
         { text: 'How many legs does a spider have?' },
         { text: 'How many sides does a triangle have?' },
@@ -29,23 +28,23 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
     key: 'find_code',
     variant: 1,
     publicData: {
-      intro: 'Decode the secret word. You have half of the key. Another team holds the other half.',
+      intro: 'Decode the secret word with the key below.',
     },
     // Each team gets its own word from this list and its own random cipher.
     secretData: {
       words: [
-        'teamwork',
-        'together',
-        'trust',
-        'bridge',
-        'harmony',
-        'unity',
-        'partner',
-        'support',
-        'network',
-        'balance',
-        'kindness',
-        'sharing',
+        'lantern',
+        'compass',
+        'harbour',
+        'meadow',
+        'crystal',
+        'thunder',
+        'orchard',
+        'pyramid',
+        'glacier',
+        'canyon',
+        'falcon',
+        'velvet',
       ],
       symbols: [
         '★',
@@ -91,14 +90,14 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
   {
     key: 'hangman',
     variant: 1,
-    publicData: { category: 'A saying about teams' },
-    secretData: { phrase: 'Together we achieve more' },
+    publicData: { category: 'A saying' },
+    secretData: { phrase: 'Every cloud has a silver lining' },
   },
   {
     key: 'hangman',
     variant: 2,
     publicData: { category: 'A proverb' },
-    secretData: { phrase: 'Many hands make light work' },
+    secretData: { phrase: 'The early bird catches the worm' },
   },
   {
     key: 'spot_difference',
@@ -125,20 +124,20 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
     key: 'alien_translator',
     variant: 1,
     publicData: {
-      message: ['⍟', '⌘', '⎈', '⌬', '⏃', ' ', '⍜', '⏚', '⏃', '⎈', '⍟'],
+      message: ['⌘', '⍜', '⏚', '⏚', '⏃', '⍟', ' ', '⏚', '⎈', '⎈', '⌬'],
       legend: [
-        { symbol: '⍟', letter: 'S' },
         { symbol: '⌘', letter: 'H' },
-        { symbol: '⏃', letter: 'E' },
         { symbol: '⍜', letter: 'I' },
+        { symbol: '⏃', letter: 'E' },
+        { symbol: '⍟', letter: 'N' },
       ],
     },
     secretData: {
-      answer: ['share ideas'],
+      answer: ['hidden door'],
       hiddenLegend: [
-        { symbol: '⎈', letter: 'A' },
-        { symbol: '⌬', letter: 'R' },
         { symbol: '⏚', letter: 'D' },
+        { symbol: '⎈', letter: 'O' },
+        { symbol: '⌬', letter: 'R' },
       ],
     },
   },
@@ -288,20 +287,20 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
           title: 'Find the key',
           prompt: 'The key is hidden under the thing you sit on. What is it?',
         },
-        { title: 'Mirror puzzle', prompt: 'Read this in a mirror: KROWMAET' },
-        { title: 'Cipher', prompt: 'Move each letter back by one in the alphabet: TIBSF' },
+        { title: 'Mirror puzzle', prompt: 'Read this in a mirror: HCTAWPOTS' },
+        { title: 'Cipher', prompt: 'Move each letter back by one in the alphabet: DMPDL' },
         {
           title: 'Escape',
-          prompt: 'The door code is the number of letters in your last two answers added together.',
+          prompt: 'The door code is the number of letters in your last two answers, added up.',
         },
       ],
     },
     secretData: {
       stages: [
         { answer: ['chair', 'a chair', 'the chair', 'seat'], hint: 'Look down.' },
-        { answer: ['teamwork'], hint: 'Read the letters from right to left.' },
-        { answer: ['share'], hint: 'T becomes S.' },
-        { answer: ['13', 'thirteen'], hint: 'Count the letters in TEAMWORK and SHARE.' },
+        { answer: ['stopwatch'], hint: 'Read the letters from right to left.' },
+        { answer: ['clock'], hint: 'D becomes C.' },
+        { answer: ['14', 'fourteen'], hint: 'Count the letters in STOPWATCH and CLOCK.' },
       ],
     },
   },
@@ -351,7 +350,7 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
         'An hour before a big deadline, you find a mistake in a teammate’s part of the report. Fixing it will make the team late. What do you do?',
       options: [
         'Fix it quietly and submit late.',
-        'Tell your teammate and decide together.',
+        'Tell your teammate and agree on what to do.',
         'Submit on time and mention the mistake later.',
         'Tell your manager and let them decide.',
       ],

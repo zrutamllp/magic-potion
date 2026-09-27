@@ -152,7 +152,14 @@ describe('Home', () => {
           ? {
               ...t,
               status: 'IN_PROGRESS',
-              running: { number: 1, msLeft: 125_000, lockMsLeft: 0, hintsUsed: 0, view: {} },
+              running: {
+                number: 1,
+                msLeft: 125_000,
+                lockMsLeft: 0,
+                hintsUsed: 0,
+                wrongCount: 0,
+                view: {},
+              },
             }
           : t,
       ),
@@ -200,7 +207,14 @@ describe('task screen', () => {
           key: 'riddle',
           name: 'Riddle',
           status: 'IN_PROGRESS',
-          running: { number: 1, msLeft: 60_000, lockMsLeft: 0, hintsUsed: 0, view: {} },
+          running: {
+            number: 1,
+            msLeft: 60_000,
+            lockMsLeft: 0,
+            hintsUsed: 0,
+            wrongCount: 0,
+            view: {},
+          },
         }),
       ],
     };
@@ -215,7 +229,14 @@ describe('task screen', () => {
       tasks: [
         task({
           status: 'IN_PROGRESS',
-          running: { number: 1, msLeft: 300_000, lockMsLeft: 0, hintsUsed: 0, view: {} },
+          running: {
+            number: 1,
+            msLeft: 300_000,
+            lockMsLeft: 0,
+            hintsUsed: 0,
+            wrongCount: 0,
+            view: {},
+          },
         }),
       ],
     };

@@ -1,4 +1,5 @@
 import type {
+  AttemptResult,
   FundRequestStatus,
   GamePhase,
   InboxKind,
@@ -51,8 +52,23 @@ export interface PlayerTaskView {
     msLeft: number;
     lockMsLeft: number;
     hintsUsed: number;
+    // Wrong tries since the last lockout (lockout tasks only).
+    wrongCount: number;
     view: unknown;
   } | null;
+  // How the latest finished try ended, or null if none has.
+  lastResult: AttemptResult | null;
+}
+
+// A wallet change that is not a transfer: a hint, a fail penalty, or a facilitator change.
+// Transfers are listed from the feed.
+export interface TransactionLine {
+  id: string;
+  at: number;
+  kind: 'HINT' | 'FAIL_PENALTY' | 'STAFF_ADJUST' | 'UNDO';
+  taskName: string | null;
+  taskFunds: number;
+  supportFunds: number;
 }
 
 export interface PlayerTransferView {
@@ -125,6 +141,8 @@ export interface PlayerState {
   teams: { id: string; name: string }[];
   pendingTransfers: PlayerTransferView[];
   pendingRequests: PlayerRequestView[];
+  // Newest first.
+  transactions: TransactionLine[];
   inbox: PlayerInboxView[];
   // Null in the Lobby and the Pause.
   leaderboard: LeaderboardView | null;

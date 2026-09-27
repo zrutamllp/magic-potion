@@ -1,5 +1,6 @@
 import {
   TASK_DEFINITIONS,
+  type AttemptResult,
   type TaskKey,
   type TaskType,
   type TeamTaskStatus,
@@ -23,8 +24,10 @@ export interface TeamTaskView {
     msLeft: number;
     lockMsLeft: number;
     hintsUsed: number;
+    wrongCount: number;
     view: Json;
   } | null;
+  lastResult: AttemptResult | null;
 }
 
 export interface TeamView {
@@ -68,6 +71,7 @@ export function teamView(
               ? (attempt.frozenLockMs ?? 0)
               : Math.max(0, (attempt.lockedUntil ?? 0) - now),
             hintsUsed: attempt.hintsUsed,
+            wrongCount: attempt.wrongCount,
             view: publicView(
               task.key,
               checkerContext(state, content, team, task, attempt, rng),
@@ -75,6 +79,7 @@ export function teamView(
             ),
           }
         : null,
+      lastResult: [...task.attempts].reverse().find((a) => a.result !== null)?.result ?? null,
     };
   });
   const foundItems = Object.values(state.fragments)

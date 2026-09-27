@@ -1,4 +1,5 @@
 import {
+  TASK_DEFINITIONS,
   TASKS_PER_TEAM,
   type FeedItem,
   type GameClockView,
@@ -7,6 +8,7 @@ import {
   type PlayerState,
   type PotionView,
   type StaffState,
+  type TransactionLine,
 } from '@magic-potion/shared';
 import type { StaffAccount } from '../auth/store';
 import type { GameEngine } from '../engine/engine';
@@ -74,6 +76,42 @@ function inboxView(s: GameState, teamId: string): PlayerInboxView[] {
         photoStatus: r?.photoStatus ?? null,
       };
     });
+}
+
+const TASK_NAMES = new Map<string, string>(TASK_DEFINITIONS.map((d) => [d.key, d.name]));
+const LINE_KINDS = new Set<TransactionLine['kind']>([
+  'HINT',
+  'FAIL_PENALTY',
+  'STAFF_ADJUST',
+  'UNDO',
+]);
+
+// This team's hint, fail and facilitator lines, newest first. A hint paid from both wallets is
+// two ledger rows; they show as one line.
+export function transactionLines(s: GameState, teamId: string): TransactionLine[] {
+  const team = s.teams[teamId];
+  if (!team) return [];
+  const taskOfAttempt = new Map<string, string>();
+  for (const task of Object.values(team.tasks)) {
+    for (const a of task.attempts) taskOfAttempt.set(a.id, TASK_NAMES.get(task.key) ?? task.key);
+  }
+  const lines = new Map<string, TransactionLine>();
+  for (const r of Object.values(s.ledger)) {
+    if (r.teamId !== teamId || !LINE_KINDS.has(r.kind as TransactionLine['kind'])) continue;
+    const key = `${r.kind}|${r.taskAttemptId ?? r.auditLogId ?? r.id}|${r.createdAt}`;
+    const line = lines.get(key) ?? {
+      id: r.id,
+      at: r.createdAt,
+      kind: r.kind as TransactionLine['kind'],
+      taskName: r.taskAttemptId ? (taskOfAttempt.get(r.taskAttemptId) ?? null) : null,
+      taskFunds: 0,
+      supportFunds: 0,
+    };
+    if (r.wallet === 'TASK') line.taskFunds += r.amount;
+    else line.supportFunds += r.amount;
+    lines.set(key, line);
+  }
+  return [...lines.values()].sort((a, b) => b.at - a.at || a.id.localeCompare(b.id));
 }
 
 // GAME_RULES section 10: Round 1 shows only the team's own row with no rank; Round 2 and the
@@ -162,6 +200,7 @@ export function buildPlayerState(engine: GameEngine, teamId: string, now: number
           amount: r.amount,
         };
       }),
+    transactions: transactionLines(s, teamId),
     inbox: inboxView(s, teamId),
     leaderboard: leaderboardView(engine, teamId),
   };

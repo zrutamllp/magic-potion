@@ -51,6 +51,8 @@ export type Change =
   | { kind: 'update'; model: ChangeModel; id: string; data: ChangeData }
   | {
       kind: 'ledger';
+      id: string;
+      createdAt: number;
       teamId: string;
       wallet: Wallet;
       amount: number;
@@ -147,8 +149,22 @@ export class Draft {
     if (wallet === 'TASK') team.taskFunds += amount;
     else team.supportFunds += amount;
     const balanceAfter = wallet === 'TASK' ? team.taskFunds : team.supportFunds;
+    const id = randomUUID();
+    this.state.ledger[id] = {
+      id,
+      teamId: team.id,
+      wallet,
+      amount,
+      kind: ledgerKind,
+      taskAttemptId: refs.taskAttemptId ?? null,
+      transferId: refs.transferId ?? null,
+      auditLogId: refs.auditLogId ?? null,
+      createdAt: this.now,
+    };
     this.changes.push({
       kind: 'ledger',
+      id,
+      createdAt: this.now,
       teamId: team.id,
       wallet,
       amount,

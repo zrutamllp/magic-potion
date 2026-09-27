@@ -45,6 +45,8 @@ type LedgerChange = Extract<Change, { kind: 'ledger' }>;
 async function writeLedger(tx: Prisma.TransactionClient, rows: LedgerChange[]): Promise<void> {
   await tx.fundTransaction.createMany({
     data: rows.map((r) => ({
+      id: r.id,
+      createdAt: new Date(r.createdAt),
       teamId: r.teamId,
       wallet: r.wallet,
       amount: r.amount,

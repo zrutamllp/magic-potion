@@ -5,6 +5,7 @@ import {
   parseTaskContent,
 } from '@magic-potion/shared';
 import { describe, expect, it } from 'vitest';
+import { forbiddenPhrases } from '@magic-potion/shared';
 import { SAMPLE_INBOX_ITEMS, SAMPLE_TASK_CONTENT } from './sampleContent';
 
 describe('sample content pack', () => {
@@ -42,5 +43,22 @@ describe('sample content pack', () => {
     for (const q of SAMPLE_INBOX_ITEMS.filter((i) => i.kind === 'QUESTION')) {
       expect(q.secretAnswer?.length).toBeGreaterThan(0);
     }
+  });
+
+  // GAME_RULES section 16: no sample text tells teams to cooperate or explains Found items.
+  // Secret answers are included: players see them once solved (Find the Code's words).
+  it('never tells teams to cooperate', () => {
+    const strings: string[] = [];
+    const collect = (v: unknown): void => {
+      if (typeof v === 'string') strings.push(v);
+      else if (Array.isArray(v)) v.forEach(collect);
+      else if (v && typeof v === 'object') Object.values(v).forEach(collect);
+    };
+    collect(SAMPLE_TASK_CONTENT);
+    collect(SAMPLE_INBOX_ITEMS);
+    const bad = strings
+      .map((text) => ({ text, phrases: forbiddenPhrases(text) }))
+      .filter((x) => x.phrases.length > 0);
+    expect(bad).toEqual([]);
   });
 });

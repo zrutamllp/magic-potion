@@ -5,12 +5,14 @@ import type {
   GamePhase,
   GameSettings,
   InboxKind,
+  LedgerKind,
   PhotoStatus,
   PotionSnapshotKind,
   TaskKey,
   TaskType,
   TeamStatus,
   TeamTaskStatus,
+  Wallet,
 } from '@magic-potion/shared';
 import type { Json } from './checkers';
 import type { Potion } from './potion';
@@ -119,6 +121,20 @@ export interface InboxItemState {
   reward: number;
 }
 
+// One wallet change (a FundTransaction row). Kept in memory so players can see their own
+// hint and fail lines in the Funds list.
+export interface LedgerEntryState {
+  id: string;
+  teamId: string;
+  wallet: Wallet;
+  amount: number;
+  kind: LedgerKind;
+  taskAttemptId: string | null;
+  transferId: string | null;
+  auditLogId: string | null;
+  createdAt: number;
+}
+
 export interface ChatMessageState {
   id: string;
   teamId: string;
@@ -148,6 +164,8 @@ export interface GameState {
   inboxItems: Record<string, InboxItemState>;
   // In the order they were sent.
   chat: ChatMessageState[];
+  // Keyed by id, so two states compare equal whatever order the rows were loaded in.
+  ledger: Record<string, LedgerEntryState>;
   potionSnapshots: Partial<Record<PotionSnapshotKind, Potion>>;
 }
 

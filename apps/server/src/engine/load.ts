@@ -36,6 +36,7 @@ export async function loadGame(
         include: {
           tasks: { include: { taskDefinition: true, attempts: { orderBy: { number: 'asc' } } } },
           inboxResponses: true,
+          ledger: true,
         },
       },
       taskContents: { include: { taskDefinition: true } },
@@ -210,6 +211,24 @@ export async function loadGame(
     transfers,
     requests,
     inboxItems,
+    ledger: Object.fromEntries(
+      game.teams.flatMap((t) =>
+        t.ledger.map((r) => [
+          r.id,
+          {
+            id: r.id,
+            teamId: r.teamId,
+            wallet: r.wallet,
+            amount: r.amount,
+            kind: r.kind,
+            taskAttemptId: r.taskAttemptId,
+            transferId: r.transferId,
+            auditLogId: r.auditLogId,
+            createdAt: r.createdAt.getTime(),
+          },
+        ]),
+      ),
+    ),
     chat: game.chatMessages.map((m) => ({
       id: m.id,
       teamId: m.teamId,

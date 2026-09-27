@@ -92,6 +92,7 @@ export function lobbyState(
     requests: {},
     inboxItems,
     chat: [],
+    ledger: {},
     potionSnapshots: {},
   };
 }

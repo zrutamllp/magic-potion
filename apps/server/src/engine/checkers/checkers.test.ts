@@ -144,10 +144,10 @@ describe('Picture Puzzle', () => {
 });
 
 describe('Hangman', () => {
-  const ctx = ctxFor('hangman'); // "Together we achieve more"
+  const ctx = ctxFor('hangman'); // "Every cloud has a silver lining"
 
   it('reveals matching letters and is solved when every letter is found', () => {
-    const letters = [...new Set('togetherweachievemore')];
+    const letters = [...new Set('everycloudhasasilverlining')];
     const r = play(
       'hangman',
       ctx,
@@ -160,14 +160,14 @@ describe('Hangman', () => {
   it('shows only guessed letters', () => {
     const r = play('hangman', ctx, [{ letter: 'E' }]);
     const view = publicView('hangman', ctx, r.progress) as { masked: string };
-    expect(view.masked).toBe('___e__e_ _e ____e_e ___e');
+    expect(view.masked).toBe('E_e__ _____ ___ _ ____e_ ______');
   });
 
   it('fails after 6 wrong letters', () => {
     const r = play(
       'hangman',
       ctx,
-      ['b', 'd', 'f', 'j', 'k', 'l'].map((letter) => ({ letter })),
+      ['b', 'f', 'j', 'k', 'm', 'p'].map((letter) => ({ letter })),
     );
     expect(r.statuses).toEqual(['wrong', 'wrong', 'wrong', 'wrong', 'wrong', 'failed']);
   });
@@ -224,10 +224,10 @@ describe('Alien Translator', () => {
   const ctx = ctxFor('alien_translator');
 
   it('checks the translation', () => {
-    expect(play('alien_translator', ctx, [{ answer: 'SHARE  IDEAS' }]).statuses).toEqual([
+    expect(play('alien_translator', ctx, [{ answer: 'HIDDEN  DOOR' }]).statuses).toEqual([
       'solved',
     ]);
-    expect(play('alien_translator', ctx, [{ answer: 'shave ideas' }]).statuses).toEqual(['wrong']);
+    expect(play('alien_translator', ctx, [{ answer: 'hidden doom' }]).statuses).toEqual(['wrong']);
   });
 
   it('decodes 3 more symbols as the hint', () => {
@@ -311,10 +311,10 @@ describe('Escape Room', () => {
   it('clears the stages one by one', () => {
     const r = play('escape_room', ctx, [
       { answer: 'chair' },
-      { answer: 'workteam' },
-      { answer: 'teamwork' },
-      { answer: 'share' },
-      { answer: 'thirteen' },
+      { answer: 'hctawpots' },
+      { answer: 'stopwatch' },
+      { answer: 'clock' },
+      { answer: 'fourteen' },
     ]);
     expect(r.statuses).toEqual(['correct', 'wrong', 'correct', 'correct', 'solved']);
   });

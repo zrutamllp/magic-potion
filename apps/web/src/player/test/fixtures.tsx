@@ -24,6 +24,7 @@ export function task(overrides: Partial<PlayerTaskView> = {}): PlayerTaskView {
     timerSeconds: 720,
     points: 10_000,
     running: null,
+    lastResult: null,
     ...overrides,
   };
 }
@@ -78,6 +79,7 @@ export function playerState(overrides: Partial<PlayerState> = {}): PlayerState {
     ],
     pendingTransfers: [],
     pendingRequests: [],
+    transactions: [],
     inbox: [],
     leaderboard: {
       final: false,
