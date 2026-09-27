@@ -56,6 +56,7 @@ First-time database setup:
 1. `npm run prisma:migrate` applies the migrations to Neon.
 2. `npm run db:seed` creates the main admin from `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`, the 12 task definitions, and a "Demo Game" with 4 teams (`TEAM1` to `TEAM4`) and the sample content pack. Team passwords are random and printed only once. Run it again any time; it leaves existing rows alone.
 3. `npm run db:seed -- --reset-demo` deletes and recreates the demo game, printing new team passwords.
+4. `npm run db:seed -- --reset-demo --short` does the same with short timings for hand testing: Round 1 5 min, Pause 1 min, Round 2 5 min (inbox tasks at 1, 6 and 8 minutes of play). Every other rule keeps its real default.
 
 `DIRECT_URL` must be Neon's direct host (no `-pooler` in the host name). Migrations through the pooler can leave a lock behind.
 
@@ -64,9 +65,9 @@ First-time database setup:
 The screens are plain test screens for now; the real player screens come in Phase 4.
 
 1. In `apps/server/.env`, set `JWT_SECRET` (any string of 32+ characters) and `ENABLE_DEV_TOOLS=true`.
-2. From `apps/server`, run `npm run db:seed -- --reset-demo`. Copy the 4 team codes and passwords it prints (they are shown only once).
+2. From `apps/server`, run `npm run db:seed -- --reset-demo --short`. Copy the 4 team codes and passwords it prints (they are shown only once). `--short` gives 5-minute rounds and a 1-minute pause; leave it out for the real 35/10/35 timings.
 3. From the repo root, run `npm run dev`.
-4. **Window A:** open http://localhost:5173/dev/staff and log in with `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`. Choose "Demo Game" and press **Start**. It shows Round 1 and a 35:00 countdown.
+4. **Window A:** open http://localhost:5173/dev/staff and log in with `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`. Choose "Demo Game" and press **Start**. It shows Round 1 and a 5:00 countdown (35:00 without `--short`).
 5. **Window B:** open http://localhost:5173 in a new window and log in as `TEAM1`.
 6. **Window C:** open http://localhost:5173 in another new window (or tab) and log in as `TEAM2`. Put B and C side by side. Each tab keeps its own login.
 7. **Chat:** send "hello" from Team 1. It shows at once in B, C and the staff page. Team 1 now shows "Messages left: 4 of 5".

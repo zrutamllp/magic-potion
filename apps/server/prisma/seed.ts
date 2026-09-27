@@ -1,17 +1,14 @@
 import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import {
-  DEFAULT_SETTINGS,
-  TASK_DEFINITIONS,
-  TaskKeySchema,
-  parseTaskContent,
-} from '@magic-potion/shared';
+import { TASK_DEFINITIONS, TaskKeySchema, parseTaskContent } from '@magic-potion/shared';
 import { createPrisma } from '../src/db';
 import { loadEnv } from '../src/env';
+import { demoSettings, describeTiming } from './demoSettings';
 import { SAMPLE_INBOX_ITEMS, SAMPLE_TASK_CONTENT } from './sampleContent';
 
 // Safe to run more than once: existing rows are left alone.
 // Pass --reset-demo to delete and recreate the demo game (prints new team passwords).
+// Add --short for quick hand testing: 5-minute rounds and a 1-minute pause.
 
 const DEMO_GAME_NAME = 'Demo Game';
 const DEMO_TEAM_COUNT = 4;
@@ -23,6 +20,8 @@ if (!env.ADMIN_SEED_EMAIL || !env.ADMIN_SEED_PASSWORD) {
   throw new Error('ADMIN_SEED_EMAIL and ADMIN_SEED_PASSWORD are required to seed.');
 }
 const resetDemo = process.argv.includes('--reset-demo');
+const short = process.argv.includes('--short');
+const settings = demoSettings(short);
 const prisma = createPrisma(env.DATABASE_URL);
 
 async function seedAdmin(email: string, password: string) {
@@ -56,7 +55,9 @@ async function seedTaskDefinitions() {
 async function seedDemoGame() {
   const existing = await prisma.game.findFirst({ where: { name: DEMO_GAME_NAME } });
   if (existing && !resetDemo) {
-    console.log(`${DEMO_GAME_NAME} already exists. Use --reset-demo to recreate it.`);
+    console.log(
+      `${DEMO_GAME_NAME} already exists. Use --reset-demo${short ? ' --short' : ''} to recreate it.`,
+    );
     return;
   }
   if (existing) {
@@ -86,7 +87,7 @@ async function seedDemoGame() {
 
   await prisma.$transaction(async (tx) => {
     const game = await tx.game.create({
-      data: { name: DEMO_GAME_NAME, settings: { create: { data: DEFAULT_SETTINGS } } },
+      data: { name: DEMO_GAME_NAME, settings: { create: { data: settings } } },
     });
     await tx.team.createMany({
       data: logins.map(({ code, name, passwordHash }) => ({
@@ -116,15 +117,16 @@ async function seedDemoGame() {
         title: item.title,
         body: item.body,
         secretAnswer: item.secretAnswer ?? undefined,
-        releaseAtPlaySeconds: DEFAULT_SETTINGS.inbox.releaseAtPlaySeconds[item.releaseSlot] ?? null,
-        reward: DEFAULT_SETTINGS.inbox.reward,
+        releaseAtPlaySeconds: settings.inbox.releaseAtPlaySeconds[item.releaseSlot] ?? null,
+        reward: settings.inbox.reward,
       })),
     });
   });
 
   console.log(
-    `Created ${DEMO_GAME_NAME} with ${DEMO_TEAM_COUNT} teams. Team logins (shown only now):`,
+    `Created ${DEMO_GAME_NAME} with ${DEMO_TEAM_COUNT} teams (${describeTiming(settings)}).`,
   );
+  console.log('Team logins (shown only now):');
   for (const l of logins) console.log(`  ${l.code}  ${l.password}`);
 }
 
