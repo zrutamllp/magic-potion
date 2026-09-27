@@ -6,7 +6,7 @@ A real-time multiplayer team game for corporate learning events. See `CLAUDE.md`
 
 ```
 apps/web         React + Vite + Tailwind (player app, admin, facilitator, projector)
-apps/server      Express API (Socket.IO from Phase 3), Prisma
+apps/server      Express API (Socket.IO from Phase 3), Prisma, game engine (src/engine)
 packages/shared  Types and zod schemas shared by web and server
 ```
 
@@ -57,6 +57,22 @@ First-time database setup:
 3. `npm run db:seed -- --reset-demo` deletes and recreates the demo game, printing new team passwords.
 
 `DIRECT_URL` must be Neon's direct host (no `-pooler` in the host name). Migrations through the pooler can leave a lock behind.
+
+## Simulating a game
+
+`npm run simulate -w @magic-potion/server -- --teams 20 --seed 42` plays a whole game with simulated teams on a fake clock (a few seconds) and prints the timeline, the halftime and final potion, the final leaderboard with every score part, and a list of checks. Each score is recounted independently of the scoring engine. The same seed always gives the same game.
+
+| Option          | What it does                                                                          |
+| --------------- | ------------------------------------------------------------------------------------- |
+| `--teams N`     | Number of teams, 3 to 25 (default 20)                                                 |
+| `--seed N`      | Random seed (default 42)                                                              |
+| `--full-potion` | Strong teams that all finish, so the Full Potion Bonus shows                          |
+| `--remove N`    | The admin removes N teams during Round 2                                              |
+| `--csv FILE`    | Also write the leaderboard as CSV (for checking in Excel)                             |
+| `--db`          | Save to the database in `DATABASE_URL`, rebuild the game from it and compare (slower) |
+| `--keep`        | With `--db`, keep the simulated game instead of deleting it                           |
+
+The database integration test runs with `npm test` only when `TEST_DATABASE_URL` is set. Point it at a Neon branch, not the database used for live events.
 
 ## Environment variables
 

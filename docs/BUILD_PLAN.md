@@ -19,7 +19,7 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 - Seed script: first main admin, 12 task definitions, one sample content pack, one demo game with 4 teams.
 - **Done when:** migrations run on Neon and the seed creates a demo game.
 
-## Phase 2: Game engine and scoring (most important)
+## Phase 2: Game engine and scoring (most important) ✅
 
 - Game state machine: Lobby, Round 1, Pause, Round 2, Reveal, with pause, resume and extend.
 - Play clock from stored timestamps. Scheduler rebuilt from the database on server start.

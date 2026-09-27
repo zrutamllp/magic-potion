@@ -3,5 +3,5 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["src", "prisma", "tsup.config.ts", "prisma.config.ts"]
+  "include": ["src", "prisma", "scripts", "tsup.config.ts", "prisma.config.ts"]
 }
