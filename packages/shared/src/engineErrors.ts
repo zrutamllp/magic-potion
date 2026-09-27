@@ -31,9 +31,28 @@ export const ENGINE_ERRORS = {
   ALREADY_FROZEN: 'The game is already paused.',
   NOT_ENOUGH_TEAMS: 'A game needs at least 3 teams.',
   MISSING_CONTENT: 'Some tasks have no content yet.',
+  CHAT_EMPTY: 'Type a message first.',
+  CHAT_TOO_LONG: 'That message is too long.',
+  CHAT_LIMIT_REACHED: 'You have used all your messages for this round.',
 } as const;
 
 export type EngineErrorCode = keyof typeof ENGINE_ERRORS;
 
 export type EngineResult<T = void> =
   { ok: true; value: T } | { ok: false; code: EngineErrorCode; message: string };
+
+// Login and access problems. Also shown to players, so plain English again.
+export const AUTH_ERRORS = {
+  BAD_TEAM_LOGIN: 'That team code or password is not right.',
+  AMBIGUOUS_TEAM_CODE: 'We could not find your game. Please ask your facilitator.',
+  BAD_STAFF_LOGIN: 'That email or password is not right.',
+  TOO_MANY_TRIES: 'Too many tries. Please wait a few minutes and try again.',
+  SESSION_REPLACED: 'Your team logged in on another device.',
+  SESSION_ENDED: 'Your login has ended. Please log in again.',
+  NOT_LOGGED_IN: 'Please log in.',
+  NOT_ALLOWED: 'You are not allowed to do that.',
+  INVALID_REQUEST: 'That request was not valid.',
+  GAME_NOT_FOUND: 'That game was not found.',
+} as const;
+
+export type AuthErrorCode = keyof typeof AUTH_ERRORS;
