@@ -19,7 +19,7 @@ import { Lobby } from './screens/Lobby';
 import { PauseScreen } from './screens/PauseScreen';
 import { Reveal } from './screens/Reveal';
 import { Rules } from './screens/Rules';
-import { TaskScreen } from './screens/TaskScreen';
+import { TaskScreen } from './tasks/TaskShell';
 
 // The player app: login, then the screen for the current phase.
 

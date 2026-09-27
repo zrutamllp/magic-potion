@@ -24,6 +24,11 @@ export function secondsText(seconds: number): string {
   return seconds < 120 ? `${seconds} seconds` : minutesText(seconds);
 }
 
+// Before a noun, for short waits: "a 60-second lock".
+export function shortLengthAdjective(seconds: number): string {
+  return seconds < 120 ? `${seconds}-second` : lengthAdjective(seconds);
+}
+
 // Before a noun: "a 10-minute pause".
 export function lengthAdjective(seconds: number): string {
   return seconds % 60 === 0 ? `${seconds / 60}-minute` : `${seconds}-second`;

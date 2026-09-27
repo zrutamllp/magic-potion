@@ -12,7 +12,7 @@ import { Leaderboard } from './screens/Leaderboard';
 import { Lobby, videoEmbed } from './screens/Lobby';
 import { PauseScreen } from './screens/PauseScreen';
 import { Reveal } from './screens/Reveal';
-import { TaskScreen } from './screens/TaskScreen';
+import { TaskScreen } from './tasks/TaskShell';
 import { playerState, renderGame, task } from './test/fixtures';
 
 const round2Board: PlayerState['leaderboard'] = {
@@ -227,7 +227,12 @@ describe('task screen', () => {
     state.team = {
       ...state.team,
       tasks: [
+        // A task whose play screen is still a placeholder (Batch 2).
         task({
+          id: 'task-riddle',
+          key: 'riddle',
+          name: 'Riddle',
+          type: 'UNIQUE',
           status: 'IN_PROGRESS',
           running: {
             number: 1,
@@ -240,12 +245,12 @@ describe('task screen', () => {
         }),
       ],
     };
-    const { send, go } = renderGame(<TaskScreen taskId="task-vault" />, { state });
+    const { send, go } = renderGame(<TaskScreen taskId="task-riddle" />, { state });
     expect(screen.getByLabelText('Task time left')).toHaveTextContent('5:00');
     fireEvent.click(screen.getByRole('button', { name: 'Give up' }));
     expect(send).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Yes, give up' }));
-    expect(send).toHaveBeenCalledWith('task:giveUp', { taskId: 'task-vault' });
+    expect(send).toHaveBeenCalledWith('task:giveUp', { taskId: 'task-riddle' });
     fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
     expect(go).toHaveBeenCalledWith({ tab: 'home' });
   });
@@ -333,6 +338,47 @@ describe('Funds', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
     expect(send).toHaveBeenCalledWith('funds:accept', { requestId: 'r' });
     expect(screen.queryByText(/Add Funds|Power-Ups|Earned today/i)).toBeNull();
+  });
+
+  it('lists hint and fail lines with transfers, newest first', () => {
+    const state = playerState({
+      transactions: [
+        {
+          id: 'h',
+          at: 3_000,
+          kind: 'HINT',
+          taskName: 'The Vault',
+          taskFunds: -500,
+          supportFunds: -1_000,
+        },
+        {
+          id: 'p',
+          at: 2_000,
+          kind: 'FAIL_PENALTY',
+          taskName: 'Hangman',
+          taskFunds: -3_500,
+          supportFunds: 0,
+        },
+      ],
+    });
+    const feed: FeedItem[] = [
+      {
+        kind: 'transfer',
+        id: 't',
+        at: 1_000,
+        fromTeamId: 'team-2',
+        fromTeamName: 'Team 2',
+        toTeamId: 'team-1',
+        toTeamName: 'Team 1',
+        amount: 700,
+        arrived: true,
+      },
+    ];
+    renderGame(<Funds />, { state, feed });
+    const rows = screen.getAllByRole('listitem').map((li) => li.textContent);
+    expect(rows[0]).toMatch(/^Hint · The Vault.*Support -1,000, Task -500.*-1,500$/);
+    expect(rows[1]).toMatch(/^Task failed · Hangman.*Task Funds.*-3,500$/);
+    expect(rows[2]).toMatch(/^Received from Team 2.*\+700$/);
   });
 });
 

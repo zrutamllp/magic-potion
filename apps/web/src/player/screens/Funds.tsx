@@ -1,6 +1,14 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowDownLeft, ArrowUpRight, HandCoins, Hourglass, Lightbulb, Wallet } from 'lucide-react';
-import type { FeedItem, PlayerState } from '@magic-potion/shared';
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  HandCoins,
+  Hourglass,
+  Lightbulb,
+  Wallet,
+  XCircle,
+} from 'lucide-react';
+import type { FeedItem, PlayerState, TransactionLine } from '@magic-potion/shared';
 import { formatMs, money } from '../../lib/time';
 import { useGame } from '../GameContext';
 import { secondsText } from '../rules';
@@ -192,10 +200,13 @@ function Transactions() {
   const history = feed
     .filter((f): f is Exclude<FeedItem, { kind: 'chat' }> => f.kind !== 'chat')
     .filter((f) => !(f.kind === 'transfer' && !f.arrived))
-    .filter((f) => !(f.kind === 'request' && f.status === 'PENDING'))
-    .sort((a, b) => b.at - a.at);
-  const empty =
-    state.pendingTransfers.length === 0 && outgoing.length === 0 && history.length === 0;
+    .filter((f) => !(f.kind === 'request' && f.status === 'PENDING'));
+  // Transfers and requests from the feed, with hint, fail and facilitator lines, newest first.
+  const lines: Line[] = [
+    ...history.map((item) => ({ at: item.at, item })),
+    ...state.transactions.map((tx) => ({ at: tx.at, tx })),
+  ].sort((a, b) => b.at - a.at);
+  const empty = state.pendingTransfers.length === 0 && outgoing.length === 0 && lines.length === 0;
 
   return (
     <Card className="mt-5">
@@ -241,11 +252,46 @@ function Transactions() {
             }
           />
         ))}
-        {history.map((f) => (
-          <HistoryRow key={`${f.kind}:${f.id}`} item={f} state={state} />
-        ))}
+        {lines.map((line) =>
+          'item' in line ? (
+            <HistoryRow key={`${line.item.kind}:${line.item.id}`} item={line.item} state={state} />
+          ) : (
+            <TransactionRow key={`tx:${line.tx.id}`} tx={line.tx} />
+          ),
+        )}
       </ul>
     </Card>
+  );
+}
+
+type Line =
+  { at: number; item: Exclude<FeedItem, { kind: 'chat' }> } | { at: number; tx: TransactionLine };
+
+const TX_TEXT: Record<TransactionLine['kind'], string> = {
+  HINT: 'Hint',
+  FAIL_PENALTY: 'Task failed',
+  STAFF_ADJUST: 'Funds adjusted by the facilitator',
+  UNDO: 'Funds adjusted by the facilitator',
+};
+
+function TransactionRow({ tx }: { tx: TransactionLine }) {
+  const total = tx.taskFunds + tx.supportFunds;
+  const split =
+    tx.taskFunds !== 0 && tx.supportFunds !== 0
+      ? `Support ${money(tx.supportFunds)}, Task ${money(tx.taskFunds)} · `
+      : tx.supportFunds !== 0
+        ? 'Support Funds · '
+        : 'Task Funds · ';
+  const Icon = tx.kind === 'HINT' ? Lightbulb : tx.kind === 'FAIL_PENALTY' ? XCircle : Wallet;
+  return (
+    <Row
+      icon={
+        <Icon className={`h-5 w-5 ${total < 0 ? 'text-danger' : 'text-success'}`} aria-hidden />
+      }
+      text={tx.taskName ? `${TX_TEXT[tx.kind]} · ${tx.taskName}` : TX_TEXT[tx.kind]}
+      amount={total}
+      note={`${split}${clockTime(tx.at)}`}
+    />
   );
 }
 
