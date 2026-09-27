@@ -13,15 +13,22 @@
   --color-card-raised: #232640;
   --color-line: #2c2f4d;
   --color-ink: #f4f4fb;
-  --color-ink-muted: #a3a6c2;
+  /* Muted text, kept bright enough to read on a shared Zoom screen. */
+  --color-ink-muted: #b9bcd6;
 
   --color-brand: #7c3aed;
   --color-brand-soft: #8b5cf6;
+  --color-accent: #22d3ee;
   --color-success: #22c55e;
   --color-info: #22d3ee;
   --color-warning: #facc15;
   --color-alert: #f97316;
   --color-danger: #ef4444;
+}
+
+/* Everything is sized in rem, so this makes all text 12.5% larger for screen sharing. */
+html {
+  font-size: 112.5%;
 }
 
 html,
@@ -32,4 +39,65 @@ body,
 
 body {
   @apply bg-page font-sans text-ink antialiased;
+}
+
+/* The potion liquid surface: a slow wave, switched off for people who prefer less motion. */
+@keyframes potion-wave {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* One wave period, in the bottle's SVG units. */
+    transform: translateX(-120px);
+  }
+}
+
+@keyframes potion-bubble {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-60px);
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Countdowns and money keep the same width as digits change. */
+.nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.potion-wave {
+  animation: potion-wave 6s linear infinite;
+}
+
+.potion-bubble {
+  animation: potion-bubble 3.2s ease-in infinite;
+}
+
+.rise-in {
+  animation: rise-in 0.7s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .potion-wave,
+  .potion-bubble,
+  .rise-in {
+    animation: none;
+  }
 }
