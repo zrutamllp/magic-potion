@@ -16,6 +16,11 @@ export const TASK_KEYS = [
   'data_story',
 ] as const;
 
+// Each team plays 2 common and 3 unique tasks (GAME_RULES section 3).
+export const COMMON_TASKS_PER_TEAM = 2;
+export const UNIQUE_TASKS_PER_TEAM = 3;
+export const TASKS_PER_TEAM = COMMON_TASKS_PER_TEAM + UNIQUE_TASKS_PER_TEAM;
+
 export const TaskKeySchema = z.enum(TASK_KEYS);
 export type TaskKey = z.infer<typeof TaskKeySchema>;
 
@@ -45,6 +50,9 @@ export const TASK_DEFINITIONS: readonly TaskDefinitionInfo[] = [
 
 // Tasks that lock after too many wrong code attempts (GAME_RULES section 3).
 export const LOCKOUT_TASK_KEYS: readonly TaskKey[] = ['vault', 'find_code', 'escape_room'];
+
+// Tasks that keep the same content on restart, because a fragment held by another team is part of the answer (GAME_RULES section 3).
+export const FIXED_CONTENT_TASK_KEYS: readonly TaskKey[] = ['find_code'];
 
 // Tasks with no hint (GAME_RULES section 3).
 export const NO_HINT_TASK_KEYS: readonly TaskKey[] = ['ethical_dilemma'];
