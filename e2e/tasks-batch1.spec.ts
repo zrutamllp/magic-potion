@@ -61,7 +61,9 @@ test('Batch 1 tasks', async ({ browser }) => {
   }
   for (let i = 0; i < 3; i++) {
     await page.getByRole('button', { name: 'Open the vault' }).click();
-    await expect(page.getByRole('status').filter({ hasText: /Not right/ })).toBeVisible();
+    // The third wrong try locks the task; then only the lock banner shows.
+    if (i < 2)
+      await expect(page.getByRole('status').filter({ hasText: /Not right/ })).toBeVisible();
   }
   await expect(page.getByRole('alert')).toContainText('Locked after too many wrong tries');
   await shot(page, 'vault-4-locked');
@@ -97,7 +99,9 @@ test('Batch 1 tasks', async ({ browser }) => {
   }
   for (let i = 0; i < 3; i++) {
     await page.getByRole('button', { name: 'Submit the word' }).click();
-    await expect(page.getByRole('status').filter({ hasText: /Not right/ })).toBeVisible();
+    // The third wrong try locks the task; then only the lock banner shows.
+    if (i < 2)
+      await expect(page.getByRole('status').filter({ hasText: /Not right/ })).toBeVisible();
   }
   await expect(page.getByRole('alert')).toContainText('Locked after too many wrong tries');
   await shot(page, 'findcode-4-locked');

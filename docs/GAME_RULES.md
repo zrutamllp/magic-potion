@@ -32,7 +32,8 @@ Every number below is a default setting that the admin can change per game befor
 - Each team gets 5 tasks: 2 common and 3 unique.
 - Common tasks: **The Vault** and **Find the Code** (the same task for every team, except for their fragments).
 - The Vault: every team has the same 3 clues, but its 3 fragment digits are random per team, so every team's code is different.
-- Find the Code: at game start each team gets its own word (from the content's word list) and its own random cipher. The team sees its encoded message and half of the key (rounded up). The other half is its fragment, held by another team. So every team's answer and fragment are different.
+- Find the Code: at game start each team gets its own word (from the content's word list) and its own random cipher. The team sees its encoded message and part of the key; the rest of the key is its fragment, held by another team. So every team's answer and fragment are different.
+- **Find the Code must not be guessable without the fragment.** From its own key a team sees at most half of the different letters (rounded down), never the first letter, only the letters used least often, and never more than half of the letters in the word. Words must also be ones whose visible pattern fits many English words (for example "_ A _ _ _ R" fits hammer, ladder, banner, batter…); a test checks every sample word against an English word list (at least 15 fitting words for every pattern a team can see). Everyday words with repeated letters work best; distinctive words such as "trampoline" do not.
 - Unique tasks: 3 drawn at random from the other 10. Several teams may draw the same unique task.
 - Only one task can be open at a time.
 - The task timer starts when the team presses Start Task and stops when they solve it, the timer runs out, or they give up.
@@ -58,7 +59,7 @@ Ethical Dilemma is the exception: it has no hint, and any complete answer passes
 | # | Task | Type | Players do | Solved when | Timer | Hint gives |
 |---|---|---|---|---|---|---|
 | 1 | The Vault | Common | Solve 3 on-screen clues for 3 digits of a 6-digit code. The other 3 digits are a fragment held by another team. | All 6 digits entered | 12 min | One of the 3 on-screen digits |
-| 2 | Find the Code | Common | Decode a message. Half the cipher key is on screen; the other half is a fragment held by another team. | Decoded word entered | 12 min | One more letter of the key |
+| 2 | Find the Code | Common | Decode a message. Part of the cipher key is on screen; the rest is a fragment held by another team. | Decoded word entered | 12 min | One more letter of the key |
 | 3 | Picture Puzzle | Unique | Drag scrambled tiles to rebuild an image | Image complete | 12 min | Numbers on correctly placed tiles |
 | 4 | Hangman | Unique | Guess letters of a phrase. 6 wrong guesses fail the task. | Phrase revealed | 8 min | One letter revealed |
 | 5 | Spot the Difference | Unique | Click 7 differences between two images | All 7 found | 8 min | One area highlighted |

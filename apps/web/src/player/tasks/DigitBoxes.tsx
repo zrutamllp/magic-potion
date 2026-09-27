@@ -12,6 +12,7 @@ export function DigitBoxes({
   pattern = /^\d$/,
   captions = [],
   gapAfter = [],
+  size = 'lg',
 }: {
   values: string[];
   onChange: (values: string[]) => void;
@@ -24,6 +25,7 @@ export function DigitBoxes({
   // Small text under a box ("Clue 1"), and boxes followed by a dash.
   captions?: (string | undefined)[];
   gapAfter?: number[];
+  size?: 'md' | 'lg';
 }) {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
   const focus = (i: number) => refs.current[i]?.focus();
@@ -96,7 +98,7 @@ export function DigitBoxes({
               onKeyDown={(e) => onKeyDown(i, e)}
               onPaste={(e) => onPaste(i, e)}
               onFocus={(e) => e.target.select()}
-              className={`nums h-20 w-16 rounded-xl border-2 text-center text-5xl font-extrabold uppercase focus:border-brand focus:outline-none disabled:opacity-50 ${
+              className={`nums ${size === 'lg' ? 'h-20 w-16 text-5xl' : 'h-16 w-14 text-4xl'} rounded-xl border-2 text-center font-extrabold uppercase focus:border-brand focus:outline-none disabled:opacity-50 ${
                 locked[i] ? 'border-info/60 bg-info/15 text-info' : 'border-line bg-page text-ink'
               }`}
             />
@@ -105,7 +107,10 @@ export function DigitBoxes({
             )}
           </div>
           {gapAfter.includes(i) && (
-            <span className="px-1 pt-5 text-4xl font-bold text-ink-muted" aria-hidden>
+            <span
+              className={`px-1 text-4xl font-bold text-ink-muted ${size === 'lg' ? 'pt-5' : 'pt-3'}`}
+              aria-hidden
+            >
               –
             </span>
           )}

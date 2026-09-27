@@ -30,16 +30,17 @@ export function Vault({ task, running, view }: TaskPlayProps) {
   }
 
   return (
-    <Card>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <p className="text-xl font-semibold">{content.intro}</p>
-        <ol className="space-y-2">
+    <Card className="p-4">
+      {/* Compact, so the clues, the code and the button fit a 1280x720 screen share. */}
+      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+        <p className="text-lg font-semibold">{content.intro}</p>
+        <ol className="space-y-1.5">
           {content.clues.map((clue, i) => (
             <li
               key={i}
-              className="flex items-center gap-3 rounded-xl border border-line bg-card-raised px-4 py-2"
+              className="flex items-center gap-3 rounded-xl border border-line bg-card-raised px-3 py-1"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning/20 text-lg font-extrabold text-warning">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning/20 text-lg font-extrabold text-warning">
                 {i + 1}
               </span>
               {clue.imageUrl && (
@@ -60,11 +61,13 @@ export function Vault({ task, running, view }: TaskPlayProps) {
           locked={shown.map((_, i) => hint?.position === i)}
           captions={['Clue 1', 'Clue 2', 'Clue 3']}
           gapAfter={[2]}
+          size="md"
           onChange={setDigits}
           disabled={locked}
         />
         <LockoutBanner running={running} />
-        <SubmitFeedback feedback={feedback} />
+        {/* While locked, the lock banner says it all. */}
+        {!locked && <SubmitFeedback feedback={feedback} />}
         <Button
           type="submit"
           tone="success"

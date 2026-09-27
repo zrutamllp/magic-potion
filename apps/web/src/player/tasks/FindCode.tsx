@@ -79,7 +79,8 @@ export function FindCode({ task, running, view }: TaskPlayProps) {
             })}
           </div>
           <LockoutBanner running={running} />
-          <SubmitFeedback feedback={feedback} />
+          {/* While locked, the lock banner says it all. */}
+          {!locked && <SubmitFeedback feedback={feedback} />}
           <Button
             type="submit"
             tone="success"

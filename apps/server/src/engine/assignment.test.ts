@@ -5,6 +5,7 @@ import {
   chainOrder,
   drawTasks,
   makeCipher,
+  visibleLetters,
   pickContent,
   vaultFragmentDigits,
 } from './assignment';
@@ -123,16 +124,33 @@ describe('makeCipher', () => {
     expect(new Set(key.keys()).size).toBe(8);
   });
 
-  it('shows half the key (rounded up) and hides the rest', () => {
-    const c = makeCipher(seededRng(4), 'unity', symbols); // 5 different letters
-    expect(c.visibleKey).toHaveLength(3);
-    expect(c.hiddenKey).toHaveLength(2);
+  it('shows half the different letters (rounded down) and hides the rest', () => {
+    const c = makeCipher(seededRng(4), 'kitten', symbols); // K I T E N: 5 different letters
+    expect(c.visibleKey).toHaveLength(2);
+    expect(c.hiddenKey).toHaveLength(3);
   });
 
-  it('cannot be decoded from the visible half alone', () => {
-    const c = makeCipher(seededRng(4), 'trust', symbols);
-    const visible = new Set(c.visibleKey.map((k) => k.symbol));
-    expect(c.encodedMessage.some((s) => !visible.has(s))).toBe(true);
+  // GAME_RULES section 3: the word cannot be guessed from the team's own key.
+  it('never shows the first letter, and hides at least half of the word', () => {
+    for (const word of ['hammer', 'kitten', 'bottles', 'teamwork', 'banana', 'mississippi']) {
+      for (let seed = 1; seed <= 30; seed++) {
+        const c = makeCipher(seededRng(seed), word, symbols);
+        const visible = new Set(c.visibleKey.map((k) => k.letter));
+        expect(visible.has(word[0]!.toUpperCase())).toBe(false);
+        const hiddenPositions = [...c.word].filter((l) => !visible.has(l)).length;
+        expect(hiddenPositions).toBeGreaterThanOrEqual(Math.ceil(word.length / 2));
+      }
+    }
+  });
+
+  it('shows the letters used least often', () => {
+    // H A M E R: M appears twice, so it is never shown while single letters are left.
+    for (let seed = 1; seed <= 30; seed++) {
+      const shown = visibleLetters(seededRng(seed), 'hammer');
+      expect(shown).toHaveLength(2);
+      expect(shown).not.toContain('H');
+      expect(shown).not.toContain('M');
+    }
   });
 
   it('uses different symbols for different teams', () => {

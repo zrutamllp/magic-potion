@@ -32,19 +32,21 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
     },
     // Each team gets its own word from this list and its own random cipher.
     secretData: {
+      // Everyday words with repeated letters: the visible letters fit many English words,
+      // so the word cannot be guessed without the fragment (checked in sampleContent.test.ts).
       words: [
-        'lantern',
-        'compass',
-        'harbour',
-        'meadow',
-        'crystal',
-        'thunder',
-        'orchard',
-        'pyramid',
-        'glacier',
-        'canyon',
-        'falcon',
-        'velvet',
+        'hammer',
+        'ladder',
+        'dinner',
+        'summer',
+        'puddle',
+        'paddle',
+        'waffle',
+        'bottles',
+        'kitten',
+        'letters',
+        'muffin',
+        'pollen',
       ],
       symbols: [
         '★',

@@ -62,22 +62,47 @@ export function vaultFragmentDigits(value: string): string {
   return value.replace(/\D/g, '');
 }
 
+// Which letters of a Find the Code word the team sees (GAME_RULES section 3). So the word cannot
+// be guessed without the fragment: never the first letter, at most half of the different letters
+// (rounded down), the ones used least often, and never more than half of the word.
+// Ties are broken at random.
+export function visibleLetters(rng: Rng, word: string): string[] {
+  const letters = distinctLetters(word);
+  const upper = word.toUpperCase();
+  const count = (l: string) => [...upper].filter((c) => c === l).length;
+  const first = upper[0];
+  const candidates = shuffle(
+    rng,
+    letters.filter((l) => l !== first),
+  ).sort((a, b) => count(a) - count(b));
+  const shown: string[] = [];
+  let shownPositions = 0;
+  for (const l of candidates) {
+    if (shown.length === Math.floor(letters.length / 2)) break;
+    // Stop before more than half of the word would show.
+    if (shownPositions + count(l) > Math.floor(upper.length / 2)) break;
+    shown.push(l);
+    shownPositions += count(l);
+  }
+  return shown;
+}
+
 // One team's Find the Code puzzle: a random symbol for each different letter of the word.
-// Half the letters (rounded up) are on screen; the rest are the fragment.
+// Some letters are on screen (see visibleLetters); the rest are the fragment.
 export function makeCipher(rng: Rng, word: string, symbols: readonly string[]): FindCodeCipher {
   const letters = distinctLetters(word);
   const pool = shuffle(rng, symbols);
   const symbolOf = new Map(letters.map((l, i) => [l, pool[i] as string]));
+  const visible = new Set(visibleLetters(rng, word));
   const pairs = shuffle(rng, letters).map((letter) => ({
     symbol: symbolOf.get(letter) as string,
     letter,
   }));
-  const visibleCount = Math.ceil(pairs.length / 2);
   return {
     word: word.toUpperCase(),
     encodedMessage: [...word.toUpperCase()].map((l) => symbolOf.get(l) as string),
-    visibleKey: pairs.slice(0, visibleCount),
-    hiddenKey: pairs.slice(visibleCount),
+    visibleKey: pairs.filter((p) => visible.has(p.letter)),
+    hiddenKey: pairs.filter((p) => !visible.has(p.letter)),
   };
 }
 
