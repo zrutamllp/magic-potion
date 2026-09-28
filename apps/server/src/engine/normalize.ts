@@ -59,3 +59,14 @@ export function matchesName(answer: string, accepted: readonly string[]): boolea
     return n === a || (n.length >= NAME_TYPO_MIN_LENGTH && withinOneEdit(a, n));
   });
 }
+
+// Pictionary guesses are forgiving like Riddle answers, and a simple plural also counts:
+// "Keys" matches "key", "the light bulbs" matches "light bulb".
+export function matchesWord(answer: string, accepted: readonly string[]): boolean {
+  const a = normalizeLoose(answer);
+  if (a.length === 0) return false;
+  return accepted.some((x) => {
+    const n = normalizeLoose(x);
+    return n.length > 0 && (a === n || a === `${n}s` || a === `${n}es`);
+  });
+}

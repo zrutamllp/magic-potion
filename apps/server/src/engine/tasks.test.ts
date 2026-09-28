@@ -235,6 +235,21 @@ describe('code lockout', () => {
     expect((last as { value: { lockedUntil: number } }).value.lockedUntil).toBe(T0 + 30_000);
   });
 
+  it('locks the Escape Room with the same setting as The Vault', async () => {
+    const clock = new FakeClock(T0);
+    const { engine } = memoryEngine({ teams: 20, clock });
+    engine.state.settings.tasks.lockoutSeconds = [45];
+    await engine.startGame(ADMIN);
+    const { team: t, taskId } = withTask(engine, 'escape_room');
+    await engine.startTask(t.id, taskId);
+    let last: unknown;
+    for (let i = 0; i < 3; i++) last = await engine.submit(t.id, taskId, { answer: 'nope' });
+    expect((last as { value: { lockedUntil: number } }).value.lockedUntil).toBe(T0 + 45_000);
+    expect(await engine.submit(t.id, taskId, { answer: 'b' })).toMatchObject({
+      code: 'LOCKED_OUT',
+    });
+  });
+
   it('does not lock tasks without a code lockout', async () => {
     const g = await started();
     const { team: t, taskId } = withTask(g.engine, 'riddle');

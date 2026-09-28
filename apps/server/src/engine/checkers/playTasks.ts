@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { matchesAny } from '../normalize';
+import { matchesAny, matchesWord } from '../normalize';
 import { shuffle } from '../rng';
 import { asJson, defineChecker } from './types';
 
@@ -165,6 +165,7 @@ export const spotDifferenceChecker = defineChecker<'spot_difference', SpotProgre
 });
 
 // Pictionary: the game draws one picture at a time; the team guesses each word in turn.
+// Guesses ignore case, spaces, punctuation, a/an/the and simple plurals.
 export type PictionaryProgress = {
   current: number;
   guesses: string[];
@@ -182,7 +183,7 @@ export const pictionaryChecker = defineChecker<'pictionary', PictionaryProgress>
     const words = ctx.secretData.words;
     const accepted = words[progress.current];
     if (!accepted) return { status: 'invalid' };
-    if (!matchesAny(parsed.data.answer, accepted)) return { status: 'wrong', progress };
+    if (!matchesWord(parsed.data.answer, accepted)) return { status: 'wrong', progress };
     const next = {
       ...progress,
       current: progress.current + 1,
@@ -197,13 +198,14 @@ export const pictionaryChecker = defineChecker<'pictionary', PictionaryProgress>
     if (!word) return progress;
     return { ...progress, hint: { index: progress.current, letter: word.charAt(0).toUpperCase() } };
   },
-  // Only drawings up to the current word are sent.
+  // Only the drawing being guessed is sent (null once all are guessed). The strokes are public;
+  // the words never leave the server. The hint shows only while its word is on screen.
   publicView: (ctx, progress) => ({
-    drawings: asJson(ctx.publicData.drawings.slice(0, progress.current + 1)),
-    total: ctx.publicData.drawings.length,
+    drawing: asJson(ctx.publicData.drawings[progress.current] ?? null),
     current: progress.current,
+    total: ctx.publicData.drawings.length,
     guesses: progress.guesses,
-    hint: progress.hint,
+    hint: progress.hint?.index === progress.current ? progress.hint : null,
   }),
 });
 

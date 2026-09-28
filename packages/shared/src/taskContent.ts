@@ -106,7 +106,17 @@ export const TaskContentSchemas = {
     // Only stages up to the current one are sent to players.
     public: z.object({
       intro: text,
-      stages: z.array(z.object({ title: text, prompt: text, imageUrl: url.optional() })).length(4),
+      stages: z
+        .array(
+          z.object({
+            title: text,
+            prompt: text,
+            imageUrl: url.optional(),
+            // Shown flipped, as in a mirror, and drawn so it cannot be copied as text.
+            mirrorText: text.optional(),
+          }),
+        )
+        .length(4),
     }),
     secret: z.object({
       stages: z.array(z.object({ answer: acceptedAnswer, hint: text })).length(4),

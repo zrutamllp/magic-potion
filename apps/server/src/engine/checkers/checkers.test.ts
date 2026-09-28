@@ -301,19 +301,43 @@ describe('Spot the Difference', () => {
 
 describe('Alien Translator', () => {
   const ctx = ctxFor('alien_translator');
+  type Pair = { symbol: string; letter: string };
+  type AlienView = { content: { message: string[]; legend: Pair[] }; hintLegend: Pair[] };
+
+  // The message as the team sees it: known letters filled in, "_" for the rest.
+  function screenText(view: AlienView, extra: Pair[] = []): string {
+    const known = new Map([...view.content.legend, ...extra].map((p) => [p.symbol, p.letter]));
+    return view.content.message.map((s) => (s === ' ' ? ' ' : (known.get(s) ?? '_'))).join('');
+  }
 
   it('checks the translation', () => {
-    expect(play('alien_translator', ctx, [{ answer: 'HIDDEN  DOOR' }]).statuses).toEqual([
-      'solved',
-    ]);
-    expect(play('alien_translator', ctx, [{ answer: 'hidden doom' }]).statuses).toEqual(['wrong']);
+    expect(
+      play('alien_translator', ctx, [{ answer: 'The Purple  Moon rises at dawn' }]).statuses,
+    ).toEqual(['solved']);
+    expect(
+      play('alien_translator', ctx, [{ answer: 'the purple moon sets at dawn' }]).statuses,
+    ).toEqual(['wrong']);
   });
 
-  it('decodes 3 more symbols as the hint', () => {
-    const p = applyHint('alien_translator', ctx, initProgress('alien_translator', ctx)) as {
-      hintLegend: unknown[];
-    };
-    expect(p.hintLegend).toHaveLength(3);
+  it('fills in every legend letter on the start screen and no other', () => {
+    const view = publicView(
+      'alien_translator',
+      ctx,
+      initProgress('alien_translator', ctx),
+    ) as AlienView;
+    expect(screenText(view)).toBe('THE __R__E _OON R_SES AT _A_N');
+    // Every legend symbol is in the message, so every known letter shows somewhere.
+    for (const pair of view.content.legend) expect(view.content.message).toContain(pair.symbol);
+  });
+
+  it('decodes 3 more symbols as the hint: P, U and L', () => {
+    const view = publicView(
+      'alien_translator',
+      ctx,
+      applyHint('alien_translator', ctx, initProgress('alien_translator', ctx)),
+    ) as AlienView;
+    expect(view.hintLegend.map((p) => p.letter)).toEqual(['P', 'U', 'L']);
+    expect(screenText(view, view.hintLegend)).toBe('THE PURPLE _OON R_SES AT _A_N');
   });
 });
 
@@ -499,60 +523,100 @@ describe('Guess the Celebrity', () => {
 
 describe('Pictionary', () => {
   const ctx = ctxFor('pictionary');
+  type PictionaryView = {
+    drawing: { strokes: number[][][] } | null;
+    current: number;
+    total: number;
+    guesses: string[];
+    hint: { index: number; letter: string } | null;
+  };
+  const view = (progress: Json) => publicView('pictionary', ctx, progress) as PictionaryView;
 
   it('guesses the 5 words in order', () => {
     const r = play('pictionary', ctx, [
-      { answer: 'house' },
-      { answer: 'sun' },
-      { answer: 'home' },
-      { answer: 'tree' },
-      { answer: 'fish' },
-      { answer: 'star' },
+      { answer: 'cup' },
+      { answer: 'key' },
+      { answer: 'mug' },
+      { answer: 'light bulb' },
+      { answer: 'laptop' },
+      { answer: 'rocket' },
     ]);
     expect(r.statuses).toEqual(['wrong', 'correct', 'correct', 'correct', 'correct', 'solved']);
   });
 
-  it('sends only the drawings up to the current word', () => {
-    const r = play('pictionary', ctx, [{ answer: 'sun' }]);
-    const view = publicView('pictionary', ctx, r.progress) as { drawings: unknown[] };
-    expect(view.drawings).toHaveLength(2);
+  it('is forgiving: case, spaces, punctuation, a/an/the and simple plurals', () => {
+    for (const answer of ['KEY', 'a key.', 'keys', 'The Keys!']) {
+      expect(play('pictionary', ctx, [{ answer }]).statuses, answer).toEqual(['correct']);
+    }
+    for (const answer of ['keyboard', 'k', 'monkey']) {
+      expect(play('pictionary', ctx, [{ answer }]).statuses, answer).toEqual(['wrong']);
+    }
+    const onCup = play('pictionary', ctx, [{ answer: 'key' }]).progress;
+    for (const answer of ['Teacup', 'coffee-mug', 'Coffee', 'tea cups']) {
+      expect(checkSubmission('pictionary', ctx, onCup, { answer }).status, answer).toBe('correct');
+    }
   });
 
-  it('gives the first letter of the current word as the hint', () => {
-    const r = play('pictionary', ctx, [{ answer: 'sun' }]);
-    const p = applyHint('pictionary', ctx, r.progress) as { hint: unknown };
-    expect(p.hint).toEqual({ index: 1, letter: 'H' });
+  it('sends only the drawing being guessed, never the words', () => {
+    const start = view(initProgress('pictionary', ctx));
+    expect(start).toMatchObject({ current: 0, total: 5, guesses: [], hint: null });
+    const drawings = (ctx.publicData as { drawings: unknown[] }).drawings;
+    expect(start.drawing).toEqual(drawings[0]);
+    const r = play('pictionary', ctx, [{ answer: 'key' }]);
+    expect(view(r.progress).drawing).toEqual(drawings[1]);
+    const words = ['key', 'cup', 'bulb', 'laptop', 'rocket'];
+    const done = play(
+      'pictionary',
+      ctx,
+      words.map((answer) => ({ answer })),
+    );
+    expect(view(done.progress).drawing).toBeNull();
+  });
+
+  it('gives the first letter of the current word as the hint, for that word only', () => {
+    const r = play('pictionary', ctx, [{ answer: 'key' }]);
+    const hinted = applyHint('pictionary', ctx, r.progress);
+    expect(view(hinted).hint).toEqual({ index: 1, letter: 'C' });
+    const next = checkSubmission('pictionary', ctx, hinted, { answer: 'cup' });
+    expect(next.status === 'correct' && view(next.progress).hint).toBeNull();
   });
 });
 
 describe('Escape Room', () => {
   const ctx = ctxFor('escape_room');
+  type EscapeView = {
+    stages: { title: string; prompt: string; mirrorText?: string }[];
+    stage: number;
+    total: number;
+  };
+  const view = (progress: Json) => publicView('escape_room', ctx, progress) as EscapeView;
 
-  it('clears the stages one by one', () => {
+  it('clears the 4 linked stages one by one', () => {
     const r = play('escape_room', ctx, [
-      { answer: 'chair' },
-      { answer: 'hctawpots' },
-      { answer: 'stopwatch' },
-      { answer: 'clock' },
-      { answer: 'fourteen' },
+      { answer: 'Drawer B' },
+      { answer: 'red' },
+      { answer: 'Blue' },
+      { answer: '7' },
+      { answer: 'twenty-eight' },
     ]);
     expect(r.statuses).toEqual(['correct', 'wrong', 'correct', 'correct', 'solved']);
   });
 
-  it('sends a stage only after the one before is cleared', () => {
-    const start = publicView('escape_room', ctx, initProgress('escape_room', ctx)) as {
-      stages: unknown[];
-    };
-    expect(start.stages).toHaveLength(1);
-    const r = play('escape_room', ctx, [{ answer: 'chair' }]);
-    expect(
-      (publicView('escape_room', ctx, r.progress) as { stages: unknown[] }).stages,
-    ).toHaveLength(2);
+  it('sends a stage only after the one before is checked', () => {
+    const start = view(initProgress('escape_room', ctx));
+    expect(start.stages.map((s) => s.title)).toEqual(['Find the key']);
+    expect(JSON.stringify(start)).not.toContain('FOLDER');
+    const r = play('escape_room', ctx, [{ answer: 'b' }]);
+    const second = view(r.progress);
+    expect(second.stages).toHaveLength(2);
+    expect(second.stages[1]?.mirrorText).toBe('THE CARD IS IN THE BLUE FOLDER');
+    expect(JSON.stringify(second)).not.toContain('TFWFO');
   });
 
   it('gives help on the current stage as the hint', () => {
-    const p = applyHint('escape_room', ctx, initProgress('escape_room', ctx)) as { hint: unknown };
-    expect(p.hint).toEqual({ stage: 0, text: 'Look down.' });
+    const r = play('escape_room', ctx, [{ answer: 'b' }]);
+    const p = applyHint('escape_room', ctx, r.progress) as { hint: unknown };
+    expect(p.hint).toEqual({ stage: 1, text: 'Read each line from right to left.' });
   });
 });
 

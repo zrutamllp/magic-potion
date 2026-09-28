@@ -5,6 +5,7 @@ import {
   type InboxKind,
   type TaskKey,
 } from '@magic-potion/shared';
+import { SAMPLE_DRAWINGS } from './sampleDrawings';
 
 // The sample content pack, so a new game is playable out of the box.
 // Media paths under /sample/ are placeholders until the files are added in Phase 5.
@@ -124,24 +125,66 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
       ],
     },
   },
+  // Symbols are ids of the alien glyphs drawn by the web app (apps/web/src/player/tasks/
+  // alienGlyphs.tsx). Any other symbol is shown as text. The message reads
+  // THE PURPLE MOON RISES AT DAWN; ' ' is a gap between words. The hint gives the first 3
+  // hidden pairs (P, U, L).
   {
     key: 'alien_translator',
     variant: 1,
     publicData: {
-      message: ['⌘', '⍜', '⏚', '⏚', '⏃', '⍟', ' ', '⏚', '⎈', '⎈', '⌬'],
+      message: [
+        'g07',
+        'g14',
+        'g03',
+        ' ',
+        'g05',
+        'g16',
+        'g21',
+        'g05',
+        'g12',
+        'g03',
+        ' ',
+        'g23',
+        'g10',
+        'g10',
+        'g25',
+        ' ',
+        'g21',
+        'g09',
+        'g18',
+        'g03',
+        'g18',
+        ' ',
+        'g01',
+        'g07',
+        ' ',
+        'g19',
+        'g01',
+        'g02',
+        'g25',
+      ],
       legend: [
-        { symbol: '⌘', letter: 'H' },
-        { symbol: '⍜', letter: 'I' },
-        { symbol: '⏃', letter: 'E' },
-        { symbol: '⍟', letter: 'N' },
+        { symbol: 'g07', letter: 'T' },
+        { symbol: 'g14', letter: 'H' },
+        { symbol: 'g03', letter: 'E' },
+        { symbol: 'g21', letter: 'R' },
+        { symbol: 'g10', letter: 'O' },
+        { symbol: 'g18', letter: 'S' },
+        { symbol: 'g01', letter: 'A' },
+        { symbol: 'g25', letter: 'N' },
       ],
     },
     secretData: {
-      answer: ['hidden door'],
+      answer: ['the purple moon rises at dawn', 'purple moon rises at dawn'],
       hiddenLegend: [
-        { symbol: '⏚', letter: 'D' },
-        { symbol: '⎈', letter: 'O' },
-        { symbol: '⌬', letter: 'R' },
+        { symbol: 'g05', letter: 'P' },
+        { symbol: 'g16', letter: 'U' },
+        { symbol: 'g12', letter: 'L' },
+        { symbol: 'g23', letter: 'M' },
+        { symbol: 'g09', letter: 'I' },
+        { symbol: 'g19', letter: 'D' },
+        { symbol: 'g02', letter: 'W' },
       ],
     },
   },
@@ -176,122 +219,23 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
       },
     },
   },
+  // Line drawings from apps/server/prisma/sampleDrawings.ts. Guesses are forgiving (case,
+  // spaces, punctuation, a/an/the, simple plurals).
   {
     key: 'pictionary',
     variant: 1,
-    publicData: {
-      drawings: [
-        {
-          strokes: [
-            [
-              [50, 30],
-              [64, 36],
-              [70, 50],
-              [64, 64],
-              [50, 70],
-              [36, 64],
-              [30, 50],
-              [36, 36],
-              [50, 30],
-            ],
-            [
-              [50, 20],
-              [50, 8],
-            ],
-            [
-              [50, 80],
-              [50, 92],
-            ],
-            [
-              [20, 50],
-              [8, 50],
-            ],
-            [
-              [80, 50],
-              [92, 50],
-            ],
-          ],
-        },
-        {
-          strokes: [
-            [
-              [20, 80],
-              [80, 80],
-              [80, 45],
-              [20, 45],
-              [20, 80],
-            ],
-            [
-              [15, 45],
-              [50, 15],
-              [85, 45],
-            ],
-            [
-              [45, 80],
-              [45, 62],
-              [55, 62],
-              [55, 80],
-            ],
-          ],
-        },
-        {
-          strokes: [
-            [
-              [45, 90],
-              [45, 60],
-            ],
-            [
-              [55, 90],
-              [55, 60],
-            ],
-            [
-              [25, 60],
-              [50, 15],
-              [75, 60],
-              [25, 60],
-            ],
-          ],
-        },
-        {
-          strokes: [
-            [
-              [20, 50],
-              [40, 35],
-              [65, 40],
-              [75, 50],
-              [65, 60],
-              [40, 65],
-              [20, 50],
-            ],
-            [
-              [75, 50],
-              [90, 38],
-              [90, 62],
-              [75, 50],
-            ],
-          ],
-        },
-        {
-          strokes: [
-            [
-              [50, 10],
-              [61, 40],
-              [93, 40],
-              [67, 58],
-              [77, 90],
-              [50, 70],
-              [23, 90],
-              [33, 58],
-              [7, 40],
-              [39, 40],
-              [50, 10],
-            ],
-          ],
-        },
+    publicData: { drawings: SAMPLE_DRAWINGS },
+    secretData: {
+      words: [
+        ['key'],
+        ['cup', 'mug', 'coffee cup', 'coffee mug', 'tea cup', 'teacup', 'coffee'],
+        ['light bulb', 'lightbulb', 'bulb', 'bulb light'],
+        ['laptop', 'computer', 'notebook'],
+        ['rocket', 'rocket ship', 'spaceship', 'space ship'],
       ],
     },
-    secretData: { words: [['sun'], ['house', 'home'], ['tree'], ['fish'], ['star']] },
   },
+  // 4 linked stages: each answer leads to the next. Mirror text is drawn flipped on screen.
   {
     key: 'escape_room',
     variant: 1,
@@ -300,22 +244,35 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
       stages: [
         {
           title: 'Find the key',
-          prompt: 'The key is hidden under the thing you sit on. What is it?',
+          prompt:
+            "The key is in one of three drawers. Drawer A: 'The key is not here.' Drawer B: 'The key is in drawer A.' Drawer C: 'The key is not in drawer B.' Only one note is true. Which drawer has the key?",
         },
-        { title: 'Mirror puzzle', prompt: 'Read this in a mirror: HCTAWPOTS' },
-        { title: 'Cipher', prompt: 'Move each letter back by one in the alphabet: DMPDL' },
+        {
+          title: 'Mirror puzzle',
+          prompt: 'Drawer B holds a note. Read it in a mirror. What colour is the folder?',
+          mirrorText: 'THE CARD IS IN THE BLUE FOLDER',
+        },
+        {
+          title: 'Cipher',
+          prompt:
+            'The blue folder holds a card. Each letter is one step after the real letter (B means A). Decode it: TFWFO',
+        },
         {
           title: 'Escape',
-          prompt: 'The door code is the number of letters in your last two answers, added up.',
+          prompt:
+            "The door keypad needs a number: the number on the card, times the number of letters in the folder's colour.",
         },
       ],
     },
     secretData: {
       stages: [
-        { answer: ['chair', 'a chair', 'the chair', 'seat'], hint: 'Look down.' },
-        { answer: ['stopwatch'], hint: 'Read the letters from right to left.' },
-        { answer: ['clock'], hint: 'D becomes C.' },
-        { answer: ['14', 'fourteen'], hint: 'Count the letters in STOPWATCH and CLOCK.' },
+        {
+          answer: ['b', 'drawer b'],
+          hint: 'Try each drawer in turn. Count how many notes would be true.',
+        },
+        { answer: ['blue'], hint: 'Read each line from right to left.' },
+        { answer: ['seven', '7'], hint: 'T means S.' },
+        { answer: ['28', 'twenty eight', 'twenty-eight'], hint: 'The colour BLUE has 4 letters.' },
       ],
     },
   },
