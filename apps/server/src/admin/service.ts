@@ -54,18 +54,21 @@ export interface AdminServiceOptions {
   // Called after a Lobby change to a game's settings or teams, so the running server drops its
   // cached copy of the game and connected browsers load it again.
   onLobbyChange?: (gameId: string) => void;
-  bcryptRounds?: number;
+  // bcrypt cost for staff passwords (default 12) and team passwords (default 10). Team passwords
+  // are made in batches of up to 25 and logins are rate-limited, so a lower cost keeps
+  // "create game" quick. Tests pass a low number.
+  bcryptRounds?: { staff: number; team: number };
   random?: (max: number) => number;
 }
 
 export class AdminService {
   private readonly store: AdminStore;
-  private readonly rounds: number;
+  private readonly rounds: { staff: number; team: number };
   private readonly random: (max: number) => number;
 
   constructor(private readonly opts: AdminServiceOptions) {
     this.store = opts.store;
-    this.rounds = opts.bcryptRounds ?? 12;
+    this.rounds = opts.bcryptRounds ?? { staff: 12, team: 10 };
     this.random = opts.random ?? ((max) => randomInt(max));
   }
 
@@ -217,7 +220,7 @@ export class AdminService {
     for (const t of teams) {
       const password = generateTeamPassword(this.random);
       logins.push({ code: t.code, name: t.name, password });
-      rows.push({ teamId: t.id, passwordHash: await bcrypt.hash(password, this.rounds) });
+      rows.push({ teamId: t.id, passwordHash: await bcrypt.hash(password, this.rounds.team) });
     }
     await this.store.setTeamPasswords(rows);
     for (const t of teams) {
@@ -243,7 +246,7 @@ export class AdminService {
     const member = await this.store.createStaff({
       name: input.name,
       email: input.email.toLowerCase(),
-      passwordHash: await bcrypt.hash(input.password, this.rounds),
+      passwordHash: await bcrypt.hash(input.password, this.rounds.staff),
     });
     await this.store.audit({
       gameId: null,
@@ -282,7 +285,7 @@ export class AdminService {
     const member = await this.store.staffById(id);
     if (!member) return fail(404, 'STAFF_NOT_FOUND');
     if (member.role === 'MAIN_ADMIN' && id !== staff.id) return fail(400, 'MAIN_ADMIN');
-    await this.store.setStaffPassword(id, await bcrypt.hash(password, this.rounds));
+    await this.store.setStaffPassword(id, await bcrypt.hash(password, this.rounds.staff));
     await this.store.audit({
       gameId: null,
       staffUserId: staff.id,
@@ -355,7 +358,7 @@ export class AdminService {
     for (const [i, code] of codes.entries()) {
       const name = names[i]?.trim() || `Team ${already + i + 1}`;
       const password = generateTeamPassword(this.random);
-      rows.push({ code, name, passwordHash: await bcrypt.hash(password, this.rounds) });
+      rows.push({ code, name, passwordHash: await bcrypt.hash(password, this.rounds.team) });
       logins.push({ code, name, password });
     }
     return { rows, logins };

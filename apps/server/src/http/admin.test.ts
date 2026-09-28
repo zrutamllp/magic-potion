@@ -23,7 +23,7 @@ function setup(opts: { uploads?: boolean } = {}) {
     store,
     auth: fx.auth,
     onLobbyChange: (id) => reloaded.push(id),
-    bcryptRounds: 4,
+    bcryptRounds: { staff: 4, team: 4 },
   });
   const saved: { folder: string; contentType: string; bytes: number }[] = [];
   // Stands in for Vercel Blob: tests never use the real store or its token.
