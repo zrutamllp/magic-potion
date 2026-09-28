@@ -7,8 +7,11 @@ import { lockTimesText } from '../rules';
 import { startBlock } from '../screens/Home';
 import { TASK_LOOK } from '../tasks';
 import { Button, Card, Chip, TONE_BG, TONE_TEXT } from '../ui/basics';
+import { EthicalDilemma } from './EthicalDilemma';
 import { FIND_CODE_ELSEWHERE, FindCode } from './FindCode';
+import { Hangman } from './Hangman';
 import { GiveUpCard, HintCard, TriesCard, hasHint, hasLockout, type Running } from './parts';
+import { Riddle } from './Riddle';
 import { VAULT_ELSEWHERE, Vault } from './Vault';
 
 // One task: the brief, then the play screen with timer, hint, tries and Give up, then the
@@ -24,6 +27,9 @@ export interface TaskPlayProps {
 const PLAY: Partial<Record<PlayerTaskView['key'], ComponentType<TaskPlayProps>>> = {
   vault: Vault,
   find_code: FindCode,
+  riddle: Riddle,
+  hangman: Hangman,
+  ethical_dilemma: EthicalDilemma,
 };
 
 // Tasks that need something from outside the team's screen say so, as a plain fact.
@@ -216,6 +222,32 @@ function Brief({ task }: { task: PlayerTaskView }) {
 }
 
 function Solved({ task }: { task: PlayerTaskView }) {
+  // Ethical Dilemma has no right answer: it shows what the team chose.
+  if (task.key === 'ethical_dilemma') {
+    return (
+      <Card tone="success" className="py-6">
+        <div className="flex items-center gap-4">
+          <CheckCircle2 className="h-14 w-14 text-success" aria-hidden />
+          <div>
+            <p className="text-4xl font-extrabold text-success">Answer saved.</p>
+            <p className="text-2xl">+{money(task.points)} points.</p>
+          </div>
+        </div>
+        {task.savedAnswer && (
+          <dl className="mt-5 space-y-2 text-xl">
+            <div>
+              <dt className="text-lg font-bold text-ink-muted">Your choice</dt>
+              <dd>{task.savedAnswer.option}</dd>
+            </div>
+            <div>
+              <dt className="text-lg font-bold text-ink-muted">Your reason</dt>
+              <dd>{task.savedAnswer.reason}</dd>
+            </div>
+          </dl>
+        )}
+      </Card>
+    );
+  }
   return (
     <Card tone="success" className="flex items-center gap-4 py-8">
       <CheckCircle2 className="h-14 w-14 text-success" aria-hidden />

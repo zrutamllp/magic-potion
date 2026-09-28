@@ -308,3 +308,209 @@ describe('Find the Code', () => {
     expect(screen.getByRole('button', { name: 'Submit the code' })).toBeDisabled();
   });
 });
+
+// ---------- Batch 2 ----------
+
+const riddleView = {
+  content: {
+    riddles: [
+      'What has hands but cannot clap?',
+      'What gets wetter the more it dries?',
+      'What has 12 months and 52 weeks, but is not a year?',
+    ],
+  },
+  answers: [null, null, null] as (string | null)[],
+  hint: null as null | { index: number; text: string },
+};
+
+const hangmanView = {
+  content: { category: 'Office problem' },
+  masked: 'P____e_ ___ __ p_pe_',
+  guessed: ['p', 'e', 'z', 'q'],
+  wrong: 2,
+  maxWrong: 6,
+  hinted: null as string | null,
+};
+
+const dilemmaView = {
+  content: {
+    scenario: 'A colleague tells you some news in private.',
+    options: ['Say nothing.', 'Tell your manager.', 'Ask them to tell.', 'Raise a concern.'],
+  },
+  choice: null,
+  reason: null,
+};
+
+const riddle = (o: Partial<PlayerTaskView> = {}) =>
+  task({ id: 'r', key: 'riddle', name: 'Riddle', type: 'UNIQUE', ...o });
+const hangman = (o: Partial<PlayerTaskView> = {}) =>
+  task({ id: 'h', key: 'hangman', name: 'Hangman', type: 'UNIQUE', ...o });
+const dilemma = (o: Partial<PlayerTaskView> = {}) =>
+  task({ id: 'd', key: 'ethical_dilemma', name: 'Ethical Dilemma', type: 'UNIQUE', ...o });
+
+describe('Riddle', () => {
+  const playing = (view = riddleView) =>
+    withTasks([riddle({ status: 'IN_PROGRESS', running: running({ view }) })]);
+
+  it('checks one riddle at a time and says when an answer is not right', async () => {
+    const { send } = renderGame(<TaskScreen taskId="r" />, {
+      state: playing(),
+      ack: { ok: true, value: { status: 'wrong' } } as Ack,
+    });
+    expect(screen.getByText('What has hands but cannot clap?')).toBeInTheDocument();
+    const checks = screen.getAllByRole('button', { name: 'Check' });
+    expect(checks).toHaveLength(3);
+    expect(checks[1]).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Answer to riddle 2'), {
+      target: { value: 'A sponge' },
+    });
+    await act(async () => fireEvent.click(checks[1]!));
+    expect(send).toHaveBeenCalledWith('task:submit', {
+      taskId: 'r',
+      submission: { index: 1, answer: 'A sponge' },
+    });
+    expect(await screen.findByText('Not right. Try again.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Answer to riddle 2')).toHaveValue('A sponge');
+  });
+
+  it('shows solved riddles with their answer, and the hint under its riddle', () => {
+    renderGame(<TaskScreen taskId="r" />, {
+      state: playing({
+        ...riddleView,
+        answers: ['A clock', null, null],
+        hint: { index: 1, text: 'You use it after a bath.' },
+      }),
+    });
+    expect(screen.getByText('A clock')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Answer to riddle 1')).toBeNull();
+    expect(screen.getByText(/Hint: You use it after a bath\./)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Check' })).toHaveLength(2);
+  });
+});
+
+describe('Hangman', () => {
+  const playing = (view = hangmanView) =>
+    withTasks([hangman({ status: 'IN_PROGRESS', running: running({ view }) })]);
+
+  it('shows the phrase, lives left and wrong letters, and disables guessed letters', () => {
+    renderGame(<TaskScreen taskId="h" />, { state: playing() });
+    expect(screen.getByText('Category: Office problem')).toBeInTheDocument();
+    expect(screen.getByLabelText('Lives left: 4 of 6')).toBeInTheDocument();
+    expect(screen.getByText(/Wrong letters:/)).toHaveTextContent('Wrong letters: Z, Q');
+    expect(screen.getByRole('button', { name: 'Letter P, in the phrase' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Letter Z, not in the phrase' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Letter R' })).toBeEnabled();
+    expect(screen.getByLabelText(/^Phrase:/)).toHaveAttribute(
+      'aria-label',
+      'Phrase: P _ _ _ _ E _   _ _ _   _ _   P _ P E _',
+    );
+  });
+
+  it('sends one letter from a click or the keyboard, and says if it is in the phrase', async () => {
+    const { send } = renderGame(<TaskScreen taskId="h" />, {
+      state: playing(),
+      ack: { ok: true, value: { status: 'correct' } } as Ack,
+    });
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Letter R' })));
+    expect(send).toHaveBeenCalledWith('task:submit', {
+      taskId: 'h',
+      submission: { letter: 'r' },
+    });
+    expect(await screen.findByText('R is in the phrase.')).toBeInTheDocument();
+    await act(async () => fireEvent.keyDown(window, { key: 'T' }));
+    expect(send).toHaveBeenCalledWith('task:submit', {
+      taskId: 'h',
+      submission: { letter: 't' },
+    });
+    // A letter already guessed is not sent again.
+    send.mockClear();
+    await act(async () => fireEvent.keyDown(window, { key: 'p' }));
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('says when a letter is not in the phrase', async () => {
+    renderGame(<TaskScreen taskId="h" />, {
+      state: playing(),
+      ack: { ok: true, value: { status: 'wrong' } } as Ack,
+    });
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Letter X' })));
+    expect(await screen.findByText('X is not in the phrase.')).toBeInTheDocument();
+  });
+
+  it('marks the hint letter', () => {
+    renderGame(<TaskScreen taskId="h" />, {
+      state: playing({ ...hangmanView, guessed: [...hangmanView.guessed, 'r'], hinted: 'r' }),
+    });
+    expect(screen.getByText('Hint: R')).toBeInTheDocument();
+  });
+
+  it('after too many wrong letters the brief says why the try failed', () => {
+    renderGame(<TaskScreen taskId="h" />, {
+      state: withTasks([hangman({ status: 'FAILED', lastResult: 'FAILED_WRONG' })]),
+    });
+    expect(screen.getByText('Too many wrong letters.')).toBeInTheDocument();
+  });
+});
+
+describe('Ethical Dilemma', () => {
+  const playing = () =>
+    withTasks([dilemma({ status: 'IN_PROGRESS', running: running({ view: dilemmaView }) })]);
+
+  it('needs an option and a reason, then sends both', async () => {
+    const { send } = renderGame(<TaskScreen taskId="d" />, { state: playing() });
+    const submit = screen.getByRole('button', { name: 'Submit answer' });
+    expect(submit).toBeDisabled();
+    fireEvent.click(screen.getByRole('radio', { name: /Tell your manager\./ }));
+    expect(submit).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Your reason'), {
+      target: { value: '  It matters. ' },
+    });
+    expect(submit).toBeEnabled();
+    await act(async () => fireEvent.click(submit));
+    expect(send).toHaveBeenCalledWith('task:submit', {
+      taskId: 'd',
+      submission: { choice: 1, reason: 'It matters.' },
+    });
+  });
+
+  it('has no hint and no right answer', () => {
+    renderGame(<TaskScreen taskId="d" />, { state: playing() });
+    expect(screen.getByText('This task has no hint.')).toBeInTheDocument();
+    expect(screen.queryByText(/correct|right answer|wrong/i)).toBeNull();
+  });
+
+  it('once answered, shows the saved choice and reason', () => {
+    renderGame(<TaskScreen taskId="d" />, {
+      state: withTasks([
+        dilemma({
+          status: 'DONE',
+          savedAnswer: { option: 'Tell your manager.', reason: 'It matters.' },
+        }),
+      ]),
+    });
+    expect(screen.getByText('Answer saved.')).toBeInTheDocument();
+    expect(screen.getByText('+10,000 points.')).toBeInTheDocument();
+    expect(screen.getByText('Tell your manager.')).toBeInTheDocument();
+    expect(screen.getByText('It matters.')).toBeInTheDocument();
+    expect(screen.queryByText('Solved!')).toBeNull();
+  });
+});
+
+describe('Batch 2 text', () => {
+  it('never tells teams to cooperate', () => {
+    const screens = [
+      withTasks([riddle({ status: 'IN_PROGRESS', running: running({ view: riddleView }) })]),
+      withTasks([hangman({ status: 'IN_PROGRESS', running: running({ view: hangmanView }) })]),
+      withTasks([dilemma({ status: 'IN_PROGRESS', running: running({ view: dilemmaView }) })]),
+      withTasks([riddle()]),
+      withTasks([hangman()]),
+      withTasks([dilemma()]),
+    ];
+    for (const state of screens) {
+      const id = state.team.tasks[0]!.id;
+      const { container, unmount } = renderGame(<TaskScreen taskId={id} />, { state });
+      for (const pattern of FORBIDDEN) expect(container.textContent).not.toMatch(pattern);
+      unmount();
+    }
+  });
+});

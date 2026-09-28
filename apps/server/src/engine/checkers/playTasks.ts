@@ -94,6 +94,8 @@ export const hangmanChecker = defineChecker<'hangman', HangmanProgress>({
     guessed: progress.guessed,
     wrong: progress.wrong,
     maxWrong: ctx.tasks.hangmanMaxWrong,
+    // The letter the hint revealed (already shown in the phrase), or null.
+    hinted: progress.hinted,
   }),
 });
 

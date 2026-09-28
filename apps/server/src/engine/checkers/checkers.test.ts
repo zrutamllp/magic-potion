@@ -185,6 +185,8 @@ describe('Hangman', () => {
     };
     expect(p.guessed).toHaveLength(1);
     expect(p.wrong).toBe(0);
+    const view = publicView('hangman', ctx, p as unknown as Json) as { hinted: string };
+    expect(view.hinted).toBe(p.guessed[0]);
   });
 });
 
