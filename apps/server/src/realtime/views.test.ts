@@ -127,3 +127,40 @@ describe('staff fragment list', () => {
     expect(off.devFragments).toBeNull();
   });
 });
+
+describe('dev Ethical Dilemma answers', () => {
+  it('lists saved answers for the main admin with dev tools on only', async () => {
+    const clock = new FakeClock(T0);
+    const { engine } = memoryEngine({ teams: 20, clock });
+    await engine.startGame(ADMIN);
+    const team = Object.values(engine.state.teams).find((t) =>
+      Object.values(t.tasks).some((x) => x.key === 'ethical_dilemma'),
+    )!;
+    const task = Object.values(team.tasks).find((x) => x.key === 'ethical_dilemma')!;
+    await engine.startTask(team.id, task.id);
+    await engine.submit(team.id, task.id, { choice: 0, reason: 'Kept my word.' });
+
+    const account = {
+      id: ADMIN,
+      name: 'Admin',
+      email: 'a@x',
+      role: 'MAIN_ADMIN' as const,
+      active: true,
+      passwordHash: '',
+    };
+    const on = buildStaffState(engine, account, null, () => false, true, clock.now());
+    expect(on.devDilemmaAnswers).toEqual([
+      {
+        teamName: team.name,
+        option: 'Say nothing. It is your colleague’s news to tell.',
+        reason: 'Kept my word.',
+      },
+    ]);
+    const off = buildStaffState(engine, account, null, () => false, false, clock.now());
+    expect(off.devDilemmaAnswers).toBeNull();
+    const cofac = { ...account, role: 'CO_FACILITATOR' as const };
+    expect(
+      buildStaffState(engine, cofac, null, () => false, true, clock.now()).devDilemmaAnswers,
+    ).toBeNull();
+  });
+});

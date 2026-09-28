@@ -2,6 +2,7 @@
 //
 //   node --env-file-if-exists=.env --import tsx scripts/screenshotGames.ts create
 //     prints JSON: a staff token, and two games with known team logins
+//     add --tasks riddle,hangman,ethical_dilemma so every team draws only those unique tasks
 //   node --env-file-if-exists=.env --import tsx scripts/screenshotGames.ts delete <gameId>...
 //
 // The real Demo Game is never touched. Local use only: it signs a staff token with JWT_SECRET.
@@ -11,6 +12,7 @@ import { Tokens } from '../src/auth/tokens';
 import { createPrisma } from '../src/db';
 import { createSampleGame } from '../src/engine/dbGame';
 import { loadEnv } from '../src/env';
+import { parseTasksArg } from '../prisma/sampleContent';
 
 export const SCREENSHOT_PASSWORD = 'screenshot-pass';
 
@@ -20,13 +22,14 @@ if (!env.DATABASE_URL || !env.JWT_SECRET || !env.ADMIN_SEED_EMAIL) {
 }
 const prisma = createPrisma(env.DATABASE_URL);
 const [command, ...args] = process.argv.slice(2);
+const uniqueTasks = parseTasksArg(args);
 
 // Two inbox tasks out at the start so the Inbox screenshot has something to show.
 const settings = structuredClone(DEFAULT_SETTINGS);
 settings.inbox.releaseAtPlaySeconds = [0, 0, 1800];
 
 async function makeGame(name: string, prefix: string, teams: number) {
-  const id = await createSampleGame(prisma, { name, teams, settings });
+  const id = await createSampleGame(prisma, { name, teams, settings, uniqueTasks });
   const hash = await bcrypt.hash(SCREENSHOT_PASSWORD, 4);
   const rows = await prisma.team.findMany({ where: { gameId: id }, orderBy: { code: 'asc' } });
   const suffix = Date.now().toString(36).slice(-4).toUpperCase();

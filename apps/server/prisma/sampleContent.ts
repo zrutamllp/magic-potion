@@ -1,4 +1,10 @@
-import type { InboxKind, TaskKey } from '@magic-potion/shared';
+import {
+  TASK_DEFINITIONS,
+  TaskKeySchema,
+  UNIQUE_TASKS_PER_TEAM,
+  type InboxKind,
+  type TaskKey,
+} from '@magic-potion/shared';
 
 // The sample content pack, so a new game is playable out of the box.
 // Media paths under /sample/ are placeholders until the files are added in Phase 5.
@@ -454,3 +460,28 @@ export const SAMPLE_INBOX_ITEMS: SampleInboxItem[] = [
     releaseSlot: 2,
   },
 ];
+
+const COMMON_TASK_KEYS: readonly TaskKey[] = TASK_DEFINITIONS.filter(
+  (d) => d.type === 'COMMON',
+).map((d) => d.key);
+
+// For hand testing and screenshots: keep the common tasks and only these unique tasks, so every
+// team draws them (the draw only uses tasks with content). All content when the list is empty.
+export function sampleContentFor(uniqueTasks: readonly TaskKey[] = []): SampleTaskContent[] {
+  if (uniqueTasks.length === 0) return SAMPLE_TASK_CONTENT;
+  const keep = new Set<TaskKey>([...COMMON_TASK_KEYS, ...uniqueTasks]);
+  return SAMPLE_TASK_CONTENT.filter((c) => keep.has(c.key));
+}
+
+// Reads "--tasks riddle,hangman,ethical_dilemma" from the command line. Empty when not given.
+export function parseTasksArg(argv: readonly string[]): TaskKey[] {
+  const i = argv.indexOf('--tasks');
+  if (i < 0) return [];
+  const keys = (argv[i + 1] ?? '').split(',').filter(Boolean);
+  const parsed = keys.map((k) => TaskKeySchema.parse(k));
+  const unique = parsed.filter((k) => !COMMON_TASK_KEYS.includes(k));
+  if (new Set(unique).size < UNIQUE_TASKS_PER_TEAM) {
+    throw new Error(`--tasks needs at least ${UNIQUE_TASKS_PER_TEAM} different unique tasks`);
+  }
+  return unique;
+}

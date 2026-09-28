@@ -60,6 +60,8 @@ export interface PlayerTaskView {
   } | null;
   // How the latest finished try ended, or null if none has.
   lastResult: AttemptResult | null;
+  // Ethical Dilemma only: the option and reason this team gave. Null for other tasks.
+  savedAnswer: { option: string; reason: string } | null;
 }
 
 // A wallet change that is not a transfer: a hint, a fail penalty, or a facilitator change.
@@ -198,6 +200,13 @@ export interface StaffFragmentView {
   value: string;
 }
 
+// The Ethical Dilemma answers given so far (saved for the debrief). Testing only, like fragments.
+export interface StaffDilemmaAnswerView {
+  teamName: string;
+  option: string;
+  reason: string;
+}
+
 export interface StaffState {
   game: GameClockView;
   potion: PotionView;
@@ -206,4 +215,6 @@ export interface StaffState {
   devTools: boolean;
   // Null unless dev tools are on and this is the main admin.
   devFragments: StaffFragmentView[] | null;
+  // Null unless dev tools are on and this is the main admin. The real debrief view is Phase 6.
+  devDilemmaAnswers: StaffDilemmaAnswerView[] | null;
 }

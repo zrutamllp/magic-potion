@@ -3,8 +3,9 @@ import {
   TaskKeySchema,
   parseTaskContent,
   type GameSettings,
+  type TaskKey,
 } from '@magic-potion/shared';
-import { SAMPLE_INBOX_ITEMS, SAMPLE_TASK_CONTENT } from '../../prisma/sampleContent';
+import { SAMPLE_INBOX_ITEMS, sampleContentFor } from '../../prisma/sampleContent';
 import type { PrismaClient } from '../generated/prisma/client';
 
 // Creates a lobby game in the database with the sample content pack.
@@ -12,12 +13,13 @@ import type { PrismaClient } from '../generated/prisma/client';
 
 export async function createSampleGame(
   prisma: PrismaClient,
-  opts: { name: string; teams: number; settings?: GameSettings },
+  // uniqueTasks: load only these unique tasks, so every team draws them (screenshots).
+  opts: { name: string; teams: number; settings?: GameSettings; uniqueTasks?: TaskKey[] },
 ): Promise<string> {
   const settings = opts.settings ?? DEFAULT_SETTINGS;
   const definitions = await prisma.taskDefinition.findMany();
   const definitionId = new Map(definitions.map((d) => [d.key, d.id]));
-  const content = SAMPLE_TASK_CONTENT.map((c) => {
+  const content = sampleContentFor(opts.uniqueTasks).map((c) => {
     const key = TaskKeySchema.parse(c.key);
     const taskDefinitionId = definitionId.get(key);
     if (!taskDefinitionId) throw new Error(`Task definitions are missing. Run npm run db:seed.`);

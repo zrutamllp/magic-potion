@@ -8,7 +8,13 @@ import {
 import { publicView, type Json } from './checkers';
 import { seededRng } from './rng';
 import { checkerContext, nextLockSeconds } from './rules/tasks';
-import { runningAttempt, tasksDone, type GameContent, type GameState } from './state';
+import {
+  runningAttempt,
+  tasksDone,
+  type GameContent,
+  type GameState,
+  type TeamTaskState,
+} from './state';
 
 // What one team may see. Only public fields: no answers, no other teams' fragments.
 
@@ -29,6 +35,25 @@ export interface TeamTaskView {
     view: Json;
   } | null;
   lastResult: AttemptResult | null;
+  // Ethical Dilemma only: the option and reason the team gave. Null for other tasks.
+  savedAnswer: DilemmaAnswer | null;
+}
+
+export interface DilemmaAnswer {
+  option: string;
+  reason: string;
+}
+
+// The Ethical Dilemma answer saved on the solved try, for the team's own screen and the debrief.
+export function dilemmaAnswer(content: GameContent, task: TeamTaskState): DilemmaAnswer | null {
+  if (task.key !== 'ethical_dilemma') return null;
+  const solved = task.attempts.find((a) => a.result === 'SOLVED');
+  if (!solved) return null;
+  const { choice, reason } = solved.progress as { choice?: number | null; reason?: string | null };
+  const options = (content.byId[solved.contentId]?.publicData as { options?: string[] } | undefined)
+    ?.options;
+  const option = choice == null ? undefined : options?.[choice];
+  return option && reason ? { option, reason } : null;
 }
 
 export interface TeamView {
@@ -82,6 +107,7 @@ export function teamView(
           }
         : null,
       lastResult: [...task.attempts].reverse().find((a) => a.result !== null)?.result ?? null,
+      savedAnswer: dilemmaAnswer(content, task),
     };
   });
   const foundItems = Object.values(state.fragments)

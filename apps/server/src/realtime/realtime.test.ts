@@ -451,6 +451,7 @@ describe('staff', () => {
     await waitFor(() => a.feed.length === 1);
     const all = a.payloads.join('');
     expect(all).not.toContain('devFragments');
+    expect(all).not.toContain('devDilemmaAnswers');
     expect(all).not.toContain('holderTeamName');
   });
 

@@ -472,3 +472,32 @@ describe('public views', () => {
     expect(json).not.toContain('hiddenKey');
   });
 });
+
+describe('Ethical Dilemma answer', () => {
+  it('is saved on the try, shown to the team and listed for the debrief', async () => {
+    const g = await started();
+    const { team: t, taskId } = withTask(g.engine, 'ethical_dilemma');
+    await g.engine.startTask(t.id, taskId);
+    const r = await g.engine.submit(t.id, taskId, { choice: 2, reason: '  Their news first. ' });
+    expect(r.ok).toBe(true);
+    const task = taskOf(g.engine, t.id, taskId);
+    expect(task.status).toBe('DONE');
+
+    // Saved to the database with the try, so a restart of the server keeps it.
+    const attemptId = task.attempts[0]?.id;
+    const savedProgress = g.persistence.log
+      .filter((c) => c.kind === 'update' && c.model === 'taskAttempt' && c.id === attemptId)
+      .map((c) => (c.kind === 'update' ? c.data.progress : undefined))
+      .filter((p) => p !== undefined);
+    expect(savedProgress.at(-1)).toEqual({ choice: 2, reason: 'Their news first.' });
+
+    const view = g.engine.teamView(t.id)?.tasks.find((x) => x.id === taskId);
+    expect(view?.savedAnswer).toEqual({
+      option: 'Ask your colleague to tell the manager today, and say nothing yourself.',
+      reason: 'Their news first.',
+    });
+    // Other tasks never carry an answer.
+    const other = g.engine.teamView(t.id)?.tasks.find((x) => x.key === 'vault');
+    expect(other?.savedAnswer).toBeNull();
+  });
+});

@@ -386,6 +386,36 @@ function GameControl({
           </table>
         </section>
       )}
+
+      {state.devDilemmaAnswers && (
+        <section className="mt-4 rounded-2xl border border-warning/50 bg-card p-4">
+          <h2 className="text-xl font-bold">
+            Ethical Dilemma answers (dev tools only, saved for the debrief)
+          </h2>
+          {state.devDilemmaAnswers.length === 0 ? (
+            <p className="text-ink-muted">No answers yet.</p>
+          ) : (
+            <table className="mt-3 w-full text-left">
+              <thead className="text-ink-muted">
+                <tr>
+                  <th>Team</th>
+                  <th>Option</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                {state.devDilemmaAnswers.map((a) => (
+                  <tr key={a.teamName} className="border-t border-line align-top">
+                    <td className="py-2 font-bold">{a.teamName}</td>
+                    <td className="py-2 pr-4">{a.option}</td>
+                    <td className="py-2">{a.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+      )}
     </main>
   );
 }

@@ -4,11 +4,13 @@ import { TASK_DEFINITIONS, TaskKeySchema, parseTaskContent } from '@magic-potion
 import { createPrisma } from '../src/db';
 import { loadEnv } from '../src/env';
 import { demoSettings, describeTiming } from './demoSettings';
-import { SAMPLE_INBOX_ITEMS, SAMPLE_TASK_CONTENT } from './sampleContent';
+import { SAMPLE_INBOX_ITEMS, parseTasksArg, sampleContentFor } from './sampleContent';
 
 // Safe to run more than once: existing rows are left alone.
 // Pass --reset-demo to delete and recreate the demo game (prints new team passwords).
 // Add --short for quick hand testing: 5-minute rounds and a 1-minute pause.
+// Add --tasks riddle,hangman,ethical_dilemma to load only those unique tasks, so every team
+// draws them (hand testing one batch of task screens).
 
 const DEMO_GAME_NAME = 'Demo Game';
 const DEMO_TEAM_COUNT = 4;
@@ -21,6 +23,7 @@ if (!env.ADMIN_SEED_EMAIL || !env.ADMIN_SEED_PASSWORD) {
 }
 const resetDemo = process.argv.includes('--reset-demo');
 const short = process.argv.includes('--short');
+const uniqueTasks = parseTasksArg(process.argv);
 const settings = demoSettings(short);
 const prisma = createPrisma(env.DATABASE_URL);
 
@@ -66,7 +69,7 @@ async function seedDemoGame() {
   }
 
   // Validate the whole pack before writing anything.
-  const content = SAMPLE_TASK_CONTENT.map((c) => ({
+  const content = sampleContentFor(uniqueTasks).map((c) => ({
     ...c,
     ...parseTaskContent(TaskKeySchema.parse(c.key), c),
   }));
@@ -126,6 +129,7 @@ async function seedDemoGame() {
   console.log(
     `Created ${DEMO_GAME_NAME} with ${DEMO_TEAM_COUNT} teams (${describeTiming(settings)}).`,
   );
+  if (uniqueTasks.length > 0) console.log(`Unique tasks: ${uniqueTasks.join(', ')} only.`);
   console.log('Team logins (shown only now):');
   for (const l of logins) console.log(`  ${l.code}  ${l.password}`);
 }

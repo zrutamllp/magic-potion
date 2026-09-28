@@ -17,6 +17,7 @@ import { phaseMsLeft, playMsRemaining, timersRunning } from '../engine/playClock
 import { potionPercent } from '../engine/potion';
 import { messagesLeft } from '../engine/rules/chat';
 import type { GameState, TransferState } from '../engine/state';
+import { dilemmaAnswer } from '../engine/views';
 
 // Turns engine state into what one browser may see. Built only from public fields:
 // never task answers, never another team's fragments, never inbox answers.
@@ -215,6 +216,7 @@ export function buildStaffState(
   now: number,
 ): StaffState {
   const s = engine.state;
+  const devAdmin = devTools && staff.role === 'MAIN_ADMIN';
   return {
     game: clockView(s, now),
     potion: potionView(engine),
@@ -235,21 +237,30 @@ export function buildStaffState(
       })),
     devTools,
     // Testing aid only (dev tools, main admin). Never part of a player's state.
-    devFragments:
-      devTools && staff.role === 'MAIN_ADMIN'
-        ? Object.values(s.fragments)
-            .map((f) => ({
-              kind: f.kind,
-              neededByTeamName: teamName(s, f.neededByTeamId),
-              holderTeamName: teamName(s, f.holderTeamId),
-              value: f.value,
-            }))
-            .sort(
-              (a, b) =>
-                a.kind.localeCompare(b.kind) ||
-                a.neededByTeamName.localeCompare(b.neededByTeamName, undefined, { numeric: true }),
-            )
-        : null,
+    devFragments: devAdmin
+      ? Object.values(s.fragments)
+          .map((f) => ({
+            kind: f.kind,
+            neededByTeamName: teamName(s, f.neededByTeamId),
+            holderTeamName: teamName(s, f.holderTeamId),
+            value: f.value,
+          }))
+          .sort(
+            (a, b) =>
+              a.kind.localeCompare(b.kind) ||
+              a.neededByTeamName.localeCompare(b.neededByTeamName, undefined, { numeric: true }),
+          )
+      : null,
+    devDilemmaAnswers: devAdmin
+      ? Object.values(s.teams)
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+          .flatMap((t) =>
+            Object.values(t.tasks).flatMap((task) => {
+              const answer = dilemmaAnswer(engine.gameContent, task);
+              return answer ? [{ teamName: t.name, ...answer }] : [];
+            }),
+          )
+      : null,
   };
 }
 

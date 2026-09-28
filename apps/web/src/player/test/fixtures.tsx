@@ -25,6 +25,7 @@ export function task(overrides: Partial<PlayerTaskView> = {}): PlayerTaskView {
     points: 10_000,
     running: null,
     lastResult: null,
+    savedAnswer: null,
     ...overrides,
   };
 }

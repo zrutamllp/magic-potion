@@ -6,7 +6,12 @@ import {
 } from '@magic-potion/shared';
 import { describe, expect, it } from 'vitest';
 import { forbiddenPhrases } from '@magic-potion/shared';
-import { SAMPLE_INBOX_ITEMS, SAMPLE_TASK_CONTENT } from './sampleContent';
+import {
+  SAMPLE_INBOX_ITEMS,
+  SAMPLE_TASK_CONTENT,
+  parseTasksArg,
+  sampleContentFor,
+} from './sampleContent';
 
 describe('sample content pack', () => {
   it('has content for all 12 tasks', () => {
@@ -83,5 +88,17 @@ describe('sample content pack', () => {
     const findCode = SAMPLE_TASK_CONTENT.find((c) => c.key === 'find_code');
     expect(findCode?.secretData).not.toHaveProperty('words');
     expect(findCode?.secretData).toMatchObject({ codeLength: { min: 6, max: 7 } });
+  });
+
+  it('--tasks keeps the common tasks and only the listed unique tasks', () => {
+    const keys = parseTasksArg(['--short', '--tasks', 'riddle,hangman,ethical_dilemma']);
+    expect(keys).toEqual(['riddle', 'hangman', 'ethical_dilemma']);
+    expect(new Set(sampleContentFor(keys).map((c) => c.key))).toEqual(
+      new Set(['vault', 'find_code', 'riddle', 'hangman', 'ethical_dilemma']),
+    );
+    expect(parseTasksArg(['--short'])).toEqual([]);
+    expect(sampleContentFor([])).toBe(SAMPLE_TASK_CONTENT);
+    expect(() => parseTasksArg(['--tasks', 'riddle,hangman'])).toThrow();
+    expect(() => parseTasksArg(['--tasks', 'riddle,hangman,nope'])).toThrow();
   });
 });

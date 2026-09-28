@@ -29,8 +29,12 @@ function script(...args: string[]): string {
   );
 }
 
-export function createGames(): Games {
-  const lines = script('create').trim().split('\n');
+// uniqueTasks: every team draws only these unique tasks (for one batch of task screens).
+export function createGames(uniqueTasks: string[] = []): Games {
+  const extra = uniqueTasks.length > 0 ? ['--tasks', uniqueTasks.join(',')] : [];
+  const lines = script('create', ...extra)
+    .trim()
+    .split('\n');
   return JSON.parse(lines[lines.length - 1] ?? '{}') as Games;
 }
 
