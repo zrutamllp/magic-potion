@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { Ack, PlayerState, PlayerTaskView } from '@magic-potion/shared';
 import { playerState, renderGame, task } from '../test/fixtures';
@@ -825,5 +825,70 @@ describe('Alien Translator', () => {
     });
     expect(letter(6)).toHaveValue('W');
     expect(screen.getAllByLabelText('From the hint')).toHaveLength(1);
+  });
+});
+
+const celebrityView = {
+  taskName: 'Guess the Leader',
+  imageUrl: '/sample/faces/abc123.svg',
+  position: 3,
+  total: 8,
+  named: ['Sample one', 'sample two'],
+  canPass: true,
+  hint: null as string | null,
+};
+const celebrity = (o: Partial<PlayerTaskView> = {}) =>
+  task({ id: 'gc', key: 'guess_celebrity', name: 'Guess the Leader', type: 'UNIQUE', ...o });
+
+describe('Guess the Celebrity', () => {
+  const playing = (view = celebrityView) =>
+    withTasks([celebrity({ status: 'IN_PROGRESS', running: running({ view }) })]);
+
+  it('shows the task name from the content, one photo, "Face 3 of 8" and the named chips', () => {
+    renderGame(<TaskScreen taskId="gc" />, { state: playing() });
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Guess the Leader');
+    expect(screen.getByRole('img', { name: 'Face 3 of 8' })).toHaveAttribute(
+      'src',
+      '/sample/faces/abc123.svg',
+    );
+    expect(screen.getByText(/^Face/)).toHaveTextContent('Face 3 of 8');
+    const chips = within(screen.getByLabelText('Named')).getAllByRole('listitem');
+    expect(chips.map((c) => c.textContent?.trim())).toEqual(['Sample one', 'sample two']);
+  });
+
+  it('sends a guess, and says when it is not right', async () => {
+    const { send } = renderGame(<TaskScreen taskId="gc" />, {
+      state: playing(),
+      ack: { ok: true, value: { status: 'wrong' } } as Ack,
+    });
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'MS Dhoni' } });
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Guess' })));
+    expect(send).toHaveBeenCalledWith('task:submit', {
+      taskId: 'gc',
+      submission: { answer: 'MS Dhoni' },
+    });
+    expect(await screen.findByText('Not right. Try again.')).toBeInTheDocument();
+  });
+
+  it('Pass sends a pass and says the photo comes back; it is off on the last photo', async () => {
+    const { send, unmount } = renderGame(<TaskScreen taskId="gc" />, {
+      state: playing(),
+      ack: { ok: true, value: { status: 'correct' } } as Ack,
+    });
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Pass' })));
+    expect(send).toHaveBeenCalledWith('task:submit', { taskId: 'gc', submission: { pass: true } });
+    expect(await screen.findByText('Passed. It comes back later.')).toBeInTheDocument();
+    unmount();
+    renderGame(<TaskScreen taskId="gc" />, {
+      state: playing({ ...celebrityView, canPass: false }),
+    });
+    expect(screen.getByRole('button', { name: 'Pass' })).toBeDisabled();
+  });
+
+  it('shows the hint for the photo on screen', () => {
+    renderGame(<TaskScreen taskId="gc" />, {
+      state: playing({ ...celebrityView, hint: 'S___ K___' }),
+    });
+    expect(screen.getByText('S___ K___')).toBeInTheDocument();
   });
 });

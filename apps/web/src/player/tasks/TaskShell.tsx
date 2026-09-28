@@ -11,6 +11,7 @@ import { AlienTranslator } from './AlienTranslator';
 import { DataStory } from './DataStory';
 import { EthicalDilemma } from './EthicalDilemma';
 import { FIND_CODE_ELSEWHERE, FindCode } from './FindCode';
+import { GuessCelebrity } from './GuessCelebrity';
 import { Hangman } from './Hangman';
 import {
   GiveUpCard,
@@ -44,6 +45,7 @@ export interface TaskPlayProps {
 const WIDE: readonly PlayerTaskView['key'][] = [
   'alien_translator',
   'ethical_dilemma',
+  'guess_celebrity',
   'picture_puzzle',
   'spot_difference',
   'data_story',
@@ -54,6 +56,7 @@ const PLAY: Partial<Record<PlayerTaskView['key'], ComponentType<TaskPlayProps>>>
   vault: Vault,
   alien_translator: AlienTranslator,
   find_code: FindCode,
+  guess_celebrity: GuessCelebrity,
   picture_puzzle: PicturePuzzle,
   spot_difference: SpotDifference,
   data_story: DataStory,

@@ -70,6 +70,31 @@ async function typeAlien(page: Page, text: string) {
   }
 }
 
+// ---------- Guess the Celebrity ----------
+
+// The placeholder faces (sample content): file name -> an accepted name.
+const FACES: Record<string, string> = {
+  '12a1173ba2': 'sample one',
+  '6afcee46f9': 'Sample Two',
+  '0608b2a753': 'sample 3',
+  '08a6337778': 'sample four',
+  '758551c75d': 'Sample-Five',
+  '96c3a97de9': 'sample six',
+  f4975b5ad3: 'sample seven',
+  '303364df23': 'sample eight',
+};
+
+async function faceName(page: Page): Promise<string> {
+  const src = (await page.getByRole('img', { name: /^Face \d+ of 8$/ }).getAttribute('src')) ?? '';
+  const file = /([0-9a-f]{10})\.svg$/.exec(src)?.[1] ?? '';
+  return FACES[file] ?? 'unknown';
+}
+
+async function guess(page: Page, name: string) {
+  await page.getByLabel('Name', { exact: true }).fill(name);
+  await page.getByRole('button', { name: 'Guess', exact: true }).click();
+}
+
 test('Batch 4: Alien Translator, Guess the Celebrity, Pictionary', async ({ browser }) => {
   const team = games.a.teams[0]!;
   await staff(games, `/games/${games.a.id}/start`);
@@ -112,4 +137,56 @@ test('Batch 4: Alien Translator, Guess the Celebrity, Pictionary', async ({ brow
   await page.getByRole('button', { name: 'Submit', exact: true }).click();
   await expect(page.getByText('Solved!')).toBeVisible();
   await shot(page, 'alien-6-solved');
+
+  // ---------- Guess the Celebrity ----------
+  await openTask(page, 'Guess the Celebrity');
+  await shot(page, 'celebrity-1-brief');
+  await start(page, 'Start Task');
+  await expect(page.getByText('Face 1 of 8')).toBeVisible();
+  await fits(page, page.getByRole('img', { name: 'Face 1 of 8' }));
+  await fits(page, page.getByRole('button', { name: 'Pass' }));
+  await fits(page, page.getByRole('button', { name: 'Give up' }));
+  await fits(page, page.getByLabel('Named'));
+  await shot(page, 'celebrity-2-playing');
+
+  await guess(page, 'Somebody Else');
+  await expect(page.getByText('Not right. Try again.')).toBeVisible();
+  await shot(page, 'celebrity-3-wrong');
+
+  // Pass: the next photo shows, and the passed one comes back after the others.
+  await page.getByRole('button', { name: 'Pass' }).click();
+  await expect(page.getByText('Face 2 of 8')).toBeVisible();
+  await expect(page.getByText('Passed. It comes back later.')).toBeVisible();
+  await shot(page, 'celebrity-4-passed');
+
+  await useHint(page);
+  await expect(page.getByText(/^Hint:/)).toBeVisible();
+  await shot(page, 'celebrity-5-hint');
+
+  // Name photos 2 to 5 (the chips list them), then give up.
+  for (let i = 2; i <= 5; i++) {
+    await expect(page.getByText(`Face ${i} of 8`)).toBeVisible();
+    await guess(page, await faceName(page));
+  }
+  await expect(page.getByText('Face 6 of 8')).toBeVisible();
+  await expect(page.getByLabel('Named').getByRole('listitem')).toHaveCount(4);
+  await shot(page, 'celebrity-6-four-named');
+  await giveUp(page);
+  await shot(page, 'celebrity-7-failed');
+
+  // Next try: pass the first photo, name the other 7, then the passed one comes back last.
+  await start(page, 'Try again');
+  const first = await faceName(page);
+  await page.getByRole('button', { name: 'Pass' }).click();
+  for (let i = 2; i <= 8; i++) {
+    await expect(page.getByText(`Face ${i} of 8`)).toBeVisible();
+    await guess(page, await faceName(page));
+  }
+  await expect(page.getByText('Face 1 of 8')).toBeVisible();
+  expect(await faceName(page)).toBe(first);
+  await expect(page.getByRole('button', { name: 'Pass' })).toBeDisabled();
+  await shot(page, 'celebrity-8-last-photo');
+  await guess(page, first);
+  await expect(page.getByText('Solved!')).toBeVisible();
+  await shot(page, 'celebrity-9-solved');
 });
