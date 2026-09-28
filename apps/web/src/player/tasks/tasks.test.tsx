@@ -960,3 +960,107 @@ describe('Pictionary', () => {
     expect(screen.queryByText(/_/)).toBeNull();
   });
 });
+
+const escapeView = {
+  intro: 'You are locked in the lab. Clear all 4 stages to escape.',
+  stages: [
+    { title: 'Find the key', prompt: 'Which drawer has the key?' },
+    {
+      title: 'Mirror puzzle',
+      prompt: 'Read it in a mirror. What colour is the folder?',
+      mirrorText: 'THE CARD IS IN THE BLUE FOLDER',
+    },
+  ],
+  total: 4,
+  stage: 1,
+  hint: null as null | { stage: number; text: string },
+};
+const escape = (o: Partial<PlayerTaskView> = {}) =>
+  task({ id: 'er', key: 'escape_room', name: 'Escape Room', type: 'UNIQUE', ...o });
+
+describe('Escape Room', () => {
+  const playing = (view = escapeView, r: Partial<NonNullable<PlayerTaskView['running']>> = {}) =>
+    withTasks([escape({ status: 'IN_PROGRESS', running: running({ view, ...r }) })]);
+
+  it('shows the stages reached so far, and later stages only as closed', () => {
+    renderGame(<TaskScreen taskId="er" />, { state: playing() });
+    const stages = within(screen.getByLabelText('Stages')).getAllByRole('listitem');
+    expect(stages.map((s) => s.textContent)).toEqual([
+      'Find the key',
+      'Mirror puzzle',
+      'Stage 3',
+      'Stage 4',
+    ]);
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+      'Stage 2 of 4: Mirror puzzle',
+    );
+  });
+
+  it('draws the mirror text on a canvas, never as text on the page', () => {
+    const { container } = renderGame(<TaskScreen taskId="er" />, { state: playing() });
+    expect(screen.getByRole('img', { name: 'Mirror text' }).tagName).toBe('CANVAS');
+    expect(container.textContent).not.toContain('BLUE FOLDER');
+  });
+
+  it('sends the answer for the current stage and shows tries left', async () => {
+    const { send } = renderGame(<TaskScreen taskId="er" />, {
+      state: playing(escapeView, { wrongCount: 1 }),
+      ack: { ok: true, value: { status: 'wrong' } } as Ack,
+    });
+    expect(screen.getByText(/tries left before a/)).toHaveTextContent(
+      '2 of 3 tries left before a 60-second lock.',
+    );
+    fireEvent.change(screen.getByLabelText('Answer'), { target: { value: 'red' } });
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Check' })));
+    expect(send).toHaveBeenCalledWith('task:submit', {
+      taskId: 'er',
+      submission: { answer: 'red' },
+    });
+    expect(await screen.findByText('Not right. Try again.')).toBeInTheDocument();
+  });
+
+  it('locks the answer box during a lockout', () => {
+    renderGame(<TaskScreen taskId="er" />, { state: playing(escapeView, { lockMsLeft: 60_000 }) });
+    expect(screen.getByRole('alert')).toHaveTextContent('Locked after too many wrong tries');
+    expect(screen.getByLabelText('Answer')).toBeDisabled();
+  });
+
+  it('Chat opens the shared chat', () => {
+    const { go } = renderGame(<TaskScreen taskId="er" />, { state: playing() });
+    fireEvent.click(screen.getByRole('button', { name: 'Chat' }));
+    expect(go).toHaveBeenCalledWith({ tab: 'chat' });
+  });
+
+  it('shows the hint for the current stage only', () => {
+    renderGame(<TaskScreen taskId="er" />, {
+      state: playing({
+        ...escapeView,
+        hint: { stage: 1, text: 'Read each line from right to left.' },
+      }),
+    });
+    expect(screen.getByText(/Hint: Read each line/)).toBeInTheDocument();
+  });
+});
+
+describe('Batch 4 text', () => {
+  it('never tells teams to cooperate', () => {
+    const screens = [
+      withTasks([alien({ status: 'IN_PROGRESS', running: running({ view: alienView }) })]),
+      withTasks([celebrity({ status: 'IN_PROGRESS', running: running({ view: celebrityView }) })]),
+      withTasks([
+        pictionary({ status: 'IN_PROGRESS', running: running({ view: pictionaryView }) }),
+      ]),
+      withTasks([escape({ status: 'IN_PROGRESS', running: running({ view: escapeView }) })]),
+      withTasks([alien()]),
+      withTasks([celebrity()]),
+      withTasks([pictionary()]),
+      withTasks([escape()]),
+    ];
+    for (const state of screens) {
+      const id = state.team.tasks[0]!.id;
+      const { container, unmount } = renderGame(<TaskScreen taskId={id} />, { state });
+      for (const pattern of FORBIDDEN) expect(container.textContent).not.toMatch(pattern);
+      unmount();
+    }
+  });
+});

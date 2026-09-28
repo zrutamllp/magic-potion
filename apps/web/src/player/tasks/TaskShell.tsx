@@ -9,6 +9,7 @@ import { TASK_LOOK } from '../tasks';
 import { Button, Card, Chip, TONE_BG, TONE_TEXT } from '../ui/basics';
 import { AlienTranslator } from './AlienTranslator';
 import { DataStory } from './DataStory';
+import { EscapeRoom } from './EscapeRoom';
 import { EthicalDilemma } from './EthicalDilemma';
 import { FIND_CODE_ELSEWHERE, FindCode } from './FindCode';
 import { GuessCelebrity } from './GuessCelebrity';
@@ -42,9 +43,11 @@ export interface TaskPlayProps {
 }
 
 // Tasks that need the whole width (pictures, dashboards, long text) to fit 1280x720 without
-// scrolling. They have no tries card; the hint and Give up are compact.
+// scrolling. The hint and Give up are compact, and there is no tries card (Escape Room shows
+// its tries left in one line).
 const WIDE: readonly PlayerTaskView['key'][] = [
   'alien_translator',
+  'escape_room',
   'ethical_dilemma',
   'guess_celebrity',
   'pictionary',
@@ -57,6 +60,7 @@ const WIDE: readonly PlayerTaskView['key'][] = [
 const PLAY: Partial<Record<PlayerTaskView['key'], ComponentType<TaskPlayProps>>> = {
   vault: Vault,
   alien_translator: AlienTranslator,
+  escape_room: EscapeRoom,
   find_code: FindCode,
   guess_celebrity: GuessCelebrity,
   pictionary: Pictionary,

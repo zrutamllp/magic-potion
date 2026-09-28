@@ -243,3 +243,77 @@ test('Batch 4: Alien Translator, Guess the Celebrity, Pictionary', async ({ brow
   await expect(page.getByText('Solved!')).toBeVisible();
   await shot(page, 'pictionary-7-solved');
 });
+
+test('Batch 4: Escape Room', async ({ browser }) => {
+  const team = escapeGames.a.teams[0]!;
+  await staff(escapeGames, `/games/${escapeGames.a.id}/start`);
+  const page = await login(browser, escapeGames, team);
+
+  await openTask(page, 'Escape Room');
+  await expect(page.getByText(/3 wrong tries lock the task/)).toBeVisible();
+  await shot(page, 'escape-1-brief');
+  await start(page, 'Start Task');
+  await expect(page.getByText(/Stage 1 of 4/)).toBeVisible();
+  await fits(page, page.getByRole('button', { name: 'Check' }));
+  await fits(page, page.getByRole('button', { name: 'Give up' }));
+  await fits(page, page.getByRole('main').getByRole('button', { name: 'Chat' }));
+  // Later stages are not on the page.
+  await expect(page.getByText('Mirror puzzle')).toHaveCount(0);
+  await shot(page, 'escape-2-stage-1');
+
+  const answer = async (text: string) => {
+    await page.getByLabel('Answer', { exact: true }).fill(text);
+    await page.getByRole('button', { name: 'Check' }).click();
+  };
+
+  await answer('Drawer A');
+  await expect(page.getByText('Not right. Try again.')).toBeVisible();
+  await shot(page, 'escape-3-wrong');
+  await answer('drawer b');
+  await expect(page.getByText(/Stage 2 of 4/)).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Mirror text' })).toBeVisible();
+  await fits(page, page.getByRole('button', { name: 'Check' }));
+  await shot(page, 'escape-4-mirror');
+
+  // Mirror text cannot be selected as text: select everything and look for it.
+  const selected = await page.evaluate(() => {
+    document.getSelection()?.selectAllChildren(document.body);
+    return document.getSelection()?.toString() ?? '';
+  });
+  expect(selected).not.toContain('BLUE FOLDER');
+  await page.evaluate(() => document.getSelection()?.removeAllRanges());
+
+  await useHint(page);
+  await expect(page.getByText('Hint: Read each line from right to left.')).toBeVisible();
+  await shot(page, 'escape-5-hint');
+
+  // 3 wrong answers lock the task (same setting as The Vault). The wrong answer on stage 1
+  // counts too, so 2 more lock it.
+  await expect(page.getByText(/2 of 3 tries left/)).toBeVisible();
+  for (const w of ['red', 'green']) await answer(w);
+  await expect(page.getByRole('alert')).toContainText('Locked after too many wrong tries');
+  await fits(page, page.getByRole('alert'));
+  await shot(page, 'escape-6-locked');
+
+  // Chat opens the shared chat; the task timer keeps running.
+  await page.getByRole('main').getByRole('button', { name: 'Chat' }).click();
+  await expect(page.getByText(/Messages left/)).toBeVisible();
+  await shot(page, 'escape-7-chat');
+
+  // Give up (while locked is fine), then clear all 4 stages on the next try.
+  await openTask(page, 'Escape Room');
+  await giveUp(page);
+  await shot(page, 'escape-8-failed');
+  await start(page, 'Try again');
+  await answer('B');
+  await expect(page.getByText(/Stage 2 of 4/)).toBeVisible();
+  await answer('Blue');
+  await expect(page.getByText(/Stage 3 of 4/)).toBeVisible();
+  await shot(page, 'escape-9-cipher');
+  await answer('seven');
+  await expect(page.getByText(/Stage 4 of 4/)).toBeVisible();
+  await shot(page, 'escape-10-escape');
+  await answer('28');
+  await expect(page.getByText('Solved!')).toBeVisible();
+  await shot(page, 'escape-11-solved');
+});
