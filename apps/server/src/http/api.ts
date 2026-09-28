@@ -6,10 +6,12 @@ import {
   TeamLoginSchema,
   type EngineResult,
 } from '@magic-potion/shared';
+import type { AdminService } from '../admin/service';
 import type { AuthResult, AuthService } from '../auth/service';
 import type { StaffAccount } from '../auth/store';
 import { finishAllTasks } from '../engine/devTools';
 import type { GameEngine } from '../engine/engine';
+import { addAdminRoutes } from './admin';
 
 // REST routes under /api: logins, and the staff game controls that Phase 6 will build on.
 // Everything live (chat, funds, state) goes over Socket.IO instead.
@@ -18,6 +20,8 @@ export interface ApiDeps {
   auth: AuthService;
   // Loads the engine for a game; rejects if the game does not exist.
   engine: (gameId: string) => Promise<GameEngine>;
+  // The admin panel's setup routes (Phase 6A). Left out by tests that do not need them.
+  admin?: AdminService;
   // Registers the dev-only routes. Never true in production.
   devTools: boolean;
 }
@@ -46,7 +50,7 @@ function bearer(req: Request): string | undefined {
 const ExtendSchema = z.object({ seconds: z.number() });
 const FinishSchema = z.object({ limit: z.number().int().positive().optional() });
 
-export function createApiRouter({ auth, engine, devTools }: ApiDeps): Router {
+export function createApiRouter({ auth, engine, admin, devTools }: ApiDeps): Router {
   const api = express.Router();
 
   api.post('/team/login', async (req, res) => {
@@ -132,6 +136,8 @@ export function createApiRouter({ auth, engine, devTools }: ApiDeps): Router {
   staff.post('/teams/:teamId/end-session', async (req, res: Response<unknown, StaffLocals>) => {
     sendAuth(res, await auth.endTeamSession(res.locals.staff, String(req.params.teamId)));
   });
+
+  if (admin) addAdminRoutes(staff, admin, mainAdminOnly);
 
   if (devTools) {
     staff.post(

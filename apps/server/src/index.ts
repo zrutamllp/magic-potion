@@ -1,5 +1,7 @@
 import { createServer } from 'node:http';
 import { createApp } from './app';
+import { PrismaAdminStore } from './admin/prismaStore';
+import { AdminService } from './admin/service';
 import { PrismaAuthStore } from './auth/prismaStore';
 import { AuthService } from './auth/service';
 import { Tokens } from './auth/tokens';
@@ -26,12 +28,24 @@ if (prisma && engines && env.JWT_SECRET) {
   realtime = new Realtime({ auth, engines, clock: systemClock, clientOrigins, devTools });
 }
 const live = realtime;
+const admin =
+  prisma && live
+    ? new AdminService({
+        store: new PrismaAdminStore(prisma),
+        auth: live.auth,
+        onLobbyChange: (gameId) => {
+          live.reloadGame(gameId).catch((error: unknown) => {
+            console.error(`Could not reload game ${gameId}:`, error);
+          });
+        },
+      })
+    : undefined;
 
 const app = createApp({
   clientOrigins,
   checkDb: prisma ? () => prisma.$queryRaw`SELECT 1` : undefined,
   api: live
-    ? createApiRouter({ auth: live.auth, engine: (id) => live.engine(id), devTools })
+    ? createApiRouter({ auth: live.auth, engine: (id) => live.engine(id), admin, devTools })
     : undefined,
 });
 const server = createServer(app);

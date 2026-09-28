@@ -51,6 +51,20 @@ export class EngineRegistry {
     return engine;
   }
 
+  // Drops a Lobby game's engine after the admin changes its settings or teams, so the next
+  // get() loads it again from the database. A game that has started is never dropped: its
+  // engine holds the live state and timers.
+  async evict(gameId: string): Promise<boolean> {
+    const pending = this.engines.get(gameId);
+    if (!pending) return true;
+    const engine = await pending.catch(() => null);
+    if (engine && engine.state.phase !== 'LOBBY') return false;
+    // Another call may have replaced it while waiting.
+    if (this.engines.get(gameId) === pending) this.engines.delete(gameId);
+    await engine?.stop();
+    return true;
+  }
+
   private async load(gameId: string): Promise<GameEngine> {
     const { state, content } = await loadGame(this.prisma, gameId);
     const engine = new GameEngine({

@@ -18,7 +18,7 @@ import type { GameEngine } from '../engine/engine';
 import { memoryEngine } from '../engine/memoryGame';
 import { createApiRouter } from '../http/api';
 import { ADMIN, COFAC, authFixture, teamPassword } from '../testSupport';
-import { Realtime } from './server';
+import { Realtime, type EngineSource } from './server';
 
 const T0 = Date.UTC(2026, 8, 27, 9, 0, 0);
 const MIN = 60_000;
@@ -39,6 +39,7 @@ let clock: FakeClock;
 let engine: GameEngine;
 let fx: ReturnType<typeof authFixture>;
 let realtime: Realtime;
+let engines: EngineSource;
 let http: HttpServer;
 let url: string;
 const open: Client[] = [];
@@ -47,14 +48,15 @@ beforeEach(async () => {
   clock = new FakeClock(T0);
   engine = memoryEngine({ teams: 3, clock }).engine;
   fx = authFixture();
+  engines = {
+    get: async (id) => {
+      if (id !== 'game-1') throw new Error('no such game');
+      return engine;
+    },
+  };
   realtime = new Realtime({
     auth: fx.auth,
-    engines: {
-      get: async (id) => {
-        if (id !== 'game-1') throw new Error('no such game');
-        return engine;
-      },
-    },
+    engines,
     clock,
     clientOrigins: [],
     devTools: true,
@@ -476,5 +478,37 @@ describe('staff', () => {
     expect((await connectError({ token, as: 'staff', gameId: 'game-1' })).data?.code).toBe(
       'NOT_ALLOWED',
     );
+  });
+});
+
+describe('reloading a Lobby game', () => {
+  it('disconnects the game so browsers reconnect and get the fresh state', async () => {
+    const a = await team(1);
+    const reasons: string[] = [];
+    a.socket.on('disconnect', (reason) => reasons.push(reason));
+    await realtime.reloadGame('game-1');
+    await waitFor(() => reasons.length === 1, 'disconnect');
+    expect(reasons).toEqual(['io server disconnect']);
+    expect(a.ended).toEqual([]);
+
+    let full = 0;
+    a.socket.on('state:full', () => full++);
+    a.socket.connect();
+    await waitFor(() => full === 1, 'state:full after reconnect');
+  });
+
+  it('keeps a started game connected', async () => {
+    await started();
+    const a = await team(1);
+    const evicted: string[] = [];
+    // The registry refuses to drop a game that has started.
+    engines.evict = async (id) => {
+      evicted.push(id);
+      return false;
+    };
+    await realtime.reloadGame('game-1');
+    expect(evicted).toEqual(['game-1']);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(a.socket.connected).toBe(true);
   });
 });

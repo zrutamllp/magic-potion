@@ -1,0 +1,342 @@
+import request from 'supertest';
+import { describe, expect, it } from 'vitest';
+import { DEFAULT_SETTINGS, TEAM_CODE_ALPHABET, type AdminGame } from '@magic-potion/shared';
+import { MemoryAdminStore } from '../admin/memoryStore';
+import { AdminService } from '../admin/service';
+import { createApp } from '../app';
+import { FakeClock } from '../engine/clock';
+import { memoryEngine } from '../engine/memoryGame';
+import { ADMIN, COFAC, authFixture } from '../testSupport';
+import { createApiRouter } from './api';
+
+const T0 = Date.UTC(2026, 8, 28, 9, 0, 0);
+
+function setup() {
+  const fx = authFixture();
+  const store = new MemoryAdminStore(fx.store);
+  const reloaded: string[] = [];
+  const ended: string[][] = [];
+  fx.auth.onSessionsEnded((tokenIds) => ended.push(tokenIds));
+  const admin = new AdminService({
+    store,
+    auth: fx.auth,
+    onLobbyChange: (id) => reloaded.push(id),
+    bcryptRounds: 4,
+  });
+  const { engine } = memoryEngine({ teams: 3, clock: new FakeClock(T0) });
+  const api = createApiRouter({
+    auth: fx.auth,
+    engine: async () => engine,
+    admin,
+    devTools: false,
+  });
+  const app = createApp({ clientOrigins: [], api });
+  return { ...fx, store, app, reloaded, ended };
+}
+
+type Setup = ReturnType<typeof setup>;
+
+async function tokenFor(g: Setup, who = ADMIN) {
+  const res = await request(g.app)
+    .post('/api/staff/login')
+    .send({ email: who.email, password: who.password });
+  expect(res.status).toBe(200);
+  return res.body.token as string;
+}
+
+async function call(
+  g: Setup,
+  method: 'get' | 'post' | 'put' | 'patch' | 'delete',
+  path: string,
+  body?: object,
+  who = ADMIN,
+) {
+  const req = request(g.app)
+    [method](`/api/staff${path}`)
+    .set('Authorization', `Bearer ${await tokenFor(g, who)}`);
+  return body ? req.send(body) : req;
+}
+
+async function newGame(g: Setup, teamCount = 4) {
+  const res = await call(g, 'post', '/games', {
+    name: 'Acme offsite',
+    clientName: 'Acme',
+    teamCount,
+  });
+  expect(res.status).toBe(200);
+  return res.body as {
+    game: AdminGame;
+    logins: { code: string; name: string; password: string }[];
+  };
+}
+
+describe('creating a game', () => {
+  it('makes teams with unique codes and passwords shown once', async () => {
+    const g = setup();
+    const { game, logins } = await newGame(g, 5);
+    expect(game).toMatchObject({ name: 'Acme offsite', phase: 'LOBBY', locked: false });
+    expect(game.settings.branding.clientName).toBe('Acme');
+    expect(game.settings.funds).toEqual(DEFAULT_SETTINGS.funds);
+    expect(game.teams.map((t) => t.name)).toEqual([
+      'Team 1',
+      'Team 2',
+      'Team 3',
+      'Team 4',
+      'Team 5',
+    ]);
+    expect(logins).toHaveLength(5);
+    const codes = logins.map((l) => l.code);
+    expect(new Set(codes).size).toBe(5);
+    for (const code of codes) {
+      expect([...code].every((c) => TEAM_CODE_ALPHABET.includes(c))).toBe(true);
+    }
+    // Never a hash, and passwords only in the create reply.
+    expect(JSON.stringify(game)).not.toMatch(/passwordHash|\$2[aby]\$/);
+    const again = await call(g, 'get', `/games/${game.id}`);
+    expect(JSON.stringify(again.body)).not.toContain(logins[0]!.password);
+    expect(g.store.audits.at(-1)).toMatchObject({ action: 'CREATE_GAME', staffUserId: ADMIN.id });
+  });
+
+  it('lets a new team log in with its code and password', async () => {
+    const g = setup();
+    const { logins } = await newGame(g);
+    const login = logins[2]!;
+    const res = await request(g.app)
+      .post('/api/team/login')
+      .send({ code: login.code.toLowerCase(), password: login.password });
+    expect(res.status).toBe(200);
+    expect(res.body.teamName).toBe('Team 3');
+  });
+
+  it('never repeats a code used in another game', async () => {
+    const g = setup();
+    const { logins } = await newGame(g, 25);
+    const taken = new Set(['TEAM1', 'TEAM2', 'TEAM3']);
+    for (const l of logins) expect(taken.has(l.code)).toBe(false);
+  });
+
+  it('refuses a team count outside 3 to 25', async () => {
+    const g = setup();
+    expect((await call(g, 'post', '/games', { name: 'X', teamCount: 2 })).status).toBe(400);
+    expect((await call(g, 'post', '/games', { name: 'X', teamCount: 26 })).status).toBe(400);
+  });
+});
+
+describe('main admin only', () => {
+  it('refuses a co-facilitator and a missing login', async () => {
+    const g = setup();
+    const { game } = await newGame(g);
+    const cofac = await call(
+      g,
+      'put',
+      `/games/${game.id}/settings`,
+      { settings: DEFAULT_SETTINGS },
+      COFAC,
+    );
+    expect(cofac.status).toBe(403);
+    expect((await call(g, 'get', '/users', undefined, COFAC)).status).toBe(403);
+    const anon = await request(g.app).get(`/api/staff/games/${game.id}`);
+    expect(anon.status).toBe(401);
+  });
+});
+
+describe('settings', () => {
+  it('saves in the Lobby, audits what changed, and reloads the game', async () => {
+    const g = setup();
+    const { game } = await newGame(g);
+    const settings = structuredClone(game.settings);
+    settings.phases.round1Seconds = 120;
+    settings.branding.primaryColor = '#112233';
+    const res = await call(g, 'put', `/games/${game.id}/settings`, { settings });
+    expect(res.status).toBe(200);
+    expect(res.body.settings.phases.round1Seconds).toBe(120);
+    expect(g.reloaded).toEqual([game.id]);
+    expect(g.store.audits.at(-1)).toEqual({
+      gameId: game.id,
+      staffUserId: ADMIN.id,
+      action: 'SAVE_SETTINGS',
+      before: { 'branding.primaryColor': '#7c3aed', 'phases.round1Seconds': 2100 },
+      after: { 'branding.primaryColor': '#112233', 'phases.round1Seconds': 120 },
+    });
+  });
+
+  it('refuses settings that break the rules', async () => {
+    const g = setup();
+    const { game } = await newGame(g);
+    const settings = structuredClone(game.settings) as unknown as {
+      funds: { taskFundsStart: number };
+    };
+    settings.funds.taskFundsStart = -1;
+    expect((await call(g, 'put', `/games/${game.id}/settings`, { settings })).status).toBe(400);
+  });
+
+  it('locks every setting once Round 1 has started', async () => {
+    const g = setup();
+    const { game } = await newGame(g);
+    g.store.games.find((x) => x.id === game.id)!.startedAt = new Date(T0);
+    const res = await call(g, 'put', `/games/${game.id}/settings`, { settings: game.settings });
+    expect(res.status).toBe(409);
+    expect(res.body.message).toBe('The game has started, so this can no longer change.');
+    expect((await call(g, 'get', `/games/${game.id}`)).body.locked).toBe(true);
+    expect(g.reloaded).toEqual([]);
+  });
+});
+
+describe('teams', () => {
+  it('adds named teams, renames and deletes them in the Lobby', async () => {
+    const g = setup();
+    const { game } = await newGame(g, 3);
+    const added = await call(g, 'post', `/games/${game.id}/teams`, { count: 2, names: ['Owls'] });
+    expect(added.status).toBe(200);
+    expect(added.body.logins.map((l: { name: string }) => l.name)).toEqual(['Owls', 'Team 5']);
+    const owls = (added.body.game as AdminGame).teams.find((t) => t.name === 'Owls')!;
+
+    const renamed = await call(g, 'patch', `/games/${game.id}/teams/${owls.id}`, {
+      name: 'Night Owls',
+    });
+    expect(renamed.body.teams.map((t: { name: string }) => t.name)).toContain('Night Owls');
+    const deleted = await call(g, 'delete', `/games/${game.id}/teams/${owls.id}`);
+    expect(deleted.body.teams).toHaveLength(4);
+    expect(g.store.audits.map((a) => a.action).slice(-3)).toEqual([
+      'ADD_TEAMS',
+      'RENAME_TEAM',
+      'DELETE_TEAM',
+    ]);
+    expect(g.reloaded).toHaveLength(3);
+  });
+
+  it('keeps a game at 25 teams or fewer', async () => {
+    const g = setup();
+    const { game } = await newGame(g, 24);
+    const res = await call(g, 'post', `/games/${game.id}/teams`, { count: 2 });
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('A game can have at most 25 teams.');
+  });
+
+  it('does not add or delete teams after the start', async () => {
+    const g = setup();
+    const { game } = await newGame(g);
+    g.store.games.find((x) => x.id === game.id)!.startedAt = new Date(T0);
+    expect((await call(g, 'post', `/games/${game.id}/teams`, { count: 1 })).status).toBe(409);
+    const teamId = game.teams[0]!.id;
+    expect((await call(g, 'delete', `/games/${game.id}/teams/${teamId}`)).status).toBe(409);
+  });
+
+  it('refuses a team from another game', async () => {
+    const g = setup();
+    const { game } = await newGame(g);
+    const res = await call(g, 'patch', `/games/${game.id}/teams/team-1`, { name: 'X' });
+    expect(res.status).toBe(404);
+  });
+
+  it('resets passwords: the old one stops working and open logins end', async () => {
+    const g = setup();
+    const { game, logins } = await newGame(g);
+    const old = logins[0]!;
+    const login = await request(g.app)
+      .post('/api/team/login')
+      .send({ code: old.code, password: old.password });
+    expect(login.status).toBe(200);
+
+    const res = await call(g, 'post', `/games/${game.id}/teams/reset-passwords`, {
+      teamIds: [game.teams[0]!.id],
+    });
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].password).not.toBe(old.password);
+    expect(g.ended.flat()).toHaveLength(1);
+    expect(await g.auth.verifyTeam(login.body.token)).toMatchObject({ ok: false });
+
+    const oldLogin = await request(g.app)
+      .post('/api/team/login')
+      .send({ code: old.code, password: old.password });
+    expect(oldLogin.status).toBe(401);
+    const newLogin = await request(g.app)
+      .post('/api/team/login')
+      .send({ code: old.code, password: res.body[0].password });
+    expect(newLogin.status).toBe(200);
+  });
+
+  it('resets every team when none are chosen', async () => {
+    const g = setup();
+    const { game } = await newGame(g, 3);
+    const res = await call(g, 'post', `/games/${game.id}/teams/reset-passwords`, {});
+    expect(res.body).toHaveLength(3);
+  });
+});
+
+describe('staff and assignments', () => {
+  it('creates a co-facilitator who can log in, and assigns teams', async () => {
+    const g = setup();
+    const { game } = await newGame(g);
+    const created = await call(g, 'post', '/users', {
+      name: 'Priya',
+      email: 'Priya@Example.com',
+      password: 'start-pass-1',
+    });
+    expect(created.status).toBe(200);
+    expect(created.body).toEqual({
+      id: expect.any(String),
+      name: 'Priya',
+      email: 'priya@example.com',
+      role: 'CO_FACILITATOR',
+      active: true,
+    });
+    const priya = { id: created.body.id, email: 'priya@example.com', password: 'start-pass-1' };
+    await tokenFor(g, priya);
+
+    const teamIds = game.teams.slice(0, 2).map((t) => t.id);
+    const assigned = await call(g, 'put', `/games/${game.id}/assignments`, {
+      staffUserId: priya.id,
+      teamIds,
+    });
+    expect(assigned.body.assignments[priya.id]).toEqual(teamIds);
+    const games = await call(g, 'get', '/games', undefined, priya);
+    expect(games.body.map((x: { id: string }) => x.id)).toEqual([game.id]);
+  });
+
+  it('refuses a duplicate email', async () => {
+    const g = setup();
+    const res = await call(g, 'post', '/users', {
+      name: 'Again',
+      email: COFAC.email.toUpperCase(),
+      password: 'long-enough',
+    });
+    expect(res.status).toBe(409);
+    expect(res.body.message).toBe('Someone already uses that email.');
+  });
+
+  it('switches a co-facilitator off and resets their password', async () => {
+    const g = setup();
+    const reset = await call(g, 'post', `/users/${COFAC.id}/password`, { password: 'new-pass-22' });
+    expect(reset.status).toBe(200);
+    await tokenFor(g, { ...COFAC, password: 'new-pass-22' });
+    const off = await call(g, 'patch', `/users/${COFAC.id}`, { active: false });
+    expect(off.body.active).toBe(false);
+    const login = await request(g.app)
+      .post('/api/staff/login')
+      .send({ email: COFAC.email, password: 'new-pass-22' });
+    expect(login.status).toBe(401);
+  });
+
+  it('does not let the admin switch off their own account', async () => {
+    const g = setup();
+    const res = await call(g, 'patch', `/users/${ADMIN.id}`, { active: false });
+    expect(res.status).toBe(400);
+  });
+
+  it('only gives teams to an active co-facilitator, and only teams of this game', async () => {
+    const g = setup();
+    const { game } = await newGame(g);
+    const toAdmin = await call(g, 'put', `/games/${game.id}/assignments`, {
+      staffUserId: ADMIN.id,
+      teamIds: [],
+    });
+    expect(toAdmin.status).toBe(400);
+    const otherGame = await call(g, 'put', `/games/${game.id}/assignments`, {
+      staffUserId: COFAC.id,
+      teamIds: ['team-1'],
+    });
+    expect(otherGame.status).toBe(404);
+  });
+});

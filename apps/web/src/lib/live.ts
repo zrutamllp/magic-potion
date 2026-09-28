@@ -75,16 +75,27 @@ function useLive<S>(
     on(fullEvent, onFull);
     on(updateEvent, onUpdate);
     socket.on('feed:item', (item) => setFeed((f) => upsertFeed(f, item)));
-    socket.on('session:ended', (p) => setEnded(p.message));
+    // Set when the login has ended, so the disconnect that follows is not retried.
+    let loginEnded = false;
+    socket.on('session:ended', (p) => {
+      loginEnded = true;
+      setEnded(p.message);
+    });
     socket.on('connect', () => {
       setStatus('online');
       setProblem(null);
     });
-    socket.on('disconnect', () => setStatus('offline'));
+    socket.on('disconnect', (reason) => {
+      setStatus('offline');
+      // The server closed the connection on purpose to reload the game (the admin changed it
+      // in the Lobby). Socket.IO does not retry that by itself, so connect again for fresh state.
+      if (reason === 'io server disconnect' && !loginEnded) socket.connect();
+    });
     socket.on('connect_error', (error) => {
       setStatus('offline');
       const data = (error as Error & { data?: { code?: string } }).data;
       if (data?.code && LOGIN_ENDED.has(data.code)) {
+        loginEnded = true;
         setEnded(error.message);
         socket.disconnect();
       } else if (data?.code) {

@@ -128,6 +128,11 @@ export class AuthService {
     return (await this.store.assignedTeamIds(staff.id, gameId)).includes(teamId);
   }
 
+  // Ends a team's open logins and tells their browsers. The caller audits the reason.
+  async endSessions(teamId: string, reason: string): Promise<void> {
+    this.sessionsEnded(await this.store.endTeamSessions(teamId, reason), 'SESSION_ENDED');
+  }
+
   // Staff "reset session": the team must log in again. Audited.
   async endTeamSession(staff: StaffAccount, teamId: string): Promise<AuthResult<null>> {
     const gameId = await this.store.teamGameId(teamId);

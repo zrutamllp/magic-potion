@@ -43,6 +43,8 @@ import {
 
 export interface EngineSource {
   get(gameId: string): Promise<GameEngine>;
+  // Optional, so tests with a fixed engine can leave it out.
+  evict?(gameId: string): Promise<boolean>;
 }
 
 export interface RealtimeOptions {
@@ -100,6 +102,16 @@ export class Realtime {
       engine.onEvents((events) => this.push(gameId, engine, events));
     }
     return engine;
+  }
+
+  // After the admin changes a Lobby game: load it again and reconnect its browsers, so they
+  // get the new settings and teams. Browsers reconnect by themselves and reload full state;
+  // a team that was deleted is refused at that point and sent back to the login.
+  async reloadGame(gameId: string): Promise<void> {
+    if (this.opts.engines.evict && !(await this.opts.engines.evict(gameId))) return;
+    this.engines.delete(gameId);
+    this.io?.in(`game:${gameId}`).disconnectSockets();
+    for (const socket of this.staffSockets.get(gameId) ?? []) socket.disconnect();
   }
 
   attach(httpServer: HttpServer): IoServer {
