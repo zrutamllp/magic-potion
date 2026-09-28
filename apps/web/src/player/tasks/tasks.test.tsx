@@ -799,7 +799,7 @@ describe('Alien Translator', () => {
       state: playing(),
       ack: { ok: true, value: { status: 'wrong' } } as Ack,
     });
-    const submit = screen.getByRole('button', { name: 'Submit', exact: true });
+    const submit = screen.getByRole('button', { name: /^Submit$/ });
     expect(submit).toBeDisabled();
     fireEvent.change(letter(5), { target: { value: 'o' } });
     expect(letter(7)).toHaveValue('O');
