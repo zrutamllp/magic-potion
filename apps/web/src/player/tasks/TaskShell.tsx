@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from 'react';
+import { useEffect, type ComponentType, type ReactNode } from 'react';
 import { ArrowLeft, CheckCircle2, Hourglass, Play, RotateCcw, XCircle } from 'lucide-react';
 import type { AttemptResult, PlayerTaskView } from '@magic-potion/shared';
 import { formatMs, money } from '../../lib/time';
@@ -7,6 +7,7 @@ import { lockTimesText } from '../rules';
 import { startBlock } from '../screens/Home';
 import { TASK_LOOK } from '../tasks';
 import { Button, Card, Chip, TONE_BG, TONE_TEXT } from '../ui/basics';
+import { DataStory } from './DataStory';
 import { EthicalDilemma } from './EthicalDilemma';
 import { FIND_CODE_ELSEWHERE, FindCode } from './FindCode';
 import { Hangman } from './Hangman';
@@ -14,12 +15,15 @@ import {
   GiveUpCard,
   GiveUpInline,
   HintCard,
+  HintInline,
   TriesCard,
   hasHint,
   hasLockout,
   type Running,
 } from './parts';
+import { PicturePuzzle } from './PicturePuzzle';
 import { Riddle } from './Riddle';
+import { SpotDifference } from './SpotDifference';
 import { VAULT_ELSEWHERE, Vault } from './Vault';
 
 // One task: the brief, then the play screen with timer, hint, tries and Give up, then the
@@ -29,17 +33,27 @@ export interface TaskPlayProps {
   task: PlayerTaskView;
   running: Running;
   view: unknown;
-  // Full-width tasks show Give up themselves, next to their main button.
+  // Full-width tasks show the hint and Give up themselves, in a compact form.
+  hint?: ReactNode;
   giveUp?: ReactNode;
 }
 
-// Tasks with no hint and no tries use the full width, so they fit 1280x720 without scrolling.
-const WIDE: readonly PlayerTaskView['key'][] = ['ethical_dilemma'];
+// Tasks that need the whole width (pictures, dashboards, long text) to fit 1280x720 without
+// scrolling. They have no tries card; the hint and Give up are compact.
+const WIDE: readonly PlayerTaskView['key'][] = [
+  'ethical_dilemma',
+  'picture_puzzle',
+  'spot_difference',
+  'data_story',
+];
 
 // Tasks with their own play screen. The others show a placeholder until their batch is built.
 const PLAY: Partial<Record<PlayerTaskView['key'], ComponentType<TaskPlayProps>>> = {
   vault: Vault,
   find_code: FindCode,
+  picture_puzzle: PicturePuzzle,
+  spot_difference: SpotDifference,
+  data_story: DataStory,
   riddle: Riddle,
   hangman: Hangman,
   ethical_dilemma: EthicalDilemma,
@@ -61,6 +75,11 @@ const RESULT_TEXT: Partial<Record<AttemptResult, string>> = {
 export function TaskScreen({ taskId }: { taskId: string }) {
   const { state, go } = useGame();
   const task = state.team.tasks.find((t) => t.id === taskId);
+  // Each new stage (brief, a try, the result) starts at the top, so its main button shows.
+  const stage = task ? `${task.status}:${task.running?.number ?? 0}` : '';
+  useEffect(() => {
+    document.scrollingElement?.scrollTo?.({ top: 0 });
+  }, [stage]);
 
   if (!task) {
     return (
@@ -86,6 +105,7 @@ export function TaskScreen({ taskId }: { taskId: string }) {
           task={task}
           running={running}
           view={running.view}
+          hint={hasHint(task) ? <HintInline task={task} running={running} /> : null}
           giveUp={<GiveUpInline task={task} />}
         />
       ) : running ? (
@@ -176,7 +196,7 @@ function Brief({ task }: { task: PlayerTaskView }) {
     <div className="grid gap-5 lg:grid-cols-3">
       <Card className="lg:col-span-2">
         {failed && (
-          <div className="mb-5 flex items-start gap-3 rounded-xl border border-danger/60 bg-danger/15 p-4">
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-danger/60 bg-danger/15 px-4 py-3">
             <XCircle className="h-7 w-7 shrink-0 text-danger" aria-hidden />
             <div>
               <p className="text-2xl font-bold text-danger">
@@ -189,7 +209,7 @@ function Brief({ task }: { task: PlayerTaskView }) {
           </div>
         )}
         <p className="text-2xl font-semibold">{TASK_LOOK[task.key].summary}</p>
-        <ul className="mt-4 space-y-2 text-xl">
+        <ul className="mt-3 space-y-1.5 text-xl">
           <li>
             Timer: <strong>{minutes} minutes</strong>. It starts when you press{' '}
             {failed ? 'Try again' : 'Start Task'}.

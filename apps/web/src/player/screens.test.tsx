@@ -229,11 +229,11 @@ describe('task screen', () => {
     state.team = {
       ...state.team,
       tasks: [
-        // A task whose play screen is still a placeholder (Batch 3).
+        // A task whose play screen is still a placeholder (Batch 4).
         task({
-          id: 'task-data',
-          key: 'data_story',
-          name: 'Data Story',
+          id: 'task-sound',
+          key: 'sound_sleuth',
+          name: 'Sound Sleuth',
           type: 'UNIQUE',
           status: 'IN_PROGRESS',
           running: {
@@ -248,12 +248,12 @@ describe('task screen', () => {
         }),
       ],
     };
-    const { send, go } = renderGame(<TaskScreen taskId="task-data" />, { state });
+    const { send, go } = renderGame(<TaskScreen taskId="task-sound" />, { state });
     expect(screen.getByLabelText('Task time left')).toHaveTextContent('5:00');
     fireEvent.click(screen.getByRole('button', { name: 'Give up' }));
     expect(send).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Yes, give up' }));
-    expect(send).toHaveBeenCalledWith('task:giveUp', { taskId: 'task-data' });
+    expect(send).toHaveBeenCalledWith('task:giveUp', { taskId: 'task-sound' });
     fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
     expect(go).toHaveBeenCalledWith({ tab: 'home' });
   });

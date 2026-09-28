@@ -259,7 +259,7 @@ export function GiveUpInline({ task }: { task: PlayerTaskView }) {
       <Button
         tone="danger"
         variant="outline"
-        className="h-12 shrink-0 py-0"
+        className="h-11 shrink-0 py-0"
         onClick={() => setConfirming(true)}
       >
         <Flag className="h-5 w-5" aria-hidden /> Give up
@@ -271,7 +271,7 @@ export function GiveUpInline({ task }: { task: PlayerTaskView }) {
       <span className="text-lg text-danger">−{penalty} Task Funds.</span>
       <Button
         tone="danger"
-        className="h-12 py-0"
+        className="h-11 py-0"
         onClick={async () => {
           setConfirming(false);
           await act(null, () => send('task:giveUp', { taskId: task.id }));
@@ -279,9 +279,67 @@ export function GiveUpInline({ task }: { task: PlayerTaskView }) {
       >
         Yes, give up
       </Button>
-      <Button tone="muted" className="h-12 py-0" onClick={() => setConfirming(false)}>
+      <Button tone="muted" className="h-11 py-0" onClick={() => setConfirming(false)}>
         Keep going
       </Button>
     </div>
+  );
+}
+
+// The hint as one compact control, for full-width tasks. Same facts as the hint card: the
+// cost, how it is paid, and a confirm step. Blocked if it would take Task Funds below zero.
+export function HintInline({ task, running }: { task: PlayerTaskView; running: Running }) {
+  const { state, act, send } = useGame();
+  const [confirming, setConfirming] = useState(false);
+  const { cost, fromSupport, fromTask, blocked } = hintSplit(state);
+  if (running.hintsUsed >= state.settings.tasks.hintsPerAttempt) {
+    return (
+      <p className="flex items-center gap-2 text-lg font-semibold text-info">
+        <Lightbulb className="h-5 w-5 shrink-0" aria-hidden /> Hint used.
+      </p>
+    );
+  }
+  if (blocked) {
+    return (
+      <p className="text-lg text-warning">
+        Hint {money(cost)}: it would take your Task Funds below zero.
+      </p>
+    );
+  }
+  if (confirming) {
+    const paid =
+      fromTask === 0
+        ? `${money(cost)} from Support Funds`
+        : fromSupport === 0
+          ? `${money(cost)} from Task Funds`
+          : `${money(fromSupport)} Support + ${money(fromTask)} Task Funds`;
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-lg">Pay {paid}?</span>
+        <Button
+          tone="brand"
+          className="h-11 py-0"
+          onClick={async () => {
+            setConfirming(false);
+            await act(null, () => send('task:hint', { taskId: task.id }));
+          }}
+        >
+          Yes, use hint
+        </Button>
+        <Button tone="muted" className="h-11 py-0" onClick={() => setConfirming(false)}>
+          Cancel
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <Button
+      tone="brand"
+      variant="outline"
+      className="h-11 shrink-0 py-0"
+      onClick={() => setConfirming(true)}
+    >
+      <Lightbulb className="h-5 w-5" aria-hidden /> Use hint ({money(cost)})
+    </Button>
   );
 }

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Ack, PlayerState, PlayerTaskView } from '@magic-potion/shared';
 import { playerState, renderGame, task } from '../test/fixtures';
 import { FORBIDDEN } from '../test/forbidden';
+import { toImagePoint } from './SpotDifference';
 import { TaskScreen } from './TaskShell';
 
 const vaultView = {
@@ -515,6 +516,226 @@ describe('Batch 2 text', () => {
       withTasks([riddle()]),
       withTasks([hangman()]),
       withTasks([dilemma()]),
+    ];
+    for (const state of screens) {
+      const id = state.team.tasks[0]!.id;
+      const { container, unmount } = renderGame(<TaskScreen taskId={id} />, { state });
+      for (const pattern of FORBIDDEN) expect(container.textContent).not.toMatch(pattern);
+      unmount();
+    }
+  });
+});
+
+// ---------- Batch 3 ----------
+
+const puzzleView = {
+  content: { title: 'Office by the river', imageUrl: '/sample/p.svg', width: 800, height: 600 },
+  rows: 3,
+  cols: 3,
+  order: [1, 0, 2, 3, 4, 5, 6, 7, 8],
+  numbers: false,
+};
+
+const spotView = {
+  content: { leftImageUrl: '/l.svg', rightImageUrl: '/r.svg', width: 800, height: 600 },
+  found: [{ x: 430, y: 105, r: 45 }],
+  total: 7,
+  hint: null as null | { x: number; y: number; r: number },
+};
+
+const dataView = {
+  content: {
+    title: 'Sales and delivery',
+    charts: [
+      {
+        id: 'sales',
+        title: 'Sales by region (₹ lakh)',
+        type: 'bar',
+        data: [
+          { label: 'North', value: 42 },
+          { label: 'South', value: 58 },
+        ],
+      },
+      {
+        id: 'orders',
+        title: 'Orders delivered per month',
+        type: 'line',
+        data: [
+          { label: 'Apr', value: 1200 },
+          { label: 'Sep', value: 1720 },
+        ],
+      },
+      {
+        id: 'complaints',
+        title: 'Customer complaints',
+        type: 'bar',
+        data: [
+          { label: 'Late delivery', value: 36 },
+          { label: 'Damaged item', value: 14 },
+        ],
+      },
+    ],
+    questions: ['Which region sold most?', 'Which month was best?', 'How many more?'],
+  },
+  answers: [null, null, null] as (string | null)[],
+  hint: null as null | { index: number; text: string },
+};
+
+const puzzle = (o: Partial<PlayerTaskView> = {}) =>
+  task({ id: 'p', key: 'picture_puzzle', name: 'Picture Puzzle', type: 'UNIQUE', ...o });
+const spot = (o: Partial<PlayerTaskView> = {}) =>
+  task({ id: 's', key: 'spot_difference', name: 'Spot the Difference', type: 'UNIQUE', ...o });
+const data = (o: Partial<PlayerTaskView> = {}) =>
+  task({ id: 'ds', key: 'data_story', name: 'Data Story', type: 'UNIQUE', ...o });
+
+describe('Picture Puzzle', () => {
+  const playing = (view = puzzleView) =>
+    withTasks([puzzle({ status: 'IN_PROGRESS', running: running({ view }) })]);
+
+  it('swaps two tiles by clicking one, then the other', async () => {
+    const { send } = renderGame(<TaskScreen taskId="p" />, {
+      state: playing(),
+      ack: { ok: true, value: { status: 'correct' } } as Ack,
+    });
+    expect(screen.getAllByRole('button', { name: /^Spot \d+/ })).toHaveLength(9);
+    fireEvent.click(screen.getByRole('button', { name: 'Spot 1' }));
+    expect(screen.getByRole('button', { name: 'Spot 1, picked' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByText('Now click the tile to swap with.')).toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Spot 2' })));
+    expect(send).toHaveBeenCalledWith('task:submit', {
+      taskId: 'p',
+      submission: { swap: [0, 1] },
+    });
+  });
+
+  it('clicking the picked tile again cancels', () => {
+    const { send } = renderGame(<TaskScreen taskId="p" />, { state: playing() });
+    fireEvent.click(screen.getByRole('button', { name: 'Spot 3' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Spot 3, picked' }));
+    expect(send).not.toHaveBeenCalledWith('task:submit', expect.anything());
+    expect(screen.getByText('Click a tile, then another tile, to swap them.')).toBeInTheDocument();
+  });
+
+  it('swaps by drag and drop too', async () => {
+    const { send } = renderGame(<TaskScreen taskId="p" />, { state: playing() });
+    fireEvent.dragStart(screen.getByRole('button', { name: 'Spot 3' }));
+    await act(async () => fireEvent.drop(screen.getByRole('button', { name: 'Spot 5' })));
+    expect(send).toHaveBeenCalledWith('task:submit', {
+      taskId: 'p',
+      submission: { swap: [2, 4] },
+    });
+  });
+
+  it('shows the finished picture, and tile numbers only after the hint', () => {
+    const { unmount } = renderGame(<TaskScreen taskId="p" />, { state: playing() });
+    expect(screen.getByAltText('Finished picture: Office by the river')).toBeInTheDocument();
+    expect(screen.queryByText(/Spots 1 to 9/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Spot 1' })).toBeInTheDocument();
+    unmount();
+    renderGame(<TaskScreen taskId="p" />, {
+      state: withTasks([
+        puzzle({
+          status: 'IN_PROGRESS',
+          running: running({ hintsUsed: 1, view: { ...puzzleView, numbers: true } }),
+        }),
+      ]),
+    });
+    // Tile 2 sits in spot 1: its number says where it belongs.
+    expect(screen.getByRole('button', { name: 'Spot 1, tile 2' })).toHaveTextContent('2');
+    expect(screen.getByText('Spots 1 to 9: left to right, top to bottom.')).toBeInTheDocument();
+    expect(screen.getByText('Hint used.')).toBeInTheDocument();
+  });
+
+  it('has a compact hint that asks first', async () => {
+    const { send } = renderGame(<TaskScreen taskId="p" />, { state: playing() });
+    fireEvent.click(screen.getByRole('button', { name: 'Use hint (1,500)' }));
+    expect(screen.getByText('Pay 1,500 from Support Funds?')).toBeInTheDocument();
+    expect(send).not.toHaveBeenCalled();
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Yes, use hint' })));
+    expect(send).toHaveBeenCalledWith('task:hint', { taskId: 'p' });
+  });
+});
+
+describe('Spot the Difference', () => {
+  const playing = (view = spotView) =>
+    withTasks([spot({ status: 'IN_PROGRESS', running: running({ view }) })]);
+
+  it('turns a click into image pixels, whatever size the picture is shown at', () => {
+    const rect = { left: 100, top: 50, width: 400, height: 300 };
+    expect(toImagePoint({ clientX: 300, clientY: 200 }, rect, { width: 800, height: 600 })).toEqual(
+      { x: 400, y: 300 },
+    );
+  });
+
+  it('shows how many are found and sends a click in image pixels', async () => {
+    const { send } = renderGame(<TaskScreen taskId="s" />, {
+      state: playing(),
+      ack: { ok: true, value: { status: 'wrong' } } as Ack,
+    });
+    expect(screen.getByLabelText('1 of 7 found')).toHaveTextContent('1 of 7 found');
+    const right = screen.getByRole('button', { name: 'Right picture' });
+    right.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 400, height: 300, right: 400, bottom: 300 }) as DOMRect;
+    await act(async () => fireEvent.click(right, { clientX: 100, clientY: 150 }));
+    expect(send).toHaveBeenCalledWith('task:submit', {
+      taskId: 's',
+      submission: { x: 200, y: 300 },
+    });
+    // A miss is only a mark: no penalty text.
+    expect(screen.getByRole('status')).toHaveTextContent('No difference there.');
+    expect(screen.queryByText(/Task Funds/)).toBeNull();
+  });
+});
+
+describe('Data Story', () => {
+  const playing = (view = dataView) =>
+    withTasks([data({ status: 'IN_PROGRESS', running: running({ view }) })]);
+
+  it('prints every value on the charts and sends one answer at a time', async () => {
+    const { send } = renderGame(<TaskScreen taskId="ds" />, {
+      state: playing(),
+      ack: { ok: true, value: { status: 'wrong' } } as Ack,
+    });
+    for (const text of ['42', '58', '1,200', '1,720', '36', '14', 'Late delivery', 'South']) {
+      expect(screen.getAllByText(text).length).toBeGreaterThan(0);
+    }
+    fireEvent.change(screen.getByLabelText('Answer to question 2'), {
+      target: { value: 'Sep' },
+    });
+    await act(async () => fireEvent.click(screen.getAllByRole('button', { name: 'Check' })[1]!));
+    expect(send).toHaveBeenCalledWith('task:submit', {
+      taskId: 'ds',
+      submission: { index: 1, answer: 'Sep' },
+    });
+    expect(await screen.findByText('Not right. Try again.')).toBeInTheDocument();
+  });
+
+  it('the hint outlines the chart to look at', () => {
+    renderGame(<TaskScreen taskId="ds" />, {
+      state: playing({ ...dataView, hint: { index: 1, text: 'orders' } }),
+    });
+    expect(screen.getByText(/Hint for question 2: the outlined chart\./)).toBeInTheDocument();
+    expect(screen.getByRole('figure', { name: 'Orders delivered per month' })).toHaveClass(
+      'border-info',
+    );
+    expect(screen.getByRole('figure', { name: 'Sales by region (₹ lakh)' })).not.toHaveClass(
+      'border-info',
+    );
+  });
+});
+
+describe('Batch 3 text', () => {
+  it('never tells teams to cooperate', () => {
+    const screens = [
+      withTasks([puzzle({ status: 'IN_PROGRESS', running: running({ view: puzzleView }) })]),
+      withTasks([spot({ status: 'IN_PROGRESS', running: running({ view: spotView }) })]),
+      withTasks([data({ status: 'IN_PROGRESS', running: running({ view: dataView }) })]),
+      withTasks([puzzle()]),
+      withTasks([spot()]),
+      withTasks([data()]),
     ];
     for (const state of screens) {
       const id = state.team.tasks[0]!.id;
