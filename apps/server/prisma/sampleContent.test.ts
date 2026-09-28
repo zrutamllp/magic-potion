@@ -62,6 +62,22 @@ describe('sample content pack', () => {
     expect(bad).toEqual([]);
   });
 
+  it('gives every riddle at least 2 accepted answers', () => {
+    for (const c of SAMPLE_TASK_CONTENT.filter((c) => c.key === 'riddle')) {
+      const { secretData } = parseTaskContent('riddle', c);
+      for (const answers of secretData.answers) expect(answers.length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  // Each Hangman word is one row of tiles at 1280x720, so no word is longer than 12 letters.
+  it('keeps Hangman phrases short enough for one screen', () => {
+    for (const c of SAMPLE_TASK_CONTENT.filter((c) => c.key === 'hangman')) {
+      const { phrase } = parseTaskContent('hangman', c).secretData;
+      expect(phrase.length).toBeLessThanOrEqual(28);
+      for (const word of phrase.split(' ')) expect(word.length).toBeLessThanOrEqual(12);
+    }
+  });
+
   // GAME_RULES section 3: Find the Code uses random letter codes made at game start, never words.
   it('has no Find the Code word list, only a code length', () => {
     const findCode = SAMPLE_TASK_CONTENT.find((c) => c.key === 'find_code');

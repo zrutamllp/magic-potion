@@ -74,17 +74,24 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
     },
     secretData: {},
   },
+  // Workplace phrases. The category is shown; the phrase is secret.
   {
     key: 'hangman',
     variant: 1,
-    publicData: { category: 'A saying' },
-    secretData: { phrase: 'Every cloud has a silver lining' },
+    publicData: { category: 'Office problem' },
+    secretData: { phrase: 'Printer out of paper' },
   },
   {
     key: 'hangman',
     variant: 2,
-    publicData: { category: 'A proverb' },
-    secretData: { phrase: 'The early bird catches the worm' },
+    publicData: { category: 'On the calendar' },
+    secretData: { phrase: 'Quarterly review meeting' },
+  },
+  {
+    key: 'hangman',
+    variant: 3,
+    publicData: { category: 'In your inbox' },
+    secretData: { phrase: 'Out of office reply' },
   },
   {
     key: 'spot_difference',
@@ -291,23 +298,24 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
       ],
     },
   },
+  // Riddle answers ignore case, spaces, punctuation and "a", "an", "the" (see normalizeLoose).
   {
     key: 'riddle',
     variant: 1,
     publicData: {
       riddles: [
-        'What has keys but cannot open locks?',
-        'What gets wetter the more it dries?',
-        'What has hands but cannot clap?',
+        'I have keys but open no locks. I have space but no room. What am I?',
+        'The more you take, the more you leave behind. What are they?',
+        'What has many teeth but cannot bite?',
       ],
     },
     secretData: {
       answers: [
-        ['piano', 'a piano', 'keyboard', 'a keyboard'],
-        ['towel', 'a towel'],
-        ['clock', 'a clock', 'watch', 'a watch'],
+        ['keyboard', 'computer keyboard', 'laptop keyboard'],
+        ['footsteps', 'steps', 'footprints'],
+        ['comb', 'hair comb', 'zip', 'zipper'],
       ],
-      clues: ['It makes music.', 'You use it after a shower.', 'It tells the time.'],
+      clues: ['You type on it.', 'You make them when you walk.', 'You use it on your hair.'],
     },
   },
   {
@@ -315,31 +323,51 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
     variant: 2,
     publicData: {
       riddles: [
-        'What can you catch but not throw?',
-        'What has a neck but no head?',
-        'What goes up but never comes down?',
+        'What has hands but cannot clap?',
+        'What gets wetter the more it dries?',
+        'What has 12 months and 52 weeks, but is not a year?',
       ],
     },
     secretData: {
       answers: [
-        ['cold', 'a cold'],
-        ['bottle', 'a bottle'],
-        ['age', 'your age', 'my age'],
+        ['clock', 'watch', 'wall clock', 'wristwatch'],
+        ['towel', 'hand towel', 'bath towel'],
+        ['calendar', 'wall calendar', 'diary', 'planner'],
       ],
-      clues: ['You might get one in winter.', 'You can drink from it.', 'It grows every birthday.'],
+      clues: ['It tells the time.', 'You use it after a bath.', 'It hangs on the office wall.'],
     },
   },
+  {
+    key: 'riddle',
+    variant: 3,
+    publicData: {
+      riddles: [
+        'What has a head and a tail but no body?',
+        'What goes up but never comes down?',
+        'What has one eye but cannot see?',
+      ],
+    },
+    secretData: {
+      answers: [
+        ['coin', 'rupee coin', 'one rupee coin'],
+        ['age', 'your age', 'my age'],
+        ['needle', 'sewing needle', 'storm', 'cyclone'],
+      ],
+      clues: ['You find it in a wallet.', 'It grows every birthday.', 'A tailor uses it.'],
+    },
+  },
+  // No option is the right one. The choice and reason are saved for the debrief.
   {
     key: 'ethical_dilemma',
     variant: 1,
     publicData: {
       scenario:
-        'An hour before a big deadline, you find a mistake in a teammate’s part of the report. Fixing it will make the team late. What do you do?',
+        'A colleague you trust tells you in private that they have accepted a job at a competitor and will resign next week. Tomorrow your manager plans to give this colleague the lead role on a six-month client project. Today your manager asks you: "Is there anything I should know before I decide?"',
       options: [
-        'Fix it quietly and submit late.',
-        'Tell your teammate and agree on what to do.',
-        'Submit on time and mention the mistake later.',
-        'Tell your manager and let them decide.',
+        'Say nothing. It is your colleague’s news to tell.',
+        'Tell your manager what you know.',
+        'Ask your colleague to tell the manager today, and say nothing yourself.',
+        'Tell your manager you have a concern, without giving details.',
       ],
     },
     secretData: {},

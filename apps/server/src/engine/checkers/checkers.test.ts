@@ -144,10 +144,10 @@ describe('Picture Puzzle', () => {
 });
 
 describe('Hangman', () => {
-  const ctx = ctxFor('hangman'); // "Every cloud has a silver lining"
+  const ctx = ctxFor('hangman'); // "Printer out of paper"
 
   it('reveals matching letters and is solved when every letter is found', () => {
-    const letters = [...new Set('everycloudhasasilverlining')];
+    const letters = [...new Set('printeroutofpaper')];
     const r = play(
       'hangman',
       ctx,
@@ -158,16 +158,16 @@ describe('Hangman', () => {
   });
 
   it('shows only guessed letters', () => {
-    const r = play('hangman', ctx, [{ letter: 'E' }]);
+    const r = play('hangman', ctx, [{ letter: 'E' }, { letter: 'P' }]);
     const view = publicView('hangman', ctx, r.progress) as { masked: string };
-    expect(view.masked).toBe('E_e__ _____ ___ _ ____e_ ______');
+    expect(view.masked).toBe('P____e_ ___ __ p_pe_');
   });
 
   it('fails after 6 wrong letters', () => {
     const r = play(
       'hangman',
       ctx,
-      ['b', 'f', 'j', 'k', 'm', 'p'].map((letter) => ({ letter })),
+      ['b', 'c', 'd', 'g', 'h', 'j'].map((letter) => ({ letter })),
     );
     expect(r.statuses).toEqual(['wrong', 'wrong', 'wrong', 'wrong', 'wrong', 'failed']);
   });
@@ -241,19 +241,46 @@ describe('Alien Translator', () => {
 describe('question tasks (Riddle, Sound Sleuth, Data Story)', () => {
   it('Riddle is solved when all 3 are right, in any order', () => {
     const r = play('riddle', ctxFor('riddle'), [
-      { index: 2, answer: 'A Clock' },
+      { index: 2, answer: 'A Comb' },
       { index: 0, answer: 'banana' },
-      { index: 0, answer: 'piano' },
-      { index: 1, answer: 'towel' },
+      { index: 0, answer: 'keyboard' },
+      { index: 1, answer: 'footsteps' },
     ]);
     expect(r.statuses).toEqual(['correct', 'wrong', 'correct', 'solved']);
   });
 
+  it('Riddle ignores case, spaces, punctuation and a/an/the, and accepts alternatives', () => {
+    const ctx = ctxFor('riddle');
+    for (const answer of [
+      'The Keyboard.',
+      'key board',
+      'a computer-keyboard',
+      '  LAPTOP KEYBOARD!',
+    ]) {
+      expect(play('riddle', ctx, [{ index: 0, answer }]).statuses, answer).toEqual(['correct']);
+    }
+    for (const answer of ['foot steps', 'Footprints', 'the steps']) {
+      expect(play('riddle', ctx, [{ index: 1, answer }]).statuses, answer).toEqual(['correct']);
+    }
+    for (const answer of ['the', 'a', '...', 'keyboards', 'board']) {
+      expect(play('riddle', ctx, [{ index: 0, answer }]).statuses, answer).toEqual(['wrong']);
+    }
+  });
+
+  it('Riddle hint gives the clue for the first unanswered riddle', () => {
+    const ctx = ctxFor('riddle');
+    const r = play('riddle', ctx, [{ index: 0, answer: 'keyboard' }]);
+    const view = publicView('riddle', ctx, applyHint('riddle', ctx, r.progress)) as {
+      hint: { index: number; text: string };
+    };
+    expect(view.hint).toEqual({ index: 1, text: 'You make them when you walk.' });
+  });
+
   it('ignores a question that does not exist or is already answered', () => {
     const r = play('riddle', ctxFor('riddle'), [
-      { index: 5, answer: 'piano' },
-      { index: 0, answer: 'piano' },
-      { index: 0, answer: 'piano' },
+      { index: 5, answer: 'keyboard' },
+      { index: 0, answer: 'keyboard' },
+      { index: 0, answer: 'keyboard' },
     ]);
     expect(r.statuses).toEqual(['invalid', 'correct', 'invalid']);
   });

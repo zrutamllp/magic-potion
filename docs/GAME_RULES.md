@@ -76,6 +76,7 @@ Task content (images, words, riddles, audio, dashboards, answers) is uploaded pe
 ### Server-side checking
 
 - Text answers: compare after trimming, lowercasing and collapsing spaces.
+- Riddle answers are more forgiving: case, spaces, punctuation and the words "a", "an" and "the" are ignored, and each riddle can list several accepted answers.
 - Picture Puzzle: the client sends the tile order; the server checks it.
 - Spot the Difference: the client sends click coordinates; the server checks them against secret hit areas.
 - Hangman: the client sends one letter at a time; the server reveals matching positions.

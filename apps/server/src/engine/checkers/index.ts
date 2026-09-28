@@ -29,6 +29,7 @@ const CHECKERS: { [K in TaskKey]: TaskChecker<K, never> } = {
   riddle: questionsChecker<'riddle'>({
     accepted: (ctx) => ctx.secretData.answers,
     hintText: (ctx, i) => ctx.secretData.clues[i] ?? '',
+    loose: true,
   }),
   ethical_dilemma: ethicalDilemmaChecker,
   data_story: questionsChecker<'data_story'>({
