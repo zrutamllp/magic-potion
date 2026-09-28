@@ -211,7 +211,7 @@ The images in `design/` came from a generic gaming template. Where they differ f
 - Funds: remove the power-ups, cosmetics shop, "Add Funds" and "Earned today". Show both wallets, Send and Request panels, and a transaction log with pending transfers.
 - Inbox: only the 3 bonus tasks and game alerts.
 - Leaderboard: teams, not individual players.
-- Escape Room: hint costs 1,500 Support Funds. "Ask for Help" opens the shared chat.
+- Escape Room: hint costs 1,500 Support Funds. The design's "Ask for Help" button is labelled "Chat" (section 16) and opens the shared chat.
 - Task screens: "Exit" returns to Home and the timer keeps running. Add a "Give up" button that counts as a fail.
 - Picture Puzzle ("The Shattered Blueprint"): 12-minute timer, not 20. The factory photo is sample content only.
 - Keep the dark theme, card style and colours from the designs.

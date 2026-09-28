@@ -1,5 +1,5 @@
 import { useEffect, type ComponentType, type ReactNode } from 'react';
-import { ArrowLeft, CheckCircle2, Hourglass, Play, RotateCcw, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Play, RotateCcw, XCircle } from 'lucide-react';
 import type { AttemptResult, PlayerTaskView } from '@magic-potion/shared';
 import { formatMs, money } from '../../lib/time';
 import { useGame } from '../GameContext';
@@ -56,8 +56,8 @@ const WIDE: readonly PlayerTaskView['key'][] = [
   'data_story',
 ];
 
-// Tasks with their own play screen. The others show a placeholder until their batch is built.
-const PLAY: Partial<Record<PlayerTaskView['key'], ComponentType<TaskPlayProps>>> = {
+// The play screen of each task.
+const PLAY: Record<PlayerTaskView['key'], ComponentType<TaskPlayProps>> = {
   vault: Vault,
   alien_translator: AlienTranslator,
   escape_room: EscapeRoom,
@@ -112,7 +112,7 @@ export function TaskScreen({ taskId }: { taskId: string }) {
       <TaskHeader task={task} />
       {task.status === 'DONE' ? (
         <Solved task={task} />
-      ) : running && Play && WIDE.includes(task.key) ? (
+      ) : running && WIDE.includes(task.key) ? (
         <Play
           key={running.number}
           task={task}
@@ -125,11 +125,7 @@ export function TaskScreen({ taskId }: { taskId: string }) {
         <div className="grid gap-5 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
             {/* A new try gets a fresh screen. */}
-            {Play ? (
-              <Play key={running.number} task={task} running={running} view={running.view} />
-            ) : (
-              <Placeholder />
-            )}
+            <Play key={running.number} task={task} running={running} view={running.view} />
           </div>
           <div className="space-y-4">
             <HintCard task={task} running={running} />
@@ -309,18 +305,6 @@ function Solved({ task }: { task: PlayerTaskView }) {
         <p className="text-4xl font-extrabold text-success">Solved!</p>
         <p className="text-2xl">+{money(task.points)} points.</p>
       </div>
-    </Card>
-  );
-}
-
-function Placeholder() {
-  return (
-    <Card className="py-14 text-center">
-      <Hourglass className="mx-auto h-14 w-14 text-ink-muted" aria-hidden />
-      <p className="mt-4 text-2xl font-bold">
-        The puzzle for this task arrives in the next update.
-      </p>
-      <p className="mt-2 text-lg text-ink-muted">The timer is running. Exit keeps it running.</p>
     </Card>
   );
 }

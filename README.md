@@ -89,7 +89,7 @@ Turn `ENABLE_DEV_TOOLS` off when you are done; it is always off when `NODE_ENV=p
 
 ## Play the tasks (Phase 5, built in batches)
 
-Batches 1, 2 and 3 are playable; the Batch 4 tasks show a placeholder until they are built. Use the short demo from the section above.
+All 12 tasks are playable. Use the short demo from the section above.
 
 ### Batch 1: The Vault, Find the Code
 
@@ -122,7 +122,23 @@ From `apps/server`, run `npm run db:seed -- --reset-demo --short --tasks picture
 - **Data Story:** a small dashboard with 3 charts, every value printed on the chart. Answer each question and press **Check**. Case, spaces, "a/an/the" and thousands commas do not matter. The hint outlines the chart to look at. Restarting gives the other dashboard.
   - Sales and delivery: South · June · 22. Warehouse operations: Saturday · 106 · 12.
 
-Sample pictures are SVG files in `apps/web/public/sample/`. Each game stores only their URLs, so per-client pictures can replace them (Phase 6 upload).
+### Batch 4: Alien Translator, Guess the Celebrity, Pictionary, Escape Room
+
+Guess the Celebrity replaced Sound Sleuth in this batch. Run `npm run prisma:deploy` from `apps/server` once to apply the migration that swaps them (it removes Sound Sleuth rows from old test games), then `npm run db:seed -- --reset-demo --short --tasks alien_translator,guess_celebrity,pictionary,escape_room`. With 4 unique tasks listed, each team draws 3 of them when the game starts; Home shows which, so log in as another team for the 4th.
+
+- **Alien Translator:** the message is written in large alien glyphs. Letters from the legend are filled in; type a letter under a glyph and every copy of it fills. **Submit** sends the whole sentence. The hint decodes 3 more glyphs (marked in blue). No lockout.
+  - Sample: THE PURPLE MOON RISES AT DAWN. The legend gives T, H, E, R, O, S, A, N; the hint gives P, U, L.
+- **Guess the Celebrity:** one photo at a time, "Face 3 of 8". Type the name and press **Guess**; a wrong name costs nothing. **Pass** moves to the next photo, and passed photos come back later. Names ignore case, spaces, dots and hyphens, and names of 6+ letters forgive one small typo. The hint shows the first letter of each word ("S_____ T____"). Photos per try is a setting (`tasks.guessCelebrityFaces`, default 8), and the task name comes from the content, so it can be renamed.
+  - Sample: placeholder faces labelled Sample 1 to 8; the answer is the label ("sample 3" or "sample three"). Real photos come with the Phase 6 upload.
+- **Pictionary:** the game draws each picture stroke by stroke (**Draw again** replays it). "Word 2 of 5" at the top, guessed words as green chips. Guesses ignore case, spaces, punctuation, "a/an/the" and simple plurals. The hint gives the first letter.
+  - Words: key · cup (mug, coffee, teacup) · light bulb (bulb) · laptop (computer) · rocket (rocket ship, spaceship).
+- **Escape Room:** 4 stages; the server sends each one only after the one before is right. The mirror stage is drawn flipped and cannot be copied as text. Wrong answers count toward the lockout (same setting as The Vault: 3 wrong, then 60 s, 2 min, 4 min). **Chat** opens the shared chat; the timer keeps running.
+  - Answers: B (drawer B) · blue · seven · 28.
+- **On Zoom:** the Pilot shares the screen as usual; none of these tasks has sound.
+
+`npm run screenshots:batch4` plays all four for real and saves the screens to `screenshots/phase5/batch4/`, checking that each one fits a 1280×720 window.
+
+Sample pictures (and the placeholder faces) are SVG files in `apps/web/public/sample/`. Each game stores only their URLs, so per-client pictures can replace them (Phase 6 upload).
 
 `npm run screenshots:batch3` plays all three with mouse clicks and saves the screens to `screenshots/phase5/batch3/`, checking that pictures and buttons fit a 1280×720 window.
 

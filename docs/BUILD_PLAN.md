@@ -46,7 +46,7 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 - Works on a laptop screen shared over Zoom: large text, high contrast.
 - **Done when:** a team can play through the lobby, rounds, pause and reveal with placeholder tasks.
 
-## Phase 5: Task framework and tasks
+## Phase 5: Task framework and tasks ✅
 
 - One shared task shell: brief screen, Start Task, server timer, hint button, submit, lockout, result.
 - The answer checkers already exist from Phase 2. This phase builds the task screens on top of them.
@@ -90,4 +90,3 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 - Team photo upload in the Inbox (needs Vercel Blob storage): Phase 6, with content upload. The card shows its status until then.
 - Hint, fail penalty and facilitator adjustment lines in the Funds transaction list (needs ledger rows in the player state): Phase 5 for hints and fails, Phase 6 for adjustments.
 - Facilitator messages in the inbox: Phase 6.
-- The Escape Room "Ask for Help" button opens the shared chat (GAME_RULES section 14). Check its label against section 16 in Phase 5.
