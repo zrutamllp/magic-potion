@@ -81,12 +81,19 @@ export const TaskContentSchemas = {
     public: z.object({ message: z.array(text).min(1), legend: z.array(keyPair).min(1) }),
     secret: z.object({ answer: acceptedAnswer, hiddenLegend: z.array(keyPair).min(3) }),
   },
-  sound_sleuth: {
-    public: z.object({ audioUrl: url, questions: z.array(text).length(3) }),
-    secret: z.object({
-      answers: z.array(acceptedAnswer).length(3),
-      clueTranscripts: z.array(text).length(3),
+  guess_celebrity: {
+    // The task name players see comes from the content, so admins can rename it
+    // ("Guess the Leader"). Photo file names must never contain the person's name.
+    // The server sends only the photo being guessed, never the whole list.
+    public: z.object({
+      taskName: text,
+      faces: z
+        .array(z.object({ id: text, imageUrl: url }))
+        .min(1)
+        .refine((f) => new Set(f.map((x) => x.id)).size === f.length, 'Face ids must be different'),
     }),
+    // Accepted names per face id. The first one is used for the hint.
+    secret: z.object({ names: z.record(z.string(), acceptedAnswer) }),
   },
   pictionary: {
     // Each drawing is a list of strokes; each stroke is a list of [x, y] points on a 0-100 grid.
@@ -139,6 +146,14 @@ export const TaskContentSchemas = {
   },
 } satisfies Record<TaskKey, { public: z.ZodType; secret: z.ZodType }>;
 
+// Every Guess the Celebrity photo needs at least one accepted name.
+export function celebrityNamesMissing(
+  publicData: TaskPublicContent<'guess_celebrity'>,
+  secretData: TaskSecretContent<'guess_celebrity'>,
+): string[] {
+  return publicData.faces.filter((f) => !secretData.names[f.id]).map((f) => f.id);
+}
+
 export type TaskPublicContent<K extends TaskKey> = z.infer<
   (typeof TaskContentSchemas)[K]['public']
 >;
@@ -160,8 +175,16 @@ export function parseTaskContent<K extends TaskKey>(
   content: { publicData: unknown; secretData: unknown },
 ): { publicData: TaskPublicContent<K>; secretData: TaskSecretContent<K> } {
   const schemas = TaskContentSchemas[key];
-  return {
+  const parsed = {
     publicData: schemas.public.parse(content.publicData) as TaskPublicContent<K>,
     secretData: schemas.secret.parse(content.secretData) as TaskSecretContent<K>,
   };
+  if (key === 'guess_celebrity') {
+    const missing = celebrityNamesMissing(
+      parsed.publicData as TaskPublicContent<'guess_celebrity'>,
+      parsed.secretData as TaskSecretContent<'guess_celebrity'>,
+    );
+    if (missing.length > 0) throw new Error(`No accepted names for photo ${missing.join(', ')}`);
+  }
+  return parsed;
 }

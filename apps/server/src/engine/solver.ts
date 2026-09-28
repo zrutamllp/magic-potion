@@ -8,6 +8,7 @@ import type {
   PuzzleProgress,
   SpotProgress,
 } from './checkers/playTasks';
+import type { CelebrityProgress } from './checkers/guessCelebrity';
 import type { QuestionsProgress } from './checkers/questions';
 import { seededRng } from './rng';
 import { checkerContext } from './rules/tasks';
@@ -77,7 +78,15 @@ export function correctSubmissions(
         .areas.filter((_, i) => !p.found.includes(i))
         .map((a) => ({ x: a.x, y: a.y }));
     }
-    case 'sound_sleuth':
+    case 'guess_celebrity': {
+      // Name the photo on screen, then each unnamed one after it, in play order.
+      const p = progress as CelebrityProgress;
+      const names = secret<'guess_celebrity'>(ctx).names;
+      const n = p.order.length;
+      return Array.from({ length: n }, (_, step) => (p.current + step) % n)
+        .filter((i) => p.named[i] === null)
+        .map((i) => ({ answer: names[p.order[i] ?? '']?.[0] ?? '' }));
+    }
     case 'riddle':
     case 'data_story': {
       const p = progress as QuestionsProgress;
@@ -129,7 +138,6 @@ export function wrongSubmission(
     }
     case 'spot_difference':
       return { x: -1000, y: -1000 };
-    case 'sound_sleuth':
     case 'riddle':
     case 'data_story': {
       const p = attempt.progress as QuestionsProgress;

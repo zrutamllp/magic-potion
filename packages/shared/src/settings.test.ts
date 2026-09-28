@@ -76,7 +76,7 @@ describe('DEFAULT_SETTINGS', () => {
       hangman: 8,
       spot_difference: 8,
       alien_translator: 12,
-      sound_sleuth: 10,
+      guess_celebrity: 8,
       pictionary: 8,
       escape_room: 15,
       riddle: 8,
@@ -100,6 +100,21 @@ describe('GameSettingsSchema', () => {
     delete rest['vault'];
     const bad = { ...DEFAULT_SETTINGS, tasks: { ...DEFAULT_SETTINGS.tasks, timerSeconds: rest } };
     expect(GameSettingsSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it('loads settings saved when Sound Sleuth was in the task pool', () => {
+    const timers: Record<string, number> = { ...DEFAULT_SETTINGS.tasks.timerSeconds };
+    delete timers['guess_celebrity'];
+    const tasks: Record<string, unknown> = { ...DEFAULT_SETTINGS.tasks };
+    delete tasks['guessCelebrityFaces'];
+    const old = {
+      ...DEFAULT_SETTINGS,
+      tasks: { ...tasks, timerSeconds: { ...timers, sound_sleuth: 600 } },
+    };
+    const parsed = GameSettingsSchema.parse(old);
+    expect(parsed.tasks.timerSeconds.guess_celebrity).toBe(480);
+    expect('sound_sleuth' in parsed.tasks.timerSeconds).toBe(false);
+    expect(parsed.tasks.guessCelebrityFaces).toBe(8);
   });
 
   it('rejects fractional money', () => {

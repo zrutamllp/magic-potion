@@ -4,7 +4,7 @@ import { matchesAny, matchesAnyLoose } from '../normalize';
 import { asJson, defineChecker, type CheckerContext, type TaskChecker } from './types';
 
 // Shared checker for tasks with a fixed list of questions, answered one at a time:
-// Riddle, Sound Sleuth and Data Story. The task is solved when every answer is correct.
+// Riddle and Data Story. The task is solved when every answer is correct.
 
 export type QuestionsProgress = {
   // The accepted answer the team typed, or null while unanswered.

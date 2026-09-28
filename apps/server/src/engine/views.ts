@@ -70,6 +70,19 @@ export interface TeamView {
 
 const TASK_NAMES = new Map(TASK_DEFINITIONS.map((d) => [d.key, d.name]));
 
+// The name players see. Guess the Celebrity takes its name from the content, so admins can
+// rename it ("Guess the Leader"): the content of the latest try, or the first variant before one.
+export function taskName(content: GameContent, task: TeamTaskState): string {
+  const fixed = TASK_NAMES.get(task.key) ?? task.key;
+  if (task.key !== 'guess_celebrity') return fixed;
+  const lastId = task.attempts[task.attempts.length - 1]?.contentId;
+  const c =
+    (lastId ? content.byId[lastId] : undefined) ??
+    [...(content.byKey[task.key] ?? [])].sort((a, b) => a.variant - b.variant)[0];
+  const name = (c?.publicData as { taskName?: unknown } | undefined)?.taskName;
+  return typeof name === 'string' && name.trim() !== '' ? name : fixed;
+}
+
 export function teamView(
   state: GameState,
   content: GameContent,
@@ -85,7 +98,7 @@ export function teamView(
     return {
       id: task.id,
       key: task.key,
-      name: TASK_NAMES.get(task.key) ?? task.key,
+      name: taskName(content, task),
       type: task.type,
       status: task.status,
       attempts: task.attempts.length,

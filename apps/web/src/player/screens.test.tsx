@@ -229,11 +229,10 @@ describe('task screen', () => {
     state.team = {
       ...state.team,
       tasks: [
-        // A task whose play screen is still a placeholder (Batch 4).
         task({
           id: 'task-sound',
-          key: 'sound_sleuth',
-          name: 'Sound Sleuth',
+          key: 'riddle',
+          name: 'Riddle',
           type: 'UNIQUE',
           status: 'IN_PROGRESS',
           running: {
@@ -243,7 +242,7 @@ describe('task screen', () => {
             hintsUsed: 0,
             wrongCount: 0,
             nextLockSeconds: 60,
-            view: {},
+            view: { content: { riddles: ['What am I?'] }, answers: [null], hint: null },
           },
         }),
       ],

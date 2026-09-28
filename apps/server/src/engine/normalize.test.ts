@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { matchesAny, matchesAnyLoose, normalizeLoose } from './normalize';
+import {
+  matchesAny,
+  matchesAnyLoose,
+  matchesName,
+  normalizeLoose,
+  normalizeName,
+} from './normalize';
 
 describe('answer matching', () => {
   it('normal rule: trims, lowercases and collapses spaces only', () => {
@@ -27,5 +33,26 @@ describe('answer matching', () => {
     expect(matchesAnyLoose('22.', ['22'])).toBe(true);
     expect(matchesAnyLoose('June.', ['june'])).toBe(true);
     expect(normalizeLoose('Rs. 1,20,000')).toBe('rs120000');
+  });
+});
+
+describe('name matching (Guess the Celebrity)', () => {
+  it('ignores case, spaces, dots and hyphens', () => {
+    expect(normalizeName(' M.S.  Dhoni ')).toBe('msdhoni');
+    expect(normalizeName('Jean-Luc')).toBe('jeanluc');
+    expect(matchesName('Shah Rukh Khan', ['Shahrukh Khan'])).toBe(true);
+    expect(matchesName(' . - ', ['x'])).toBe(false);
+  });
+
+  it('forgives one typo only for names of 6 or more letters', () => {
+    // One letter added, removed, changed, or two neighbours swapped.
+    expect(matchesName('Amitabh Bachhan', ['Amitabh Bachchan'])).toBe(true);
+    expect(matchesName('Amitabh Bachchhan', ['Amitabh Bachchan'])).toBe(true);
+    expect(matchesName('Amitabh Bochchan', ['Amitabh Bachchan'])).toBe(true);
+    expect(matchesName('Amitabh Bahcchan', ['Amitabh Bachchan'])).toBe(true);
+    expect(matchesName('Amitab Bachan', ['Amitabh Bachchan'])).toBe(false);
+    expect(matchesName('Kohli', ['Kohli'])).toBe(true);
+    expect(matchesName('Kohly', ['Kohli'])).toBe(false);
+    expect(matchesName('Sachn', ['Sachin'])).toBe(true);
   });
 });

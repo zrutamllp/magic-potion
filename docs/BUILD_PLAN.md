@@ -54,13 +54,14 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
   1. The Vault, Find the Code (chains)
   2. Riddle, Hangman, Ethical Dilemma
   3. Picture Puzzle, Spot the Difference, Data Story
-  4. Alien Translator, Sound Sleuth, Pictionary, Escape Room
+  4. Alien Translator, Guess the Celebrity (replaced Sound Sleuth in Batch 4), Pictionary, Escape Room
 - Every answer checked on the server by the Phase 2 checkers (see `GAME_RULES.md` "Server-side checking").
 - **Done when:** all 12 tasks play end to end with the sample content pack.
 
 ## Phase 6: Admin, facilitator and projector
 
 - Admin: create game, edit settings (locked after start), team names and passwords (bulk create), upload task content and inbox items, create co-facilitators and assign teams.
+- Guess the Celebrity upload: photos plus accepted names per photo, and the task name players see. Save photos under random file names (never the person's name) and strip image metadata (EXIF, titles) on upload. Photos must be replaceable before any game without code.
 - Live control: start, pause, resume, extend, end; send inbox messages.
 - Facilitator dashboard: assigned teams, live progress, chat, transfers, fund adjustments within limits, approval queue for larger ones, audit log, undo.
 - Projector view: potion, all teams, halftime vs final potion at the Reveal.

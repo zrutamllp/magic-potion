@@ -145,24 +145,35 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
       ],
     },
   },
+  // Placeholder faces labelled Sample 1 to 8, so the task can be tested before real photos are
+  // added. File names are random and never contain the person's name.
   {
-    key: 'sound_sleuth',
+    key: 'guess_celebrity',
     variant: 1,
     publicData: {
-      audioUrl: '/sample/sound-sleuth.mp3',
-      questions: [
-        'What colour was the door?',
-        'How many people were in the room?',
-        'At what hour did the bell ring?',
+      taskName: 'Guess the Celebrity',
+      faces: [
+        { id: 'face-1', imageUrl: '/sample/faces/12a1173ba2.svg' },
+        { id: 'face-2', imageUrl: '/sample/faces/6afcee46f9.svg' },
+        { id: 'face-3', imageUrl: '/sample/faces/0608b2a753.svg' },
+        { id: 'face-4', imageUrl: '/sample/faces/08a6337778.svg' },
+        { id: 'face-5', imageUrl: '/sample/faces/758551c75d.svg' },
+        { id: 'face-6', imageUrl: '/sample/faces/96c3a97de9.svg' },
+        { id: 'face-7', imageUrl: '/sample/faces/f4975b5ad3.svg' },
+        { id: 'face-8', imageUrl: '/sample/faces/303364df23.svg' },
       ],
     },
     secretData: {
-      answers: [['red'], ['four', '4'], ['nine', '9', '9 o clock', "nine o'clock", '9pm', '9 pm']],
-      clueTranscripts: [
-        '"I pushed open the red door and stepped inside."',
-        '"Four of us sat around the table, waiting."',
-        '"At nine o\'clock the bell finally rang."',
-      ],
+      names: {
+        'face-1': ['sample one', 'sample 1'],
+        'face-2': ['sample two', 'sample 2'],
+        'face-3': ['sample three', 'sample 3'],
+        'face-4': ['sample four', 'sample 4'],
+        'face-5': ['sample five', 'sample 5'],
+        'face-6': ['sample six', 'sample 6'],
+        'face-7': ['sample seven', 'sample 7'],
+        'face-8': ['sample eight', 'sample 8'],
+      },
     },
   },
   {

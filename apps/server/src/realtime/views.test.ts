@@ -26,7 +26,7 @@ describe('transaction lines', () => {
     g.engine.state.teams[A]!.supportFunds = 1_000;
     await g.engine.startTask(A, g.vault.id);
     expect((await g.engine.useHint(A, g.vault.id)).ok).toBe(true);
-    expect(transactionLines(g.engine.state, A)).toEqual([
+    expect(transactionLines(g.engine.state, g.engine.gameContent, A)).toEqual([
       expect.objectContaining({
         kind: 'HINT',
         taskName: 'The Vault',
@@ -45,12 +45,12 @@ describe('transaction lines', () => {
     g.clock.advance(1_000);
     await g.engine.startTask(A, g.vault.id);
     await g.engine.useHint(A, g.vault.id);
-    const lines = transactionLines(g.engine.state, A);
+    const lines = transactionLines(g.engine.state, g.engine.gameContent, A);
     expect(lines.map((l) => [l.kind, l.taskName, l.taskFunds, l.supportFunds])).toEqual([
       ['HINT', 'The Vault', 0, -1_500],
       ['FAIL_PENALTY', 'The Vault', -3_500, 0],
     ]);
-    expect(transactionLines(g.engine.state, 'team-2')).toEqual([]);
+    expect(transactionLines(g.engine.state, g.engine.gameContent, 'team-2')).toEqual([]);
   });
 
   it('keeps the lines after a restart (the ledger is part of the saved state)', async () => {
@@ -64,7 +64,7 @@ describe('transaction lines', () => {
       clock: g.clock,
       rng: seededRng(2),
     });
-    expect(transactionLines(reloaded.state, A)).toHaveLength(1);
+    expect(transactionLines(reloaded.state, reloaded.gameContent, A)).toHaveLength(1);
     const ledgerChanges = g.persistence.log.filter((c) => c.kind === 'ledger');
     expect(ledgerChanges.every((c) => c.kind === 'ledger' && c.id && c.createdAt === T0)).toBe(
       true,

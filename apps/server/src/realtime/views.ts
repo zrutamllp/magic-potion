@@ -1,5 +1,4 @@
 import {
-  TASK_DEFINITIONS,
   TASKS_PER_TEAM,
   type FeedItem,
   type GameClockView,
@@ -16,8 +15,8 @@ import type { EngineEvent } from '../engine/events';
 import { phaseMsLeft, playMsRemaining, timersRunning } from '../engine/playClock';
 import { potionPercent } from '../engine/potion';
 import { messagesLeft } from '../engine/rules/chat';
-import type { GameState, TransferState } from '../engine/state';
-import { dilemmaAnswer } from '../engine/views';
+import type { GameContent, GameState, TransferState } from '../engine/state';
+import { dilemmaAnswer, taskName } from '../engine/views';
 
 // Turns engine state into what one browser may see. Built only from public fields:
 // never task answers, never another team's fragments, never inbox answers.
@@ -79,7 +78,6 @@ function inboxView(s: GameState, teamId: string): PlayerInboxView[] {
     });
 }
 
-const TASK_NAMES = new Map<string, string>(TASK_DEFINITIONS.map((d) => [d.key, d.name]));
 const LINE_KINDS = new Set<TransactionLine['kind']>([
   'HINT',
   'FAIL_PENALTY',
@@ -89,12 +87,17 @@ const LINE_KINDS = new Set<TransactionLine['kind']>([
 
 // This team's hint, fail and facilitator lines, newest first. A hint paid from both wallets is
 // two ledger rows; they show as one line.
-export function transactionLines(s: GameState, teamId: string): TransactionLine[] {
+export function transactionLines(
+  s: GameState,
+  content: GameContent,
+  teamId: string,
+): TransactionLine[] {
   const team = s.teams[teamId];
   if (!team) return [];
   const taskOfAttempt = new Map<string, string>();
   for (const task of Object.values(team.tasks)) {
-    for (const a of task.attempts) taskOfAttempt.set(a.id, TASK_NAMES.get(task.key) ?? task.key);
+    const name = taskName(content, task);
+    for (const a of task.attempts) taskOfAttempt.set(a.id, name);
   }
   const lines = new Map<string, TransactionLine>();
   for (const r of Object.values(s.ledger)) {
@@ -201,7 +204,7 @@ export function buildPlayerState(engine: GameEngine, teamId: string, now: number
           amount: r.amount,
         };
       }),
-    transactions: transactionLines(s, teamId),
+    transactions: transactionLines(s, engine.gameContent, teamId),
     inbox: inboxView(s, teamId),
     leaderboard: leaderboardView(engine, teamId),
   };

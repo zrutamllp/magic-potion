@@ -1,5 +1,6 @@
 import type { TaskKey } from '@magic-potion/shared';
 import { alienTranslatorChecker, findCodeChecker, vaultChecker } from './codeTasks';
+import { guessCelebrityChecker } from './guessCelebrity';
 import {
   escapeRoomChecker,
   ethicalDilemmaChecker,
@@ -20,10 +21,7 @@ const CHECKERS: { [K in TaskKey]: TaskChecker<K, never> } = {
   hangman: hangmanChecker,
   spot_difference: spotDifferenceChecker,
   alien_translator: alienTranslatorChecker,
-  sound_sleuth: questionsChecker<'sound_sleuth'>({
-    accepted: (ctx) => ctx.secretData.answers,
-    hintText: (ctx, i) => ctx.secretData.clueTranscripts[i] ?? '',
-  }),
+  guess_celebrity: guessCelebrityChecker,
   pictionary: pictionaryChecker,
   escape_room: escapeRoomChecker,
   riddle: questionsChecker<'riddle'>({

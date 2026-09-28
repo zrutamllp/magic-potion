@@ -64,14 +64,16 @@ Ethical Dilemma is the exception: it has no hint, and any complete answer passes
 | 4 | Hangman | Unique | Guess letters of a phrase. 6 wrong guesses fail the task. | Phrase revealed | 8 min | One letter revealed |
 | 5 | Spot the Difference | Unique | Click 7 differences between two images. Clicks near a difference count (tolerance is a setting, default 4% of the image width). A miss costs nothing. | All 7 found | 8 min | One area highlighted |
 | 6 | Alien Translator | Unique | Translate alien symbols using a partial legend | Translation entered | 12 min | Three more symbols decoded |
-| 7 | Sound Sleuth | Unique | Listen to an audio story, answer 3 questions | All 3 correct | 10 min | Transcript of one clue |
+| 7 | Guess the Celebrity | Unique | Name the person in each photo, one photo at a time (default 8 photos per try, a setting). **Pass** moves to the next unnamed photo; passed photos come back later. A wrong name costs nothing. | All photos named | 8 min | First letter of each word of the name on screen ("S___ K___") |
 | 8 | Pictionary | Unique | The game draws pictures stroke by stroke; guess 5 words | All 5 guessed | 8 min | First letter of the current word |
 | 9 | Escape Room | Unique | Clear 4 linked stages: find the key, mirror puzzle, cipher, escape | Final stage cleared | 15 min | Help on the current stage |
 | 10 | Riddle | Unique | Answer 3 riddles | All 3 correct | 8 min | A clue for one riddle |
 | 11 | Ethical Dilemma | Unique | Pick one of 4 actions and write a one-line reason | Any complete answer | 8 min | None |
 | 12 | Data Story | Unique | Read a mock dashboard, answer 3 questions | All 3 correct | 12 min | Which chart to look at |
 
-Task content (images, words, riddles, audio, dashboards, answers) is uploaded per game in the admin panel. Each task can have several content variants (used on restart). Uploaded files go to Vercel Blob; the database stores only their URLs. The engine must work with any content. Ship one sample content pack so the game is playable out of the box.
+Task content (images, photos, words, riddles, dashboards, answers) is uploaded per game in the admin panel. Each task can have several content variants (used on restart). Uploaded files go to Vercel Blob; the database stores only their URLs. The engine must work with any content. Ship one sample content pack so the game is playable out of the box.
+
+**Guess the Celebrity content:** each photo has a list of accepted names written by the admin (for example "MS Dhoni", "Dhoni", "Mahendra Singh Dhoni"). The task name players see is part of the content, so the admin can rename it (for example "Guess the Leader"). Photo files get random names (never the person's name) and their metadata is stripped on upload. Photos can be replaced before any game without code. The sample pack uses placeholder faces labelled "Sample 1" to "Sample 8", not real people.
 
 ### Server-side checking
 
@@ -80,7 +82,8 @@ Task content (images, words, riddles, audio, dashboards, answers) is uploaded pe
 - Picture Puzzle: the client sends one swap at a time; the server keeps the tile order and checks it. A swap is never a wrong try.
 - Spot the Difference: the client sends click coordinates in image pixels; the server checks them against secret hit areas, grown by the tolerance setting. If a click is near two differences, the nearest one not yet found counts.
 - Hangman: the client sends one letter at a time; the server reveals matching positions.
-- Pictionary: the drawing strokes are public; the words are secret.
+- Pictionary: the drawing strokes are public; the words are secret. Guesses are forgiving like Riddle answers (case, spaces, punctuation and "a", "an", "the" ignored), and a simple plural also counts ("keys" = "key").
+- Guess the Celebrity: names ignore case, spaces, dots and hyphens ("M.S. Dhoni" = "ms dhoni", "Shah Rukh" = "Shahrukh"). For names of 6 or more letters, one small typo is forgiven (one letter added, missing or changed, or two letters swapped), because name spellings vary. The server sends only the photo on screen, never the list of photos or any name.
 - Escape Room: each stage is checked on the server before the next stage is sent.
 
 ## 4. Fragment chains
@@ -188,7 +191,7 @@ Staff log in with their own name, email and password. The main admin creates co-
 
 ## 12. Game settings (all editable per game)
 
-Client name, logo and colours; number of teams; team names and passwords; task content; starting funds for both wallets; hint cost; fail penalty; lockout attempts and lock lengths; task timers; round and pause lengths; chat limit and message length; transfer delay; inbox release times, reward and answer attempts; scoring multipliers; collaboration cap; Full Potion Bonus.
+Client name, logo and colours; number of teams; team names and passwords; task content; starting funds for both wallets; hint cost; fail penalty; lockout attempts and lock lengths; task timers; photos per Guess the Celebrity try; round and pause lengths; chat limit and message length; transfer delay; inbox release times, reward and answer attempts; scoring multipliers; collaboration cap; Full Potion Bonus.
 
 Scoring settings lock when Round 1 starts. Team names, funds and phase timing can still change live.
 

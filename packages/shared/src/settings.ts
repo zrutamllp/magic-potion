@@ -10,6 +10,13 @@ const count = z.number().int().positive();
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
 export const MIN_TEAMS = 3;
+
+function replaceSoundSleuthTimer(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || !('sound_sleuth' in value)) return value;
+  const timers: Record<string, unknown> = { guess_celebrity: 8 * 60, ...value };
+  delete timers['sound_sleuth'];
+  return timers;
+}
 export const MAX_TEAMS = 25;
 
 export const GameSettingsSchema = z.object({
@@ -44,7 +51,11 @@ export const GameSettingsSchema = z.object({
     // Spot the Difference: extra room around every difference, as a % of the image width,
     // so trackpad clicks near a difference still count.
     spotDifferenceTolerancePercent: z.number().min(0).max(20).default(4),
-    timerSeconds: z.record(TaskKeySchema, seconds),
+    // Guess the Celebrity: photos per try. Games saved before the task existed load with 8.
+    guessCelebrityFaces: count.default(8),
+    // Games saved when Sound Sleuth was in the pool load with its timer dropped and the
+    // Guess the Celebrity timer at its default (8 minutes).
+    timerSeconds: z.preprocess(replaceSoundSleuthTimer, z.record(TaskKeySchema, seconds)),
   }),
   phases: z.object({
     round1Seconds: seconds,

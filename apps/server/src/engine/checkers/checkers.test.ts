@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { SAMPLE_TASK_CONTENT } from '../../../prisma/sampleContent';
 import { makeCipher } from '../assignment';
 import { seededRng } from '../rng';
+import { nameHint, type CelebrityProgress } from './guessCelebrity';
 import {
   applyHint,
   checkSubmission,
@@ -316,7 +317,7 @@ describe('Alien Translator', () => {
   });
 });
 
-describe('question tasks (Riddle, Sound Sleuth, Data Story)', () => {
+describe('question tasks (Riddle, Data Story)', () => {
   it('Riddle is solved when all 3 are right, in any order', () => {
     const r = play('riddle', ctxFor('riddle'), [
       { index: 2, answer: 'A Comb' },
@@ -363,15 +364,6 @@ describe('question tasks (Riddle, Sound Sleuth, Data Story)', () => {
     expect(r.statuses).toEqual(['invalid', 'correct', 'invalid']);
   });
 
-  it('Sound Sleuth accepts any listed spelling', () => {
-    const r = play('sound_sleuth', ctxFor('sound_sleuth'), [
-      { index: 0, answer: 'Red' },
-      { index: 1, answer: '4' },
-      { index: 2, answer: "Nine O'Clock" },
-    ]);
-    expect(r.statuses).toEqual(['correct', 'correct', 'solved']);
-  });
-
   it('Data Story answers are forgiving about case, articles and number formatting', () => {
     const r = play('data_story', ctxFor('data_story'), [
       { index: 0, answer: 'the SOUTH region' },
@@ -388,6 +380,120 @@ describe('question tasks (Riddle, Sound Sleuth, Data Story)', () => {
       hint: { index: number; text: string };
     };
     expect(view.hint).toEqual({ index: 1, text: 'orders' });
+  });
+});
+
+describe('Guess the Celebrity', () => {
+  const ctx = ctxFor('guess_celebrity');
+  type View = {
+    taskName: string;
+    imageUrl: string | null;
+    position: number;
+    total: number;
+    named: string[];
+    canPass: boolean;
+    hint: string | null;
+  };
+  const view = (progress: Json) => publicView('guess_celebrity', ctx, progress) as View;
+  const start = () => initProgress('guess_celebrity', ctx) as CelebrityProgress;
+  // The sample faces are labelled Sample 1 to 8; face-3 is "sample three".
+  const nameOf = (faceId: string) => `sample ${faceId.replace('face-', '')}`;
+
+  it('plays the number of photos set in the settings, drawn from the content', () => {
+    expect(start().order).toHaveLength(8);
+    const four = { ...ctx, tasks: { ...ctx.tasks, guessCelebrityFaces: 4 } };
+    const p = initProgress('guess_celebrity', four) as CelebrityProgress;
+    expect(p.order).toHaveLength(4);
+    expect(new Set(p.order).size).toBe(4);
+    // More than the content holds plays every photo once.
+    const many = { ...ctx, tasks: { ...ctx.tasks, guessCelebrityFaces: 20 } };
+    expect((initProgress('guess_celebrity', many) as CelebrityProgress).order).toHaveLength(8);
+  });
+
+  it('is solved when every photo is named; a wrong name costs nothing', () => {
+    const p = start();
+    const names = p.order.map(nameOf);
+    const r = play('guess_celebrity', ctx, [
+      { answer: 'somebody else' },
+      ...names.map((answer) => ({ answer })),
+    ]);
+    expect(r.statuses).toEqual(['wrong', ...names.slice(1).map(() => 'correct'), 'solved']);
+  });
+
+  it('sends only the photo on screen, never the other photos or any name', () => {
+    const p = start();
+    const v = view(p);
+    const current = ctx.publicData as { faces: { id: string; imageUrl: string }[] };
+    const shown = current.faces.find((f) => f.id === p.order[0]);
+    expect(v.imageUrl).toBe(shown?.imageUrl);
+    const text = JSON.stringify(v);
+    for (const f of current.faces) {
+      if (f.id !== p.order[0]) expect(text).not.toContain(f.imageUrl);
+      expect(text).not.toContain(f.id);
+    }
+    expect(text).not.toMatch(/sample (\d|one|two|three|four|five|six|seven|eight)/i);
+    expect(v).toMatchObject({ taskName: 'Guess the Celebrity', position: 1, total: 8, named: [] });
+  });
+
+  it('Pass moves to the next unnamed photo and passed photos come back later', () => {
+    const p = start();
+    const first = nameOf(p.order[0] ?? '');
+    const r = play('guess_celebrity', ctx, [{ pass: true }]);
+    expect(r.statuses).toEqual(['correct']);
+    expect(view(r.progress).position).toBe(2);
+    // Name every other photo; the passed one comes round again last.
+    const rest = p.order.slice(1).map((id) => ({ answer: nameOf(id) }));
+    const r2 = play('guess_celebrity', ctx, [{ pass: true }, ...rest]);
+    expect(view(r2.progress)).toMatchObject({ position: 1, canPass: false });
+    const r3 = play('guess_celebrity', ctx, [
+      { pass: true },
+      ...rest,
+      { pass: true },
+      { answer: first },
+    ]);
+    expect(r3.statuses.slice(-2)).toEqual(['invalid', 'solved']);
+  });
+
+  it('matches names ignoring case, spaces, dots and hyphens, with one typo on long names', () => {
+    const p = start();
+    const withNames = (names: string[]) =>
+      ({
+        ...ctx,
+        secretData: { names: Object.fromEntries(p.order.map((id) => [id, names])) },
+      }) as CheckerContext<TaskKey>;
+    const one = (c: CheckerContext<TaskKey>, answer: string) =>
+      checkSubmission('guess_celebrity', c, p as unknown as Json, { answer }).status;
+    const dhoni = withNames(['MS Dhoni', 'Dhoni', 'Mahendra Singh Dhoni']);
+    expect(one(dhoni, 'M.S. Dhoni')).toBe('correct');
+    expect(one(dhoni, 'dhoni')).toBe('correct');
+    expect(one(dhoni, 'Mahendra-Singh  DHONI')).toBe('correct');
+    // "Dhoni" has 5 letters, so it must be exact; "msdhoni" has 7, so one typo passes.
+    expect(one(dhoni, 'dhony')).toBe('wrong');
+    expect(one(dhoni, 'ms dhony')).toBe('correct');
+    expect(one(dhoni, 'ms dhnoi')).toBe('correct');
+    expect(one(dhoni, 'm dhony')).toBe('wrong');
+    const srk = withNames(['Shah Rukh Khan', 'Shahrukh Khan', 'SRK']);
+    expect(one(srk, 'Shahrukh Khan')).toBe('correct');
+    expect(one(srk, 'Sharukh Khan')).toBe('correct');
+    expect(one(srk, 'shah rukh kahn')).toBe('correct');
+    expect(one(srk, 'salman khan')).toBe('wrong');
+    expect(one(srk, 'srk')).toBe('correct');
+    expect(one(srk, 'srx')).toBe('wrong');
+  });
+
+  it('hint shows the first letter of each word of the name on screen, for that photo only', () => {
+    const p = start();
+    const hinted = applyHint('guess_celebrity', ctx, p as unknown as Json);
+    const names = (ctx.secretData as { names: Record<string, string[]> }).names;
+    // The first accepted name is used: "sample three" gives "S_____ T____".
+    const word = names[p.order[0] ?? '']?.[0]?.split(' ')[1] ?? '';
+    expect(view(hinted).hint).toBe(
+      `S_____ ${word[0]?.toUpperCase()}${'_'.repeat(word.length - 1)}`,
+    );
+    const passed = checkSubmission('guess_celebrity', ctx, hinted, { pass: true });
+    expect(passed.status === 'correct' && view(passed.progress).hint).toBeNull();
+    expect(nameHint('Shah Rukh Khan')).toBe('S___ R___ K___');
+    expect(nameHint('M.S. Dhoni')).toBe('M.S. D____');
   });
 });
 

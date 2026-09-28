@@ -26,6 +26,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
     picturePuzzleGrid: { rows: 3, cols: 3 },
     // A click this far outside a difference (in % of the image width) still finds it.
     spotDifferenceTolerancePercent: 4,
+    // Guess the Celebrity: photos played per try, drawn from the content's photos.
+    guessCelebrityFaces: 8,
     timerSeconds: {
       vault: minutes(12),
       find_code: minutes(12),
@@ -33,7 +35,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
       hangman: minutes(8),
       spot_difference: minutes(8),
       alien_translator: minutes(12),
-      sound_sleuth: minutes(10),
+      guess_celebrity: minutes(8),
       pictionary: minutes(8),
       escape_room: minutes(15),
       riddle: minutes(8),
