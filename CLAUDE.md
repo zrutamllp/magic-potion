@@ -46,6 +46,7 @@ design/         Screen designs (images)
 - Never put secrets in code. Use `.env` files (ignored by git) and document every variable in `.env.example`.
 - If a rule in `docs/GAME_RULES.md` is unclear or contradicts a design, stop and ask. Do not guess.
 - Use plain, simple English in all player-facing text.
+- Never run a database migration that deletes or rewrites existing data without asking me first and explaining what will be lost. Once we are live, back up the Neon database (create a Neon branch) before any migration.
 
 ## Environment variables
 
