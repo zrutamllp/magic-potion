@@ -1,9 +1,11 @@
+import sharp from 'sharp';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, TEAM_CODE_ALPHABET, type AdminGame } from '@magic-potion/shared';
 import { MemoryAdminStore } from '../admin/memoryStore';
 import { AdminService } from '../admin/service';
 import { createApp } from '../app';
+import type { FileStore } from '../uploads/blob';
 import { FakeClock } from '../engine/clock';
 import { memoryEngine } from '../engine/memoryGame';
 import { ADMIN, COFAC, authFixture } from '../testSupport';
@@ -11,7 +13,7 @@ import { createApiRouter } from './api';
 
 const T0 = Date.UTC(2026, 8, 28, 9, 0, 0);
 
-function setup() {
+function setup(opts: { uploads?: boolean } = {}) {
   const fx = authFixture();
   const store = new MemoryAdminStore(fx.store);
   const reloaded: string[] = [];
@@ -23,15 +25,24 @@ function setup() {
     onLobbyChange: (id) => reloaded.push(id),
     bcryptRounds: 4,
   });
+  const saved: { folder: string; contentType: string; bytes: number }[] = [];
+  // Stands in for Vercel Blob: tests never use the real store or its token.
+  const files: FileStore = {
+    save: async (folder, data, contentType, extension) => {
+      saved.push({ folder, contentType, bytes: data.length });
+      return `https://blob.example.com/${folder}/random-${saved.length}.${extension}`;
+    },
+  };
   const { engine } = memoryEngine({ teams: 3, clock: new FakeClock(T0) });
   const api = createApiRouter({
     auth: fx.auth,
     engine: async () => engine,
     admin,
+    files: opts.uploads === false ? undefined : files,
     devTools: false,
   });
   const app = createApp({ clientOrigins: [], api });
-  return { ...fx, store, app, reloaded, ended };
+  return { ...fx, store, app, reloaded, ended, saved };
 }
 
 type Setup = ReturnType<typeof setup>;
@@ -338,5 +349,60 @@ describe('staff and assignments', () => {
       teamIds: ['team-1'],
     });
     expect(otherGame.status).toBe(404);
+  });
+});
+
+describe('logo upload', () => {
+  const png = () =>
+    sharp({ create: { width: 64, height: 64, channels: 4, background: '#ff0000' } })
+      .png()
+      .toBuffer();
+
+  async function upload(g: Setup, data: Buffer, who = ADMIN) {
+    return request(g.app)
+      .post('/api/staff/uploads/logo')
+      .set('Authorization', `Bearer ${await tokenFor(g, who)}`)
+      .set('Content-Type', 'image/png')
+      .send(data);
+  }
+
+  it('saves a cleaned WebP under a random name', async () => {
+    const g = setup();
+    const res = await upload(g, await png());
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      url: 'https://blob.example.com/logos/random-1.webp',
+      width: 64,
+      height: 64,
+    });
+    expect(g.saved).toEqual([
+      { folder: 'logos', contentType: 'image/webp', bytes: expect.any(Number) },
+    ]);
+  });
+
+  it('refuses a file that is not a picture', async () => {
+    const g = setup();
+    const res = await upload(g, Buffer.from('<svg></svg>'));
+    expect(res.status).toBe(400);
+    expect(g.saved).toEqual([]);
+  });
+
+  it('refuses a file over 5 MB', async () => {
+    const g = setup();
+    const res = await upload(g, Buffer.alloc(5 * 1024 * 1024 + 1));
+    expect(res.status).toBe(413);
+    expect(res.body.message).toBe('That picture is too big. The limit is 5 MB.');
+  });
+
+  it('is for the main admin only', async () => {
+    const g = setup();
+    expect((await upload(g, await png(), COFAC)).status).toBe(403);
+  });
+
+  it('says so when uploads are not set up', async () => {
+    const g = setup({ uploads: false });
+    const res = await upload(g, await png());
+    expect(res.status).toBe(503);
+    expect(res.body.message).toBe('Uploads are not set up on this server.');
   });
 });

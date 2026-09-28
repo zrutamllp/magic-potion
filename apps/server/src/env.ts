@@ -12,6 +12,9 @@ const EnvSchema = z.object({
   JWT_SECRET: z.string().min(32).optional(),
   ADMIN_SEED_EMAIL: z.email().optional(),
   ADMIN_SEED_PASSWORD: z.string().min(8).optional(),
+  // Vercel Blob read-write token, for uploaded pictures (client logo, task images). Uploads are
+  // switched off without it. Never log it.
+  BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
   // Local testing helpers (such as "finish all tasks"). Ignored in production.
   ENABLE_DEV_TOOLS: z.enum(['true', 'false']).optional(),
 });

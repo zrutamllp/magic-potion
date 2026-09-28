@@ -1,4 +1,4 @@
-import type { NextFunction, Request, Response, Router } from 'express';
+import express, { type NextFunction, type Request, type Response, type Router } from 'express';
 import type { z } from 'zod';
 import {
   AUTH_ERRORS,
@@ -15,6 +15,8 @@ import {
 } from '@magic-potion/shared';
 import type { AdminResult, AdminService } from '../admin/service';
 import type { StaffAccount } from '../auth/store';
+import type { FileStore } from '../uploads/blob';
+import { MAX_UPLOAD_BYTES, cleanImage } from '../uploads/image';
 
 // Admin panel setup routes (Phase 6A), under /api/staff. Main admin only.
 
@@ -38,8 +40,47 @@ export function addAdminRoutes(
   staff: Router,
   admin: AdminService,
   mainAdminOnly: (req: Request, res: StaffResponse, next: NextFunction) => unknown,
+  // Where uploaded pictures go. Missing when BLOB_READ_WRITE_TOKEN is not set.
+  files: FileStore | undefined,
 ): void {
   const id = (v: unknown) => String(v);
+
+  // The picture is the raw request body (Content-Type image/...), not a form.
+  const rawImage = express.raw({ type: () => true, limit: MAX_UPLOAD_BYTES });
+  const readImage = (req: Request, res: Response, next: NextFunction) =>
+    rawImage(req, res, (error?: unknown) => {
+      if (!error) return next();
+      res.status(413).json({
+        code: 'FILE_TOO_BIG',
+        message: `That picture is too big. The limit is ${MAX_UPLOAD_BYTES / 1024 / 1024} MB.`,
+      });
+    });
+
+  // The client logo. Saved under a random name with all metadata removed; the URL goes into
+  // the branding settings when the admin saves them.
+  staff.post('/uploads/logo', mainAdminOnly, readImage, async (req, res: StaffResponse) => {
+    if (!files) {
+      res
+        .status(503)
+        .json({ code: 'NO_UPLOADS', message: 'Uploads are not set up on this server.' });
+      return;
+    }
+    const input = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+    const image = await cleanImage(input, 512);
+    if (!image.ok) {
+      res.status(400).json({ code: 'BAD_IMAGE', message: image.message });
+      return;
+    }
+    try {
+      const url = await files.save('logos', image.data, 'image/webp', 'webp');
+      res.json({ url, width: image.width, height: image.height });
+    } catch (error) {
+      console.error('Logo upload failed:', error instanceof Error ? error.message : 'unknown');
+      res
+        .status(502)
+        .json({ code: 'UPLOAD_FAILED', message: 'The upload did not work. Please try again.' });
+    }
+  });
 
   staff.post('/games', mainAdminOnly, async (req, res: StaffResponse) => {
     const b = body(CreateGameSchema, req, res);

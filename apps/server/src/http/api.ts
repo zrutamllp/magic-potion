@@ -11,6 +11,7 @@ import type { AuthResult, AuthService } from '../auth/service';
 import type { StaffAccount } from '../auth/store';
 import { finishAllTasks } from '../engine/devTools';
 import type { GameEngine } from '../engine/engine';
+import type { FileStore } from '../uploads/blob';
 import { addAdminRoutes } from './admin';
 
 // REST routes under /api: logins, and the staff game controls that Phase 6 will build on.
@@ -22,6 +23,8 @@ export interface ApiDeps {
   engine: (gameId: string) => Promise<GameEngine>;
   // The admin panel's setup routes (Phase 6A). Left out by tests that do not need them.
   admin?: AdminService;
+  // Where uploaded pictures are saved. Uploads answer "not set up" without it.
+  files?: FileStore;
   // Registers the dev-only routes. Never true in production.
   devTools: boolean;
 }
@@ -50,7 +53,7 @@ function bearer(req: Request): string | undefined {
 const ExtendSchema = z.object({ seconds: z.number() });
 const FinishSchema = z.object({ limit: z.number().int().positive().optional() });
 
-export function createApiRouter({ auth, engine, admin, devTools }: ApiDeps): Router {
+export function createApiRouter({ auth, engine, admin, files, devTools }: ApiDeps): Router {
   const api = express.Router();
 
   api.post('/team/login', async (req, res) => {
@@ -137,7 +140,7 @@ export function createApiRouter({ auth, engine, admin, devTools }: ApiDeps): Rou
     sendAuth(res, await auth.endTeamSession(res.locals.staff, String(req.params.teamId)));
   });
 
-  if (admin) addAdminRoutes(staff, admin, mainAdminOnly);
+  if (admin) addAdminRoutes(staff, admin, mainAdminOnly, files);
 
   if (devTools) {
     staff.post(

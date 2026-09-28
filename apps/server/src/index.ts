@@ -11,6 +11,7 @@ import { EngineRegistry } from './engine/registry';
 import { devToolsEnabled, loadEnv, parseOrigins } from './env';
 import { createApiRouter } from './http/api';
 import { Realtime } from './realtime/server';
+import { BlobFileStore } from './uploads/blob';
 
 const env = loadEnv();
 const clientOrigins = parseOrigins(env.CLIENT_ORIGIN);
@@ -45,7 +46,13 @@ const app = createApp({
   clientOrigins,
   checkDb: prisma ? () => prisma.$queryRaw`SELECT 1` : undefined,
   api: live
-    ? createApiRouter({ auth: live.auth, engine: (id) => live.engine(id), admin, devTools })
+    ? createApiRouter({
+        auth: live.auth,
+        engine: (id) => live.engine(id),
+        admin,
+        files: env.BLOB_READ_WRITE_TOKEN ? new BlobFileStore(env.BLOB_READ_WRITE_TOKEN) : undefined,
+        devTools,
+      })
     : undefined,
 });
 const server = createServer(app);
