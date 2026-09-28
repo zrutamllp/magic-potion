@@ -89,7 +89,7 @@ Turn `ENABLE_DEV_TOOLS` off when you are done; it is always off when `NODE_ENV=p
 
 ## Play the tasks (Phase 5, built in batches)
 
-Batches 1 and 2 are playable; the other tasks show a placeholder until their batch is built. Use the short demo from the section above.
+Batches 1, 2 and 3 are playable; the Batch 4 tasks show a placeholder until they are built. Use the short demo from the section above.
 
 ### Batch 1: The Vault, Find the Code
 
@@ -111,6 +111,20 @@ From `apps/server`, run `npm run db:seed -- --reset-demo --short --tasks riddle,
 - **Ethical Dilemma:** read the scenario, pick one of the 4 options, type a one-line reason and press **Submit answer**. Any complete answer passes; nothing is marked right or wrong. There is no hint, and Give up sits next to Submit. The done screen shows "Answer saved." with the team's choice and reason. With `ENABLE_DEV_TOOLS=true`, `/dev/staff` lists every saved answer under **Ethical Dilemma answers** (the real debrief view and CSV come in Phase 6).
 
 `npm run screenshots:batch2` plays all three for real and saves the screens to `screenshots/phase5/batch2/`, checking that each main button fits a 1280×720 window without scrolling.
+
+### Batch 3: Picture Puzzle, Spot the Difference, Data Story
+
+From `apps/server`, run `npm run db:seed -- --reset-demo --short --tasks picture_puzzle,spot_difference,data_story`, so all 4 teams get these 3 tasks. Log in as any team. These three use the full width, with a compact **Use hint** and **Give up** on the task.
+
+- **Picture Puzzle:** click one tile, then another, to swap them (made for a trackpad; click a picked tile again to cancel). Drag and drop also works. The finished picture is shown small on the right. **Use hint** puts a number on every tile: the spot where it belongs (spots 1 to 9, left to right, top to bottom). Each swap is saved on the server, so a refresh keeps the puzzle as it was. The grid size is a game setting (`tasks.picturePuzzleGrid`, default 3x3).
+- **Spot the Difference:** click a difference on either picture. Clicks near a difference count too (`tasks.spotDifferenceTolerancePercent`, default 4% of the picture width). Found ones get a green ring on both pictures, with "x of 7 found" at the top. A miss shows a red X and "No difference there." and costs nothing. The hint draws a dashed ring round one difference.
+  - The 7 differences in the sample: clock hands, sun in the window, picture on the wall, flower on the plant, mug colour, one pen missing, notebook colour.
+- **Data Story:** a small dashboard with 3 charts, every value printed on the chart. Answer each question and press **Check**. Case, spaces, "a/an/the" and thousands commas do not matter. The hint outlines the chart to look at. Restarting gives the other dashboard.
+  - Sales and delivery: South · June · 22. Warehouse operations: Saturday · 106 · 12.
+
+Sample pictures are SVG files in `apps/web/public/sample/`. Each game stores only their URLs, so per-client pictures can replace them (Phase 6 upload).
+
+`npm run screenshots:batch3` plays all three with mouse clicks and saves the screens to `screenshots/phase5/batch3/`, checking that pictures and buttons fit a 1280×720 window.
 
 ## Screenshots
 
