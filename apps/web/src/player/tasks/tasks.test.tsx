@@ -757,3 +757,73 @@ describe('Batch 3 text', () => {
     }
   });
 });
+
+// ---------- Batch 4 ----------
+
+const alienView = {
+  content: {
+    // HELLO WORLD with g-glyphs; "✦" is not a glyph id, so it shows as text.
+    message: ['g01', 'g02', 'g03', 'g03', 'g04', ' ', 'g05', 'g04', 'g06', 'g03', '✦'],
+    legend: [
+      { symbol: 'g01', letter: 'H' },
+      { symbol: 'g03', letter: 'L' },
+    ],
+  },
+  hintLegend: [] as { symbol: string; letter: string }[],
+};
+const alien = (o: Partial<PlayerTaskView> = {}) =>
+  task({ id: 'al', key: 'alien_translator', name: 'Alien Translator', type: 'UNIQUE', ...o });
+
+describe('Alien Translator', () => {
+  const playing = (view = alienView) =>
+    withTasks([alien({ status: 'IN_PROGRESS', running: running({ view }) })]);
+  const letter = (n: number) => screen.getByLabelText(`Letter ${n}`, { exact: true });
+
+  it('draws glyphs, fills every legend letter, and shows other symbols as text', () => {
+    const { container } = renderGame(<TaskScreen taskId="al" />, { state: playing() });
+    expect(container.querySelectorAll('[aria-label="Alien message"] svg[data-glyph]')).toHaveLength(
+      9,
+    );
+    expect(screen.getByText('✦')).toBeInTheDocument();
+    expect(letter(1)).toHaveValue('H');
+    expect(letter(3)).toHaveValue('L');
+    expect(letter(4)).toHaveValue('L');
+    expect(letter(9)).toHaveValue('L');
+    expect(letter(1)).toHaveAttribute('readonly');
+    expect(letter(2)).toHaveValue('');
+    expect(letter(2)).not.toHaveAttribute('readonly');
+  });
+
+  it('typing under one symbol fills every copy; Submit sends the sentence', async () => {
+    const { send } = renderGame(<TaskScreen taskId="al" />, {
+      state: playing(),
+      ack: { ok: true, value: { status: 'wrong' } } as Ack,
+    });
+    const submit = screen.getByRole('button', { name: 'Submit', exact: true });
+    expect(submit).toBeDisabled();
+    fireEvent.change(letter(5), { target: { value: 'o' } });
+    expect(letter(7)).toHaveValue('O');
+    for (const [n, v] of [
+      [2, 'E'],
+      [6, 'W'],
+      [8, 'R'],
+      [10, 'D'],
+    ] as const) {
+      fireEvent.change(letter(n), { target: { value: v } });
+    }
+    await act(async () => fireEvent.click(submit));
+    expect(send).toHaveBeenCalledWith('task:submit', {
+      taskId: 'al',
+      submission: { answer: 'HELLO WORLD' },
+    });
+    expect(await screen.findByText('Not right. Try again.')).toBeInTheDocument();
+  });
+
+  it('marks the pairs the hint decoded', () => {
+    renderGame(<TaskScreen taskId="al" />, {
+      state: playing({ ...alienView, hintLegend: [{ symbol: 'g05', letter: 'W' }] }),
+    });
+    expect(letter(6)).toHaveValue('W');
+    expect(screen.getAllByLabelText('From the hint')).toHaveLength(1);
+  });
+});

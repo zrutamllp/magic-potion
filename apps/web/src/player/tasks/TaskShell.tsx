@@ -7,6 +7,7 @@ import { lockTimesText } from '../rules';
 import { startBlock } from '../screens/Home';
 import { TASK_LOOK } from '../tasks';
 import { Button, Card, Chip, TONE_BG, TONE_TEXT } from '../ui/basics';
+import { AlienTranslator } from './AlienTranslator';
 import { DataStory } from './DataStory';
 import { EthicalDilemma } from './EthicalDilemma';
 import { FIND_CODE_ELSEWHERE, FindCode } from './FindCode';
@@ -41,6 +42,7 @@ export interface TaskPlayProps {
 // Tasks that need the whole width (pictures, dashboards, long text) to fit 1280x720 without
 // scrolling. They have no tries card; the hint and Give up are compact.
 const WIDE: readonly PlayerTaskView['key'][] = [
+  'alien_translator',
   'ethical_dilemma',
   'picture_puzzle',
   'spot_difference',
@@ -50,6 +52,7 @@ const WIDE: readonly PlayerTaskView['key'][] = [
 // Tasks with their own play screen. The others show a placeholder until their batch is built.
 const PLAY: Partial<Record<PlayerTaskView['key'], ComponentType<TaskPlayProps>>> = {
   vault: Vault,
+  alien_translator: AlienTranslator,
   find_code: FindCode,
   picture_puzzle: PicturePuzzle,
   spot_difference: SpotDifference,

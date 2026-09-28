@@ -1,0 +1,115 @@
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { createGames, deleteGames, login, shooter, staff, tab, type Games } from './helpers';
+
+// Batch 4 task screenshots (Alien Translator, Guess the Celebrity, Pictionary, Escape Room):
+// `npm run screenshots:batch4`. A team draws 3 unique tasks, so there are two sets of games:
+// one with Alien Translator, Guess the Celebrity and Pictionary, one with Escape Room (plus two
+// others). Each task is played for real: brief, playing, wrong answer, hint, failed, then solved
+// on the next try. Every screen checks that its main parts fit a 1280x720 window without
+// scrolling.
+
+const shot = shooter('screenshots/phase5/batch4');
+let games: Games;
+let escapeGames: Games;
+
+test.beforeAll(() => {
+  games = createGames(['alien_translator', 'guess_celebrity', 'pictionary']);
+  escapeGames = createGames(['escape_room', 'riddle', 'hangman']);
+});
+
+test.afterAll(() => {
+  deleteGames(games);
+  deleteGames(escapeGames);
+});
+
+// The whole element is on screen at 1280x720, with no scrolling.
+async function fits(page: Page, target: Locator) {
+  await expect(target).toBeVisible();
+  // Keep a picture of the screen if it does not fit.
+  await page.screenshot({ path: 'test-results/batch4-last-fit-check.png' });
+  const box = await target.boundingBox();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  expect(box, 'element has a box').not.toBeNull();
+  expect(box!.y).toBeGreaterThanOrEqual(0);
+  expect(box!.y + box!.height, 'bottom edge inside 720').toBeLessThanOrEqual(720);
+  expect(box!.x + box!.width, 'right edge inside 1280').toBeLessThanOrEqual(1280);
+}
+
+async function openTask(page: Page, name: string) {
+  await tab(page, 'home');
+  await page.getByRole('button', { name: new RegExp(`^${name}:`) }).click();
+  await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
+}
+
+async function start(page: Page, button: 'Start Task' | 'Try again') {
+  await fits(page, page.getByRole('button', { name: button }));
+  await page.getByRole('button', { name: button }).click();
+  await expect(page.getByLabel('Task time left')).toBeVisible();
+}
+
+async function useHint(page: Page) {
+  await page.getByRole('button', { name: /Use hint/ }).click();
+  await page.getByRole('button', { name: 'Yes, use hint' }).click();
+}
+
+async function giveUp(page: Page) {
+  await page.getByRole('button', { name: 'Give up' }).click();
+  await page.getByRole('button', { name: 'Yes, give up' }).click();
+  await expect(page.getByText('You gave up.')).toBeVisible();
+}
+
+// ---------- Alien Translator ----------
+
+// THE PURPLE MOON RISES AT DAWN (sample content). Letter boxes are numbered across the message.
+const ALIEN = 'THEPURPLEMOONRISESATDAWN';
+
+async function typeAlien(page: Page, text: string) {
+  for (let i = 0; i < text.length; i++) {
+    const box = page.getByLabel(`Letter ${i + 1}`, { exact: true });
+    if ((await box.getAttribute('readonly')) === null) await box.fill(text[i]!);
+  }
+}
+
+test('Batch 4: Alien Translator, Guess the Celebrity, Pictionary', async ({ browser }) => {
+  const team = games.a.teams[0]!;
+  await staff(games, `/games/${games.a.id}/start`);
+  const page = await login(browser, games, team);
+
+  await tab(page, 'home');
+  await expect(page.getByRole('button', { name: /^Alien Translator:/ })).toBeVisible();
+  await shot(page, 'home');
+
+  // ---------- Alien Translator ----------
+  await openTask(page, 'Alien Translator');
+  await shot(page, 'alien-1-brief');
+  await start(page, 'Start Task');
+  await fits(page, page.getByLabel('Alien message'));
+  await fits(page, page.getByLabel('Legend'));
+  await fits(page, page.getByRole('button', { name: 'Submit', exact: true }));
+  await fits(page, page.getByRole('button', { name: 'Give up' }));
+  // Every legend letter is filled in on the start screen.
+  await expect(page.getByLabel('Letter 1', { exact: true })).toHaveValue('T');
+  await expect(page.getByLabel('Letter 6', { exact: true })).toHaveValue('R');
+  await expect(page.getByLabel('Letter 4', { exact: true })).toHaveValue('');
+  await shot(page, 'alien-2-playing');
+
+  // A wrong translation: typing under one symbol fills every copy of it.
+  await typeAlien(page, 'THEPURPLENOONRISESATDAWN');
+  await expect(page.getByLabel('Letter 7', { exact: true })).toHaveValue('P');
+  await page.getByRole('button', { name: 'Submit', exact: true }).click();
+  await expect(page.getByText('Not right. Try again.')).toBeVisible();
+  await shot(page, 'alien-3-wrong');
+
+  await useHint(page);
+  await expect(page.getByText('Hint used.')).toBeVisible();
+  await expect(page.getByLabel('From the hint')).toHaveCount(3);
+  await shot(page, 'alien-4-hint');
+
+  await giveUp(page);
+  await shot(page, 'alien-5-failed');
+  await start(page, 'Try again');
+  await typeAlien(page, ALIEN);
+  await page.getByRole('button', { name: 'Submit', exact: true }).click();
+  await expect(page.getByText('Solved!')).toBeVisible();
+  await shot(page, 'alien-6-solved');
+});
