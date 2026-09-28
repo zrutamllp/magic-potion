@@ -7,6 +7,9 @@ import type { TaskPlayProps } from './TaskShell';
 // Find the Code: decode a letter code written in symbols. The key shows the letters the team knows;
 // symbols with no known letter show "?". Facts only (GAME_RULES section 16).
 
+// Facts only (GAME_RULES section 16): it says what is missing, not where to find it.
+export const FIND_CODE_ELSEWHERE = 'Some letters are not on this screen.';
+
 interface Pair {
   symbol: string;
   letter: string;
@@ -96,6 +99,7 @@ export function FindCode({ task, running, view }: TaskPlayProps) {
         <h2 className="flex items-center gap-2 text-2xl font-bold">
           <KeyRound className="h-6 w-6 text-warning" aria-hidden /> Key
         </h2>
+        <p className="mt-1 text-lg text-ink-muted">{FIND_CODE_ELSEWHERE}</p>
         <ul className="mt-3 flex flex-wrap gap-3" aria-label="Key">
           {[...known].map(([symbol, letter]) => {
             const fromHint =

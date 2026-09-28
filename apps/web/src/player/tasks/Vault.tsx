@@ -11,11 +11,15 @@ import type { TaskPlayProps } from './TaskShell';
 interface VaultView {
   content: { intro: string; clues: { text: string; imageUrl?: string }[] };
   // This team's Vault marker (the matching Found item shows it too), or null in old games.
+  // The task header shows it as "Vault 🍎"; the empty boxes 4-6 show it faintly.
   marker: string | null;
   hint: { position: number; digit: string } | null;
 }
 
 const CODE_LENGTH = 6;
+
+// Facts only (GAME_RULES section 16): it says what is missing, not where to find it.
+export const VAULT_ELSEWHERE = 'Digits 4-6 are not on this screen.';
 
 export function Vault({ task, running, view }: TaskPlayProps) {
   const { content, marker, hint } = view as VaultView;
@@ -34,31 +38,21 @@ export function Vault({ task, running, view }: TaskPlayProps) {
   return (
     <Card className="p-4">
       {/* Compact, so the clues, the code and the button fit a 1280x720 screen share. */}
-      <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-lg font-semibold">{content.intro}</p>
-          {marker && (
-            <span
-              className="flex shrink-0 items-center gap-2 rounded-xl border-2 border-warning/60 bg-warning/10 px-3 py-1 text-xl font-bold"
-              aria-label={`Vault ${marker}`}
-            >
-              Vault <span className="text-3xl leading-none">{marker}</span>
-            </span>
-          )}
-        </div>
-        <ol className="space-y-1.5">
+      <form onSubmit={onSubmit} className="flex flex-col gap-2.5">
+        <p className="font-semibold">{content.intro}</p>
+        <ol className="space-y-1">
           {content.clues.map((clue, i) => (
             <li
               key={i}
               className="flex items-center gap-3 rounded-xl border border-line bg-card-raised px-3 py-1"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning/20 text-lg font-extrabold text-warning">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-warning/20 text-lg font-extrabold text-warning">
                 {i + 1}
               </span>
               {clue.imageUrl && (
                 <img src={clue.imageUrl} alt="" className="h-16 rounded-lg object-contain" />
               )}
-              <p className="flex-1 text-xl">{clue.text}</p>
+              <p className="flex-1 text-lg">{clue.text}</p>
               {hint?.position === i && (
                 <span className="flex items-center gap-1 text-lg font-bold text-info">
                   <Lightbulb className="h-5 w-5" aria-hidden /> Hint: {hint.digit}
@@ -73,10 +67,13 @@ export function Vault({ task, running, view }: TaskPlayProps) {
           locked={shown.map((_, i) => hint?.position === i)}
           captions={['Clue 1', 'Clue 2', 'Clue 3']}
           gapAfter={[2]}
+          // The marker shows faintly where the digits from elsewhere go.
+          placeholders={marker ? [undefined, undefined, undefined, marker, marker, marker] : []}
           size="md"
           onChange={setDigits}
           disabled={locked}
         />
+        <p className="text-lg text-ink-muted">{VAULT_ELSEWHERE}</p>
         <LockoutBanner running={running} />
         {/* While locked, the lock banner says it all. */}
         {!locked && <SubmitFeedback feedback={feedback} />}

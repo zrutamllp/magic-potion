@@ -12,6 +12,7 @@ export function DigitBoxes({
   pattern = /^\d$/,
   captions = [],
   gapAfter = [],
+  placeholders = [],
   size = 'lg',
 }: {
   values: string[];
@@ -25,6 +26,8 @@ export function DigitBoxes({
   // Small text under a box ("Clue 1"), and boxes followed by a dash.
   captions?: (string | undefined)[];
   gapAfter?: number[];
+  // Faint text in an empty box until something is typed (for example the Vault marker).
+  placeholders?: (string | undefined)[];
   size?: 'md' | 'lg';
 }) {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
@@ -92,13 +95,14 @@ export function DigitBoxes({
               value={v}
               disabled={disabled}
               readOnly={locked[i]}
+              placeholder={placeholders[i]}
               inputMode={pattern.test('1') ? 'numeric' : 'text'}
               autoComplete="off"
               onChange={(e) => onInput(i, e.target.value)}
               onKeyDown={(e) => onKeyDown(i, e)}
               onPaste={(e) => onPaste(i, e)}
               onFocus={(e) => e.target.select()}
-              className={`nums ${size === 'lg' ? 'h-20 w-16 text-5xl' : 'h-16 w-14 text-4xl'} rounded-xl border-2 text-center font-extrabold uppercase focus:border-brand focus:outline-none disabled:opacity-50 ${
+              className={`nums ${size === 'lg' ? 'h-20 w-16 text-5xl' : 'h-16 w-14 text-4xl'} rounded-xl border-2 text-center font-extrabold uppercase placeholder:text-3xl placeholder:opacity-35 focus:border-brand focus:outline-none disabled:opacity-50 ${
                 locked[i] ? 'border-info/60 bg-info/15 text-info' : 'border-line bg-page text-ink'
               }`}
             />

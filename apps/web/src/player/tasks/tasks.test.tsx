@@ -66,6 +66,19 @@ describe('task shell', () => {
     expect(send).toHaveBeenCalledWith('task:start', { taskId: 'v' });
   });
 
+  it('brief: states what is not on the screen, for The Vault and Find the Code only', () => {
+    const { unmount } = renderGame(<TaskScreen taskId="v" />, { state: withTasks([vault()]) });
+    expect(screen.getByText('Digits 4-6 are not on this screen.')).toBeInTheDocument();
+    unmount();
+    const other = renderGame(<TaskScreen taskId="f" />, { state: withTasks([findCode()]) });
+    expect(screen.getByText('Some letters are not on this screen.')).toBeInTheDocument();
+    other.unmount();
+    renderGame(<TaskScreen taskId="r" />, {
+      state: withTasks([task({ id: 'r', key: 'riddle', name: 'Riddle', type: 'UNIQUE' })]),
+    });
+    expect(screen.queryByText(/not on this screen/)).toBeNull();
+  });
+
   it('failed: says what happened and offers Try again', () => {
     const state = withTasks([
       findCode({ status: 'FAILED', lastResult: 'FAILED_TIMEOUT', attempts: 1 }),
@@ -187,6 +200,20 @@ describe('The Vault', () => {
     expect(screen.getByLabelText('Digit 6')).toHaveValue('9');
   });
 
+  it('shows the marker faintly in boxes 4-6 and says those digits are not on this screen', () => {
+    renderGame(<TaskScreen taskId="v" />, {
+      state: playing({ view: { ...vaultView, marker: '🍎' } }),
+    });
+    expect(screen.getByLabelText('Digit 1')).not.toHaveAttribute('placeholder');
+    for (const i of [4, 5, 6]) {
+      expect(screen.getByLabelText(`Digit ${i}`)).toHaveAttribute('placeholder', '🍎');
+    }
+    expect(screen.getByText('Digits 4-6 are not on this screen.')).toBeInTheDocument();
+    // Typing over the placeholder works as normal.
+    fireEvent.change(screen.getByLabelText('Digit 4'), { target: { value: '4' } });
+    expect(screen.getByLabelText('Digit 4')).toHaveValue('4');
+  });
+
   it('shows the Vault marker, with no explanation', () => {
     renderGame(<TaskScreen taskId="v" />, {
       state: playing({ view: { ...vaultView, marker: '🍎' } }),
@@ -268,6 +295,12 @@ describe('Find the Code', () => {
     expect(screen.getByLabelText('Letter 2')).toHaveAttribute('readonly');
     expect(screen.getByLabelText('From the hint')).toBeInTheDocument();
     expect(screen.queryByText('◆ = ?')).toBeNull();
+  });
+
+  it('says some letters are not on this screen, and keeps "?" in the key', () => {
+    renderGame(<TaskScreen taskId="f" />, { state: playing() });
+    expect(screen.getByText('Some letters are not on this screen.')).toBeInTheDocument();
+    expect(screen.getByText('◆ = ?')).toBeInTheDocument();
   });
 
   it('cannot submit until every letter is filled', () => {

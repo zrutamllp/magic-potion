@@ -7,9 +7,9 @@ import { lockTimesText } from '../rules';
 import { startBlock } from '../screens/Home';
 import { TASK_LOOK } from '../tasks';
 import { Button, Card, Chip, TONE_BG, TONE_TEXT } from '../ui/basics';
-import { FindCode } from './FindCode';
+import { FIND_CODE_ELSEWHERE, FindCode } from './FindCode';
 import { GiveUpCard, HintCard, TriesCard, hasHint, hasLockout, type Running } from './parts';
-import { Vault } from './Vault';
+import { VAULT_ELSEWHERE, Vault } from './Vault';
 
 // One task: the brief, then the play screen with timer, hint, tries and Give up, then the
 // result. Every answer is checked on the server; this screen only shows and sends.
@@ -24,6 +24,12 @@ export interface TaskPlayProps {
 const PLAY: Partial<Record<PlayerTaskView['key'], ComponentType<TaskPlayProps>>> = {
   vault: Vault,
   find_code: FindCode,
+};
+
+// Tasks that need something from outside the team's screen say so, as a plain fact.
+const ELSEWHERE: Partial<Record<PlayerTaskView['key'], string>> = {
+  vault: VAULT_ELSEWHERE,
+  find_code: FIND_CODE_ELSEWHERE,
 };
 
 const RESULT_TEXT: Partial<Record<AttemptResult, string>> = {
@@ -80,6 +86,11 @@ export function TaskScreen({ taskId }: { taskId: string }) {
 
 function TaskHeader({ task }: { task: PlayerTaskView }) {
   const { go, timerMsLeft } = useGame();
+  // The Vault shows its marker (GAME_RULES section 4) next to the name while it is open.
+  const marker =
+    task.key === 'vault'
+      ? ((task.running?.view as { marker?: string | null } | undefined)?.marker ?? null)
+      : null;
   const look = TASK_LOOK[task.key];
   const Icon = look.icon;
   return (
@@ -96,7 +107,17 @@ function TaskHeader({ task }: { task: PlayerTaskView }) {
           </Chip>
           <Chip tone="warning">{money(task.points)} points</Chip>
         </div>
-        <h1 className="text-3xl leading-tight font-extrabold">{task.name}</h1>
+        <h1 className="flex items-center gap-3 text-3xl leading-tight font-extrabold">
+          {task.name}
+          {marker && (
+            <span
+              className="flex items-center gap-2 rounded-xl border-2 border-warning/60 bg-warning/10 px-3 py-0.5 text-xl font-bold"
+              aria-label={`Vault ${marker}`}
+            >
+              Vault <span className="text-2xl leading-none">{marker}</span>
+            </span>
+          )}
+        </h1>
       </div>
       {task.running && (
         <div className="text-right leading-tight">
@@ -155,6 +176,7 @@ function Brief({ task }: { task: PlayerTaskView }) {
               : 'This task has no hint.'}
           </li>
           <li>Timer runs out or Give up: −{money(tasks.failPenalty)} Task Funds.</li>
+          {ELSEWHERE[task.key] && <li>{ELSEWHERE[task.key]}</li>}
           {hasLockout(task) && (
             <li>
               {tasks.lockoutAttempts} wrong tries lock the task:{' '}
