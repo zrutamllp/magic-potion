@@ -31,7 +31,7 @@ Every number below is a default setting that the admin can change per game befor
 
 - Each team gets 5 tasks: 2 common and 3 unique.
 - Common tasks: **The Vault** and **Find the Code** (the same task for every team, except for their fragments).
-- The Vault: every team has the same 3 clues, but its 3 fragment digits are random per team, so every team's code is different.
+- The Vault: every team has the same 3 clues, but its 3 fragment digits are random per team, so every team's code is different. Each team's Vault shows its own **Vault marker** (see section 4).
 - Find the Code: at game start each team gets its own **random letter code** (6 or 7 letters with no repeated letter, for example KRVTBLE; never a real word) and its own random cipher. The team sees its encoded code and part of the key; the rest of the key is its fragment, held by another team. So every team's answer and fragment are different. The code length is part of the task content (default 6 to 7 letters).
 - **Find the Code must not be guessable without the fragment.** From its own key a team sees at most half of the different letters (rounded down), never the first letter, only the letters used least often, and never more than half of the letters in the code. Because the code is random letters, the hidden letters cannot be guessed from the visible ones.
 - Unique tasks: 3 drawn at random from the other 10. Several teams may draw the same unique task.
@@ -87,7 +87,9 @@ Task content (images, words, riddles, audio, dashboards, answers) is uploaded pe
 - At game start, shuffle the teams into a random chain order (positions 0 to n-1), so the chain does not follow team names.
 - **Vault chain:** the team at position p holds the Vault fragment needed by the team at position (p + 1) mod n.
 - **Find the Code chain:** the team at position p holds the Find the Code fragment needed by the team at position (p + 2) mod n. With fewer than 3 teams, use offset 1.
-- A fragment appears on the holder's Home screen as a "Found item" card, for example "Fragment: 4-2-9". It gives no hint about which team or task it belongs to.
+- A fragment appears on the holder's Home screen as a "Found item" card. It never names a team.
+- **Vault marker:** at game start every team's Vault gets a different marker, a simple picture such as 🍎, 🚀 or 🎲 (clearly different, readable on Zoom, never like a Find the Code key symbol). The Vault screen shows "Vault 🍎", and the fragment that completes it shows the same marker: "Fragment: 🍎 4-2-9". So with 20 teams a team can tell which fragment is its own, without any team name or explanation.
+- Find the Code fragments show key pairs ("⌘ = R, ❖ = T") whose symbols appear in the needing team's message.
 - Fragment values for other teams are secret. A team only ever receives its own held fragments.
 - If a holder team is missing (never logged in, dropped out or removed), staff can release that fragment directly to the team that needs it. The main admin can do this for any team; a co-facilitator for their assigned teams. This is audited.
 

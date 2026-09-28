@@ -3,6 +3,7 @@ import {
   FIXED_CONTENT_TASK_KEYS,
   TASK_DEFINITIONS,
   UNIQUE_TASKS_PER_TEAM,
+  VAULT_MARKERS,
   distinctLetters,
   type FindCodeCipher,
   type FragmentKind,
@@ -52,9 +53,16 @@ export interface FragmentPlan {
   secretData: FindCodeCipher | null;
 }
 
-// The Vault fragment is 3 random digits per team, shown as "4-2-9".
-export function vaultFragmentValue(rng: Rng): string {
-  return Array.from({ length: 3 }, () => String(randInt(rng, 10))).join('-');
+// The Vault fragment is the team's Vault marker and 3 random digits, shown as "🍎 4-2-9".
+// The marker links it to the Vault it completes; it names no team (GAME_RULES section 4).
+export function vaultFragmentValue(rng: Rng, marker: string): string {
+  const digits = Array.from({ length: 3 }, () => String(randInt(rng, 10))).join('-');
+  return `${marker} ${digits}`;
+}
+
+// The marker at the start of a Vault fragment, or null for fragments made before markers.
+export function vaultMarker(value: string | null): string | null {
+  return value?.match(/^(\S+) \d-\d-\d$/)?.[1] ?? null;
 }
 
 // The digits a Vault fragment adds to the end of the code.
@@ -132,6 +140,8 @@ export function buildFragments(
 ): FragmentPlan[] {
   const n = order.length;
   const plans: FragmentPlan[] = [];
+  // A different Vault marker for each team.
+  const markers = shuffle(rng, VAULT_MARKERS);
   for (const kind of ['VAULT', 'FIND_CODE'] as const) {
     const offset = chainOffset(kind, n);
     for (let p = 0; p < n; p++) {
@@ -141,7 +151,7 @@ export function buildFragments(
           kind,
           holderTeamId: order[p] as string,
           neededByTeamId: order[needer] as string,
-          value: vaultFragmentValue(rng),
+          value: vaultFragmentValue(rng, markers[needer % markers.length] as string),
           secretData: null,
         });
         continue;

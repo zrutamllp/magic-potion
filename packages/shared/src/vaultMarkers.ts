@@ -1,0 +1,31 @@
+// The Vault marker (GAME_RULES section 4): each team's Vault shows one of these, and the
+// fragment that completes it shows the same one, for example "🍎 4-2-9". Clearly different,
+// colourful pictures that read well on a shared Zoom screen, and none of them looks like a
+// Find the Code key symbol. One per team, so a game of up to 25 teams never repeats one.
+export const VAULT_MARKERS: readonly string[] = [
+  '🍎',
+  '🍋',
+  '🍇',
+  '🍒',
+  '🥕',
+  '🐟',
+  '🐸',
+  '🦋',
+  '🐝',
+  '🌵',
+  '🌸',
+  '🍄',
+  '🔔',
+  '🎈',
+  '🎲',
+  '🔑',
+  '🚀',
+  '🎩',
+  '👑',
+  '💎',
+  '🧲',
+  '⛵',
+  '🎸',
+  '🧊',
+  '🐙',
+];

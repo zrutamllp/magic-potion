@@ -56,7 +56,7 @@ First-time database setup:
 1. `npm run prisma:migrate` applies the migrations to Neon.
 2. `npm run db:seed` creates the main admin from `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`, the 12 task definitions, and a "Demo Game" with 4 teams (`TEAM1` to `TEAM4`) and the sample content pack. Team passwords are random and printed only once. Run it again any time; it leaves existing rows alone.
 3. `npm run db:seed -- --reset-demo` deletes and recreates the demo game, printing new team passwords.
-4. `npm run db:seed -- --reset-demo --short` does the same with short timings for hand testing: Round 1 5 min, Pause 1 min, Round 2 5 min (inbox tasks at 1, 6 and 8 minutes of play). Every other rule keeps its real default.
+4. `npm run db:seed -- --reset-demo --short` does the same with short timings for hand testing: Round 1 5 min, Pause 1 min, Round 2 5 min, every task timer 4 min (so a task fits inside a round), and inbox tasks at 1, 6 and 8 minutes of play. Every other rule keeps its real default.
 
 `DIRECT_URL` must be Neon's direct host (no `-pooler` in the host name). Migrations through the pooler can leave a lock behind.
 
@@ -88,8 +88,9 @@ Turn `ENABLE_DEV_TOOLS` off when you are done; it is always off when `NODE_ENV=p
 
 Batch 1 (The Vault, Find the Code) is playable; the other tasks show a placeholder until their batch is built. Use the short demo from the section above (reset it once: the sample words and intros changed).
 
-- **The Vault:** answer the 3 clues for the first 3 digits (8, 3, 6 in the sample). The last 3 digits are a Found item ("Fragment: 1-4-3") on another team's Home. With 4 teams any team can hold it, so compare the Found items of the other team windows. Type all 6 digits and press **Open the vault**. Three wrong codes lock the task: 60 seconds the first time, 2 minutes the second, 4 minutes after that.
+- **The Vault:** answer the 3 clues for the first 3 digits (8, 3, 6 in the sample). The Vault shows its marker, for example "Vault 🍎"; the last 3 digits are the Found item with the same marker ("Fragment: 🍎 1-4-3") on another team's Home. Type all 6 digits and press **Open the vault**. Three wrong codes lock the task: 60 seconds the first time, 2 minutes the second, 4 minutes after that.
 - **Find the Code:** each team decodes its own random 6- or 7-letter code (not a word, so it cannot be guessed). The known letters are filled in; typing a letter under one symbol fills every copy of it. The key shows "?" for symbols with no known letter; the missing pairs ("⌘ = R, ❖ = T") are a Found item on another team's Home. Submit the code.
+- **Quick testing:** with `ENABLE_DEV_TOOLS=true`, the staff page `/dev/staff` shows a **Fragments** table: for each team, who holds its Vault and Find the Code fragment, and the value. Players never see it.
 - **Shell:** try **Use hint** (it shows how the 1,500 is paid: Support Funds first), **Give up** (−3,500 Task Funds) and **Try again**. The Funds tab lists the hint and fail lines.
 
 `npm run screenshots:batch1` saves the Batch 1 screens (brief, playing, hint, locked, failed, solved, Funds lines) to `screenshots/phase5/batch1/`.

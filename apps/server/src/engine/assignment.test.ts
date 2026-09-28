@@ -1,4 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { VAULT_MARKERS } from '@magic-potion/shared';
+import { SAMPLE_TASK_CONTENT } from '../../prisma/sampleContent';
+
+const SAMPLE_SYMBOLS = (
+  SAMPLE_TASK_CONTENT.find((c) => c.key === 'find_code')?.secretData as { symbols: string[] }
+).symbols;
 import {
   UNIQUE_TASK_KEYS,
   buildFragments,
@@ -9,6 +15,7 @@ import {
   visibleLetters,
   pickContent,
   vaultFragmentDigits,
+  vaultMarker,
 } from './assignment';
 import { seededRng } from './rng';
 
@@ -90,13 +97,31 @@ describe('fragment chains', () => {
     ]);
   });
 
-  it('makes Vault fragments of 3 digits', () => {
-    const plans = buildFragments(seededRng(2), ['a', 'b', 'c'], findCodeSecret);
-    for (const f of plans.filter((p) => p.kind === 'VAULT')) {
-      expect(f.value).toMatch(/^\d-\d-\d$/);
+  it('makes Vault fragments of a marker and 3 digits, a different marker per team', () => {
+    const teams = Array.from({ length: 25 }, (_, i) => `t${i}`);
+    const plans = buildFragments(seededRng(2), teams, findCodeSecret);
+    const vault = plans.filter((p) => p.kind === 'VAULT');
+    for (const f of vault) {
+      expect(f.value).toMatch(/^\S+ \d-\d-\d$/);
       expect(vaultFragmentDigits(f.value)).toHaveLength(3);
+      expect(VAULT_MARKERS).toContain(vaultMarker(f.value));
       expect(f.secretData).toBeNull();
     }
+    expect(new Set(vault.map((f) => vaultMarker(f.value))).size).toBe(25);
+  });
+
+  it('reads the marker, and none from fragments made before markers', () => {
+    expect(vaultMarker('🍎 4-2-9')).toBe('🍎');
+    expect(vaultMarker('4-2-9')).toBeNull();
+    expect(vaultMarker(null)).toBeNull();
+    expect(vaultFragmentDigits('🍎 4-2-9')).toBe('429');
+  });
+
+  it('uses markers that never look like Find the Code key symbols', () => {
+    const symbols = new Set(SAMPLE_SYMBOLS);
+    for (const m of VAULT_MARKERS) expect(symbols.has(m.replace('️', ''))).toBe(false);
+    expect(new Set(VAULT_MARKERS).size).toBe(VAULT_MARKERS.length);
+    expect(VAULT_MARKERS.length).toBeGreaterThanOrEqual(25);
   });
 
   it('gives each team its own Find the Code code and cipher, with the hidden key as the fragment', () => {

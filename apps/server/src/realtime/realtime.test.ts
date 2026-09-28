@@ -434,6 +434,26 @@ describe('staff', () => {
     await waitFor(() => admin.state().teams.find((t) => t.id === A)?.online === false, 'offline');
   });
 
+  it('shows the main admin who holds which fragment (dev tools), never the players', async () => {
+    await started();
+    const admin = await staffBrowser();
+    const fragments = admin.state().devFragments;
+    expect(fragments).toHaveLength(6);
+    expect(fragments?.filter((f) => f.kind === 'VAULT').map((f) => f.neededByTeamName)).toEqual([
+      'Team 1',
+      'Team 2',
+      'Team 3',
+    ]);
+    const cofac = await staffBrowser(COFAC);
+    expect(cofac.state().devFragments).toBeNull();
+    const a = await team(1);
+    await send(a, 'chat:send', { body: 'hi' });
+    await waitFor(() => a.feed.length === 1);
+    const all = a.payloads.join('');
+    expect(all).not.toContain('devFragments');
+    expect(all).not.toContain('holderTeamName');
+  });
+
   it('shows a co-facilitator only their assigned teams', async () => {
     await started();
     const cofac = await staffBrowser(COFAC);

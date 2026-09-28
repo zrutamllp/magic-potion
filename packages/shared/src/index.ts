@@ -8,3 +8,4 @@ export * from './realtime';
 export * from './settings';
 export * from './taskContent';
 export * from './taskKeys';
+export * from './vaultMarkers';

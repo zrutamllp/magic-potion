@@ -10,13 +10,15 @@ import type { TaskPlayProps } from './TaskShell';
 
 interface VaultView {
   content: { intro: string; clues: { text: string; imageUrl?: string }[] };
+  // This team's Vault marker (the matching Found item shows it too), or null in old games.
+  marker: string | null;
   hint: { position: number; digit: string } | null;
 }
 
 const CODE_LENGTH = 6;
 
 export function Vault({ task, running, view }: TaskPlayProps) {
-  const { content, hint } = view as VaultView;
+  const { content, marker, hint } = view as VaultView;
   const [digits, setDigits] = useState<string[]>(() => Array(CODE_LENGTH).fill(''));
   const { submit, feedback, busy } = useTaskSubmit(task.id);
   const locked = useLockLeft(running) > 0;
@@ -33,7 +35,17 @@ export function Vault({ task, running, view }: TaskPlayProps) {
     <Card className="p-4">
       {/* Compact, so the clues, the code and the button fit a 1280x720 screen share. */}
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        <p className="text-lg font-semibold">{content.intro}</p>
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-lg font-semibold">{content.intro}</p>
+          {marker && (
+            <span
+              className="flex shrink-0 items-center gap-2 rounded-xl border-2 border-warning/60 bg-warning/10 px-3 py-1 text-xl font-bold"
+              aria-label={`Vault ${marker}`}
+            >
+              Vault <span className="text-3xl leading-none">{marker}</span>
+            </span>
+          )}
+        </div>
         <ol className="space-y-1.5">
           {content.clues.map((clue, i) => (
             <li

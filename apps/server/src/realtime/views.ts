@@ -234,6 +234,22 @@ export function buildStaffState(
         messagesLeft: messagesLeft(s, t.id),
       })),
     devTools,
+    // Testing aid only (dev tools, main admin). Never part of a player's state.
+    devFragments:
+      devTools && staff.role === 'MAIN_ADMIN'
+        ? Object.values(s.fragments)
+            .map((f) => ({
+              kind: f.kind,
+              neededByTeamName: teamName(s, f.neededByTeamId),
+              holderTeamName: teamName(s, f.holderTeamId),
+              value: f.value,
+            }))
+            .sort(
+              (a, b) =>
+                a.kind.localeCompare(b.kind) ||
+                a.neededByTeamName.localeCompare(b.neededByTeamName, undefined, { numeric: true }),
+            )
+        : null,
   };
 }
 

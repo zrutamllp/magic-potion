@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { vaultFragmentDigits } from '../assignment';
+import { vaultFragmentDigits, vaultMarker } from '../assignment';
 import { matchesAny } from '../normalize';
 import { randInt } from '../rng';
 import { asJson, defineChecker } from './types';
@@ -24,7 +24,12 @@ export const vaultChecker = defineChecker<'vault', VaultProgress>({
     const position = randInt(ctx.rng, ctx.secretData.clueDigits.length);
     return { hint: { position, digit: ctx.secretData.clueDigits[position] as string } };
   },
-  publicView: (ctx, progress) => ({ content: asJson(ctx.publicData), hint: progress.hint }),
+  // The marker only: the fragment's digits are another team's secret.
+  publicView: (ctx, progress) => ({
+    content: asJson(ctx.publicData),
+    marker: vaultMarker(ctx.fragment),
+    hint: progress.hint,
+  }),
 });
 
 // Find the Code: decode a message. Each team has its own word and cipher (made at game start).

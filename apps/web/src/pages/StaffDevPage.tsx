@@ -357,6 +357,35 @@ function GameControl({
           </ol>
         </section>
       </div>
+
+      {state.devFragments && (
+        <section className="mt-4 rounded-2xl border border-warning/50 bg-card p-4">
+          <h2 className="text-xl font-bold">Fragments (dev tools only, never shown to players)</h2>
+          <p className="mb-3 text-ink-muted">
+            Who holds the fragment each team needs, for quick testing.
+          </p>
+          <table className="w-full text-left">
+            <thead className="text-ink-muted">
+              <tr>
+                <th>Task</th>
+                <th>Needed by</th>
+                <th>Held by</th>
+                <th>Fragment</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.devFragments.map((f) => (
+                <tr key={`${f.kind}:${f.neededByTeamName}`} className="border-t border-line">
+                  <td className="py-2">{f.kind === 'VAULT' ? 'The Vault' : 'Find the Code'}</td>
+                  <td className="font-bold">{f.neededByTeamName}</td>
+                  <td>{f.holderTeamName}</td>
+                  <td className="text-xl">{f.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
     </main>
   );
 }

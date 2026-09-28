@@ -18,15 +18,24 @@ describe('demo settings', () => {
   it('has 5-minute rounds and a 1-minute pause with --short, and valid settings', () => {
     const s = demoSettings(true);
     expect(GameSettingsSchema.parse(s)).toEqual(s);
-    expect(describeTiming(s)).toBe('Round 1 5 min, Pause 1 min, Round 2 5 min');
+    expect(describeTiming(s)).toBe('Round 1 5 min, Pause 1 min, Round 2 5 min, task timers 4 min');
   });
 
   it('changes only the timing: every other rule stays at the defaults', () => {
     // Put the default timing into the short settings: what is left must equal the defaults.
     const timingRestored = structuredClone(SHORT_DEMO_SETTINGS);
     timingRestored.phases = DEFAULT_SETTINGS.phases;
+    timingRestored.tasks.timerSeconds = DEFAULT_SETTINGS.tasks.timerSeconds;
     timingRestored.inbox.releaseAtPlaySeconds = DEFAULT_SETTINGS.inbox.releaseAtPlaySeconds;
     expect(timingRestored).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it('makes every task timer shorter than a round, so a task fits inside one', () => {
+    const { phases, tasks } = SHORT_DEMO_SETTINGS;
+    for (const seconds of Object.values(tasks.timerSeconds)) {
+      expect(seconds).toBe(240);
+      expect(seconds).toBeLessThan(phases.round1Seconds);
+    }
   });
 
   it('releases every inbox task inside the 10 minutes of play', () => {

@@ -187,6 +187,13 @@ describe('The Vault', () => {
     expect(screen.getByLabelText('Digit 6')).toHaveValue('9');
   });
 
+  it('shows the Vault marker, with no explanation', () => {
+    renderGame(<TaskScreen taskId="v" />, {
+      state: playing({ view: { ...vaultView, marker: '🍎' } }),
+    });
+    expect(screen.getByLabelText('Vault 🍎')).toHaveTextContent('Vault 🍎');
+  });
+
   it('fills all boxes from a paste', () => {
     renderGame(<TaskScreen taskId="v" />, { state: playing() });
     fireEvent.paste(screen.getByLabelText('Digit 1'), {

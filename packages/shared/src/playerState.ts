@@ -189,10 +189,21 @@ export interface StaffTeamView {
   messagesLeft: number;
 }
 
+// Who holds which team's fragment. Testing only: sent to the main admin when dev tools are on,
+// never to players.
+export interface StaffFragmentView {
+  kind: 'VAULT' | 'FIND_CODE';
+  neededByTeamName: string;
+  holderTeamName: string;
+  value: string;
+}
+
 export interface StaffState {
   game: GameClockView;
   potion: PotionView;
   staff: { id: string; name: string; role: StaffRole };
   teams: StaffTeamView[];
   devTools: boolean;
+  // Null unless dev tools are on and this is the main admin.
+  devFragments: StaffFragmentView[] | null;
 }
