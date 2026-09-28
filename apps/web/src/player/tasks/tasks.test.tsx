@@ -473,10 +473,20 @@ describe('Ethical Dilemma', () => {
     });
   });
 
-  it('has no hint and no right answer', () => {
-    renderGame(<TaskScreen taskId="d" />, { state: playing() });
-    expect(screen.getByText('This task has no hint.')).toBeInTheDocument();
+  it('has no hint and no right answer, and Give up asks first', async () => {
+    const { send } = renderGame(<TaskScreen taskId="d" />, { state: playing() });
+    expect(screen.queryByRole('button', { name: 'Use hint' })).toBeNull();
     expect(screen.queryByText(/correct|right answer|wrong/i)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Give up' }));
+    expect(screen.getByText('−3,500 Task Funds.')).toBeInTheDocument();
+    expect(send).not.toHaveBeenCalled();
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Yes, give up' })));
+    expect(send).toHaveBeenCalledWith('task:giveUp', { taskId: 'd' });
+  });
+
+  it('the brief says it has no hint', () => {
+    renderGame(<TaskScreen taskId="d" />, { state: withTasks([dilemma()]) });
+    expect(screen.getByText('This task has no hint.')).toBeInTheDocument();
   });
 
   it('once answered, shows the saved choice and reason', () => {

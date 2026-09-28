@@ -248,3 +248,40 @@ export function GiveUpCard({ task }: { task: PlayerTaskView }) {
     </Card>
   );
 }
+
+// Give up as one button, for full-width tasks. Same facts as the card, shown when asked.
+export function GiveUpInline({ task }: { task: PlayerTaskView }) {
+  const { state, act, send } = useGame();
+  const [confirming, setConfirming] = useState(false);
+  const penalty = money(state.settings.tasks.failPenalty);
+  if (!confirming) {
+    return (
+      <Button
+        tone="danger"
+        variant="outline"
+        className="h-12 shrink-0 py-0"
+        onClick={() => setConfirming(true)}
+      >
+        <Flag className="h-5 w-5" aria-hidden /> Give up
+      </Button>
+    );
+  }
+  return (
+    <div className="flex shrink-0 items-center gap-2">
+      <span className="text-lg text-danger">−{penalty} Task Funds.</span>
+      <Button
+        tone="danger"
+        className="h-12 py-0"
+        onClick={async () => {
+          setConfirming(false);
+          await act(null, () => send('task:giveUp', { taskId: task.id }));
+        }}
+      >
+        Yes, give up
+      </Button>
+      <Button tone="muted" className="h-12 py-0" onClick={() => setConfirming(false)}>
+        Keep going
+      </Button>
+    </div>
+  );
+}

@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { ArrowLeft, CheckCircle2, Hourglass, Play, RotateCcw, XCircle } from 'lucide-react';
 import type { AttemptResult, PlayerTaskView } from '@magic-potion/shared';
 import { formatMs, money } from '../../lib/time';
@@ -10,7 +10,15 @@ import { Button, Card, Chip, TONE_BG, TONE_TEXT } from '../ui/basics';
 import { EthicalDilemma } from './EthicalDilemma';
 import { FIND_CODE_ELSEWHERE, FindCode } from './FindCode';
 import { Hangman } from './Hangman';
-import { GiveUpCard, HintCard, TriesCard, hasHint, hasLockout, type Running } from './parts';
+import {
+  GiveUpCard,
+  GiveUpInline,
+  HintCard,
+  TriesCard,
+  hasHint,
+  hasLockout,
+  type Running,
+} from './parts';
 import { Riddle } from './Riddle';
 import { VAULT_ELSEWHERE, Vault } from './Vault';
 
@@ -21,7 +29,12 @@ export interface TaskPlayProps {
   task: PlayerTaskView;
   running: Running;
   view: unknown;
+  // Full-width tasks show Give up themselves, next to their main button.
+  giveUp?: ReactNode;
 }
+
+// Tasks with no hint and no tries use the full width, so they fit 1280x720 without scrolling.
+const WIDE: readonly PlayerTaskView['key'][] = ['ethical_dilemma'];
 
 // Tasks with their own play screen. The others show a placeholder until their batch is built.
 const PLAY: Partial<Record<PlayerTaskView['key'], ComponentType<TaskPlayProps>>> = {
@@ -67,6 +80,14 @@ export function TaskScreen({ taskId }: { taskId: string }) {
       <TaskHeader task={task} />
       {task.status === 'DONE' ? (
         <Solved task={task} />
+      ) : running && Play && WIDE.includes(task.key) ? (
+        <Play
+          key={running.number}
+          task={task}
+          running={running}
+          view={running.view}
+          giveUp={<GiveUpInline task={task} />}
+        />
       ) : running ? (
         <div className="grid gap-5 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">

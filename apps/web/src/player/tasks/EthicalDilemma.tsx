@@ -4,7 +4,8 @@ import { SubmitFeedback, useTaskSubmit } from './parts';
 import type { TaskPlayProps } from './TaskShell';
 
 // Ethical Dilemma: pick one of 4 actions and give a one-line reason. Any complete answer
-// passes; no option is marked right. The answer is saved for the debrief.
+// passes; no option is marked right. The answer is saved for the debrief. It has no hint,
+// so it uses the full width and shows Give up next to Submit.
 
 interface DilemmaView {
   content: { scenario: string; options: string[] };
@@ -14,7 +15,7 @@ interface DilemmaView {
 const REASON_MAX = 300;
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
-export function EthicalDilemma({ task, view }: TaskPlayProps) {
+export function EthicalDilemma({ task, view, giveUp }: TaskPlayProps) {
   const { content } = view as DilemmaView;
   const [choice, setChoice] = useState<number | null>(null);
   const [reason, setReason] = useState('');
@@ -28,18 +29,18 @@ export function EthicalDilemma({ task, view }: TaskPlayProps) {
   }
 
   return (
-    <Card className="p-4">
-      <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        <p className="text-xl leading-snug">{content.scenario}</p>
+    <Card className="px-5 py-4">
+      <form onSubmit={onSubmit} className="flex flex-col gap-2.5">
+        <p className="text-lg leading-snug">{content.scenario}</p>
         <fieldset>
-          <legend className="mb-2 text-lg font-bold">Choose one action.</legend>
+          <legend className="mb-1 text-lg font-bold">Choose one action.</legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {content.options.map((option, i) => {
               const picked = choice === i;
               return (
                 <label
                   key={i}
-                  className={`flex cursor-pointer items-start gap-3 rounded-xl border-2 px-3 py-2 text-lg leading-snug has-focus-visible:ring-2 has-focus-visible:ring-brand ${
+                  className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 px-3 py-1.5 text-lg leading-snug has-focus-visible:ring-2 has-focus-visible:ring-brand ${
                     picked
                       ? 'border-brand bg-brand/20'
                       : 'border-line bg-card-raised hover:border-brand/60'
@@ -66,26 +67,35 @@ export function EthicalDilemma({ task, view }: TaskPlayProps) {
             })}
           </div>
         </fieldset>
-        <label className="flex flex-col gap-1">
-          <span className="flex justify-between text-lg font-bold">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="dilemma-reason" className="flex justify-between text-lg font-bold">
             Your reason, in one line
             <span className="nums font-normal text-ink-muted">
               {reason.length}/{REASON_MAX}
             </span>
-          </span>
-          <input
-            aria-label="Your reason"
-            value={reason}
-            maxLength={REASON_MAX}
-            autoComplete="off"
-            onChange={(e) => setReason(e.target.value)}
-            className="rounded-xl border-2 border-line bg-page px-3 py-2 text-xl focus:border-brand focus:outline-none"
-          />
-        </label>
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              id="dilemma-reason"
+              aria-label="Your reason"
+              value={reason}
+              maxLength={REASON_MAX}
+              autoComplete="off"
+              onChange={(e) => setReason(e.target.value)}
+              className="h-12 min-w-0 flex-1 rounded-xl border-2 border-line bg-page px-3 text-xl focus:border-brand focus:outline-none"
+            />
+            <Button
+              type="submit"
+              tone="success"
+              className="h-12 shrink-0 px-6 py-0 text-xl"
+              disabled={!complete || busy}
+            >
+              Submit answer
+            </Button>
+            {giveUp}
+          </div>
+        </div>
         <SubmitFeedback feedback={feedback?.tone === 'bad' ? feedback : null} />
-        <Button type="submit" tone="success" className="py-3 text-2xl" disabled={!complete || busy}>
-          Submit answer
-        </Button>
       </form>
     </Card>
   );

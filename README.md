@@ -57,6 +57,7 @@ First-time database setup:
 2. `npm run db:seed` creates the main admin from `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`, the 12 task definitions, and a "Demo Game" with 4 teams (`TEAM1` to `TEAM4`) and the sample content pack. Team passwords are random and printed only once. Run it again any time; it leaves existing rows alone.
 3. `npm run db:seed -- --reset-demo` deletes and recreates the demo game, printing new team passwords.
 4. `npm run db:seed -- --reset-demo --short` does the same with short timings for hand testing: Round 1 5 min, Pause 1 min, Round 2 5 min, every task timer 4 min (so a task fits inside a round), and inbox tasks at 1, 6 and 8 minutes of play. Every other rule keeps its real default.
+5. Add `--tasks riddle,hangman,ethical_dilemma` (any 3 or more unique tasks) to load only those unique tasks, so every demo team draws them. Useful for testing one batch of task screens.
 
 `DIRECT_URL` must be Neon's direct host (no `-pooler` in the host name). Migrations through the pooler can leave a lock behind.
 
@@ -88,7 +89,9 @@ Turn `ENABLE_DEV_TOOLS` off when you are done; it is always off when `NODE_ENV=p
 
 ## Play the tasks (Phase 5, built in batches)
 
-Batch 1 (The Vault, Find the Code) is playable; the other tasks show a placeholder until their batch is built. Use the short demo from the section above (reset it once: the sample words and intros changed).
+Batches 1 and 2 are playable; the other tasks show a placeholder until their batch is built. Use the short demo from the section above.
+
+### Batch 1: The Vault, Find the Code
 
 - **The Vault:** answer the 3 clues for the first 3 digits (8, 3, 6 in the sample). The Vault shows its marker, for example "Vault 🍎"; the last 3 digits are the Found item with the same marker ("Fragment: 🍎 1-4-3") on another team's Home. Type all 6 digits and press **Open the vault**. Three wrong codes lock the task: 60 seconds the first time, 2 minutes the second, 4 minutes after that.
 - **Find the Code:** each team decodes its own random 6- or 7-letter code (not a word, so it cannot be guessed). The known letters are filled in; typing a letter under one symbol fills every copy of it. The key shows "?" for symbols with no known letter; the missing pairs ("⌘ = R, ❖ = T") are a Found item on another team's Home. Submit the code.
@@ -96,6 +99,18 @@ Batch 1 (The Vault, Find the Code) is playable; the other tasks show a placehold
 - **Shell:** try **Use hint** (it shows how the 1,500 is paid: Support Funds first), **Give up** (−3,500 Task Funds) and **Try again**. The Funds tab lists the hint and fail lines.
 
 `npm run screenshots:batch1` saves the Batch 1 screens (brief, playing, hint, locked, failed, solved, Funds lines) to `screenshots/phase5/batch1/`.
+
+### Batch 2: Riddle, Hangman, Ethical Dilemma
+
+From `apps/server`, run `npm run db:seed -- --reset-demo --short --tasks riddle,hangman,ethical_dilemma`, so all 4 teams get these 3 tasks (plus The Vault and Find the Code). Log in as any team; each task timer is 4 minutes in the short demo.
+
+- **Riddle:** 3 riddles; answer and **Check** each one on its own. Case, spaces, punctuation and "a", "an", "the" do not matter, and each riddle accepts a few answers: "The Keyboard", "foot steps" and "a comb" all pass. A wrong answer says "Riddle 2: Not right. Try again." at the top. The hint shows a clue under the first unanswered riddle. Restarting gives a new set of riddles (3 sets in the sample).
+  - Set 1: keyboard · footsteps · comb (or zip). Set 2: clock (or watch) · towel · calendar (or diary). Set 3: coin · age · needle.
+- **Hangman:** click letters or type them on the keyboard. The phrase shows by word, with lives left (6 hearts), wrong letters, and "R is in the phrase." / "R is not in the phrase.". The hint reveals one letter (shown in blue). The 6th wrong letter fails the try (−3,500) with "Too many wrong letters."; **Try again** gives a new phrase.
+  - Phrases: PRINTER OUT OF PAPER (Office problem) · QUARTERLY REVIEW MEETING (On the calendar) · OUT OF OFFICE REPLY (In your inbox).
+- **Ethical Dilemma:** read the scenario, pick one of the 4 options, type a one-line reason and press **Submit answer**. Any complete answer passes; nothing is marked right or wrong. There is no hint, and Give up sits next to Submit. The done screen shows "Answer saved." with the team's choice and reason. With `ENABLE_DEV_TOOLS=true`, `/dev/staff` lists every saved answer under **Ethical Dilemma answers** (the real debrief view and CSV come in Phase 6).
+
+`npm run screenshots:batch2` plays all three for real and saves the screens to `screenshots/phase5/batch2/`, checking that each main button fits a 1280×720 window without scrolling.
 
 ## Screenshots
 
