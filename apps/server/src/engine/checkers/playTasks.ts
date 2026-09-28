@@ -3,45 +3,56 @@ import { matchesAny } from '../normalize';
 import { shuffle } from '../rng';
 import { asJson, defineChecker } from './types';
 
-// Picture Puzzle: tiles are numbered 0..n-1 in solved order. The server scrambles them,
-// the client sends back the tile order, and the server checks it.
+// Picture Puzzle: tiles are numbered 0..n-1 in solved order, on a grid set in the game
+// settings. The server scrambles them; the team swaps two tiles at a time and every swap is
+// saved, so a refresh never loses progress. A swap is never wrong (no penalty).
 export type PuzzleProgress = { order: number[]; hint: boolean };
 
-const puzzleSubmission = z.object({ order: z.array(z.number().int().nonnegative()).max(400) });
+const swapSubmission = z.object({
+  swap: z.tuple([z.number().int().nonnegative(), z.number().int().nonnegative()]),
+});
 
 function isSolved(order: readonly number[]): boolean {
   return order.every((tile, i) => tile === i);
 }
 
 export const picturePuzzleChecker = defineChecker<'picture_puzzle', PuzzleProgress>({
-  submission: puzzleSubmission,
+  submission: swapSubmission,
   init(ctx) {
-    const n = ctx.publicData.rows * ctx.publicData.cols;
-    const solved = Array.from({ length: n }, (_, i) => i);
+    const { rows, cols } = ctx.tasks.picturePuzzleGrid;
+    const solved = Array.from({ length: rows * cols }, (_, i) => i);
     let order = shuffle(ctx.rng, solved);
     while (isSolved(order)) order = shuffle(ctx.rng, solved);
     return { order, hint: false };
   },
-  submit(ctx, progress, raw) {
-    const parsed = puzzleSubmission.safeParse(raw);
+  submit(_ctx, progress, raw) {
+    const parsed = swapSubmission.safeParse(raw);
     if (!parsed.success) return { status: 'invalid' };
-    const order = parsed.data.order;
-    const n = ctx.publicData.rows * ctx.publicData.cols;
-    const isPermutation =
-      order.length === n && new Set(order).size === n && order.every((t) => t < n);
-    if (!isPermutation) return { status: 'invalid' };
+    const [a, b] = parsed.data.swap;
+    const n = progress.order.length;
+    if (a === b || a >= n || b >= n) return { status: 'invalid' };
+    const order = [...progress.order];
+    [order[a], order[b]] = [order[b] as number, order[a] as number];
     const next = { ...progress, order };
     return isSolved(order)
       ? { status: 'solved', progress: next }
-      : { status: 'wrong', progress: next };
+      : { status: 'correct', progress: next };
   },
-  // The hint shows numbers on tiles that are in the right place.
+  // The hint shows on every tile the number of the spot where it belongs.
   hint: (_ctx, progress) => ({ ...progress, hint: true }),
-  publicView: (ctx, progress) => ({
-    content: asJson(ctx.publicData),
-    order: progress.order,
-    correctTiles: progress.hint ? progress.order.filter((tile, i) => tile === i) : null,
-  }),
+  // The grid comes from the order the try started with, so a settings change never breaks it.
+  publicView: (ctx, progress) => {
+    const { rows, cols } = ctx.tasks.picturePuzzleGrid;
+    const fits = rows * cols === progress.order.length;
+    const side = Math.round(Math.sqrt(progress.order.length));
+    return {
+      content: asJson(ctx.publicData),
+      rows: fits ? rows : side,
+      cols: fits ? cols : side,
+      order: progress.order,
+      numbers: progress.hint,
+    };
+  },
 });
 
 // Hangman: guess one letter at a time. Too many wrong letters fails the task.
@@ -99,7 +110,8 @@ export const hangmanChecker = defineChecker<'hangman', HangmanProgress>({
   }),
 });
 
-// Spot the Difference: the client sends one click at a time; the server checks it against secret circles.
+// Spot the Difference: the client sends one click at a time, in image pixels; the server
+// checks it against secret circles. A miss is never a penalty.
 export type SpotProgress = { found: number[]; hint: { x: number; y: number; r: number } | null };
 
 const clickSubmission = z.object({ x: z.number().finite(), y: z.number().finite() });
@@ -112,9 +124,19 @@ export const spotDifferenceChecker = defineChecker<'spot_difference', SpotProgre
     if (!parsed.success) return { status: 'invalid' };
     const { x, y } = parsed.data;
     const areas = ctx.secretData.areas;
-    const hit = areas.findIndex(
-      (a, i) => !progress.found.includes(i) && (x - a.x) ** 2 + (y - a.y) ** 2 <= a.r ** 2,
-    );
+    // Forgiving for trackpads: every circle grows by a % of the image width (a setting),
+    // and when a click is near two differences, the nearest one not yet found counts.
+    const extra = (ctx.tasks.spotDifferenceTolerancePercent / 100) * ctx.publicData.width;
+    let hit = -1;
+    let best = Infinity;
+    areas.forEach((a, i) => {
+      if (progress.found.includes(i)) return;
+      const d = Math.hypot(x - a.x, y - a.y);
+      if (d <= a.r + extra && d - a.r < best) {
+        best = d - a.r;
+        hit = i;
+      }
+    });
     if (hit < 0) return { status: 'wrong', progress };
     const next = { ...progress, found: [...progress.found, hit] };
     return next.found.length === areas.length

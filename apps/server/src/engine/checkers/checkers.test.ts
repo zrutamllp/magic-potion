@@ -114,32 +114,68 @@ describe('Find the Code', () => {
 
 describe('Picture Puzzle', () => {
   const ctx = ctxFor('picture_puzzle');
-  const solved = Array.from({ length: 12 }, (_, i) => i);
+  const solved = Array.from({ length: 9 }, (_, i) => i);
 
-  it('starts scrambled and is solved by the right tile order', () => {
+  // The swaps that put every tile in place, from the given order.
+  function solvingSwaps(start: number[]) {
+    const order = [...start];
+    const swaps: { swap: [number, number] }[] = [];
+    for (let i = 0; i < order.length; i++) {
+      if (order[i] === i) continue;
+      const j = order.indexOf(i);
+      [order[i], order[j]] = [order[j]!, order[i]!];
+      swaps.push({ swap: [i, j] });
+    }
+    return swaps;
+  }
+
+  it('starts scrambled on the grid from the settings (3x3 by default)', () => {
     const start = initProgress('picture_puzzle', ctx) as { order: number[] };
     expect(start.order).not.toEqual(solved);
     expect([...start.order].sort((a, b) => a - b)).toEqual(solved);
-    expect(play('picture_puzzle', ctx, [{ order: solved }]).statuses).toEqual(['solved']);
+    const view = publicView('picture_puzzle', ctx, start) as { rows: number; cols: number };
+    expect(view).toMatchObject({ rows: 3, cols: 3 });
   });
 
-  it('saves a wrong order and ignores an order that is not a full set of tiles', () => {
-    const swapped = [1, 0, ...solved.slice(2)];
-    const r = play('picture_puzzle', ctx, [{ order: swapped }, { order: [0, 0, 1] }]);
-    expect(r.statuses).toEqual(['wrong', 'invalid']);
-    expect((r.progress as { order: number[] }).order).toEqual(swapped);
+  it('uses other grid sizes from the settings', () => {
+    for (const grid of [
+      { rows: 2, cols: 2 },
+      { rows: 4, cols: 5 },
+    ]) {
+      const c = { ...ctx, tasks: { ...ctx.tasks, picturePuzzleGrid: grid } };
+      const start = initProgress('picture_puzzle', c) as { order: number[] };
+      expect(start.order).toHaveLength(grid.rows * grid.cols);
+      expect(publicView('picture_puzzle', c, start)).toMatchObject(grid);
+    }
   });
 
-  it('shows the correctly placed tiles after the hint', () => {
-    const p = checkSubmission('picture_puzzle', ctx, initProgress('picture_puzzle', ctx), {
-      order: [1, 0, ...solved.slice(2)],
-    });
-    if (p.status === 'invalid') throw new Error('unexpected');
-    const before = publicView('picture_puzzle', ctx, p.progress) as { correctTiles: unknown };
-    expect(before.correctTiles).toBeNull();
-    const hinted = applyHint('picture_puzzle', ctx, p.progress);
-    const view = publicView('picture_puzzle', ctx, hinted) as { correctTiles: number[] };
-    expect(view.correctTiles).toEqual(solved.slice(2));
+  it('swaps two tiles at a time, saving each swap, and is solved when all are in place', () => {
+    const start = initProgress('picture_puzzle', ctx) as { order: number[] };
+    const swaps = solvingSwaps(start.order);
+    let progress: Json = start;
+    const statuses: string[] = [];
+    for (const s of swaps) {
+      const r = checkSubmission('picture_puzzle', ctx, progress, s);
+      statuses.push(r.status);
+      if (r.status !== 'invalid') progress = r.progress;
+    }
+    expect(statuses.at(-1)).toBe('solved');
+    expect(statuses.slice(0, -1).every((s) => s === 'correct')).toBe(true);
+    expect((progress as { order: number[] }).order).toEqual(solved);
+  });
+
+  it('never calls a swap wrong, and ignores a bad swap', () => {
+    const start = initProgress('picture_puzzle', ctx);
+    for (const bad of [{ swap: [0, 0] }, { swap: [0, 9] }, { swap: [-1, 2] }, { order: solved }]) {
+      expect(checkSubmission('picture_puzzle', ctx, start, bad).status).toBe('invalid');
+    }
+  });
+
+  it('shows numbers on the tiles only after the hint', () => {
+    const start = initProgress('picture_puzzle', ctx);
+    expect(publicView('picture_puzzle', ctx, start)).toMatchObject({ numbers: false });
+    const hinted = applyHint('picture_puzzle', ctx, start);
+    expect(publicView('picture_puzzle', ctx, hinted)).toMatchObject({ numbers: true });
   });
 });
 
@@ -192,31 +228,47 @@ describe('Hangman', () => {
 
 describe('Spot the Difference', () => {
   const ctx = ctxFor('spot_difference');
-  const hits = [
-    [120, 90],
-    [400, 60],
-    [680, 140],
-    [220, 320],
-    [560, 300],
-    [150, 520],
-    [640, 500],
-  ];
+  // The sample areas (centre and radius, in image pixels). Tolerance 4% of 800 = 32 px.
+  const areas = [
+    [430, 105, 45],
+    [235, 95, 40],
+    [650, 140, 45],
+    [120, 290, 35],
+    [565, 445, 40],
+    [705, 385, 35],
+    [230, 520, 40],
+  ] as const;
 
   it('is solved when all 7 differences are clicked', () => {
     const r = play(
       'spot_difference',
       ctx,
-      hits.map(([x, y]) => ({ x: (x ?? 0) + 10, y: (y ?? 0) - 10 })),
+      areas.map(([x, y]) => ({ x: x + 10, y: y - 10 })),
     );
     expect(r.statuses).toEqual([...Array(6).fill('correct'), 'solved']);
+  });
+
+  it('is forgiving: a click just outside a difference still counts', () => {
+    // 45 px circle + 32 px tolerance = 77 px.
+    expect(play('spot_difference', ctx, [{ x: 430 + 75, y: 105 }]).statuses).toEqual(['correct']);
+    expect(play('spot_difference', ctx, [{ x: 430 + 79, y: 105 }]).statuses).toEqual(['wrong']);
+    const none = { ...ctx, tasks: { ...ctx.tasks, spotDifferenceTolerancePercent: 0 } };
+    expect(play('spot_difference', none, [{ x: 430 + 50, y: 105 }]).statuses).toEqual(['wrong']);
+  });
+
+  it('counts the nearest difference when a click is near two', () => {
+    // Between the sun (235, 95) and the clock (430, 105), nearer the clock's edge.
+    const r = play('spot_difference', ctx, [{ x: 370, y: 100 }]);
+    const view = publicView('spot_difference', ctx, r.progress) as { found: { x: number }[] };
+    expect(view.found).toEqual([{ x: 430, y: 105, r: 45 }]);
   });
 
   it('does not count a miss or the same difference twice', () => {
     expect(
       play('spot_difference', ctx, [
-        { x: 0, y: 0 },
-        { x: 120, y: 90 },
-        { x: 121, y: 91 },
+        { x: 0, y: 590 },
+        { x: 430, y: 105 },
+        { x: 431, y: 106 },
       ]).statuses,
     ).toEqual(['wrong', 'correct', 'wrong']);
   });
@@ -296,13 +348,22 @@ describe('question tasks (Riddle, Sound Sleuth, Data Story)', () => {
     expect(r.statuses).toEqual(['correct', 'correct', 'solved']);
   });
 
+  it('Data Story answers are forgiving about case, articles and number formatting', () => {
+    const r = play('data_story', ctxFor('data_story'), [
+      { index: 0, answer: 'the SOUTH region' },
+      { index: 1, answer: 'Jun.' },
+      { index: 2, answer: 'Twenty-Two' },
+    ]);
+    expect(r.statuses).toEqual(['correct', 'correct', 'solved']);
+  });
+
   it('Data Story gives the chart to look at as the hint', () => {
     const ctx = ctxFor('data_story');
-    const r = play('data_story', ctx, [{ index: 0, answer: 'north' }]);
+    const r = play('data_story', ctx, [{ index: 0, answer: 'the South' }]);
     const view = publicView('data_story', ctx, applyHint('data_story', ctx, r.progress)) as {
       hint: { index: number; text: string };
     };
-    expect(view.hint).toEqual({ index: 1, text: 'visitors' });
+    expect(view.hint).toEqual({ index: 1, text: 'orders' });
   });
 });
 

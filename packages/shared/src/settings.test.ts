@@ -16,6 +16,21 @@ describe('DEFAULT_SETTINGS', () => {
     expect(GameSettingsSchema.parse(old).branding.introVideoUrl).toBeNull();
   });
 
+  it('loads settings saved before the puzzle grid and click tolerance were settings', () => {
+    const old = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as { tasks: Record<string, unknown> };
+    delete old.tasks.picturePuzzleGrid;
+    delete old.tasks.spotDifferenceTolerancePercent;
+    const tasks = GameSettingsSchema.parse(old).tasks;
+    expect(tasks.picturePuzzleGrid).toEqual({ rows: 3, cols: 3 });
+    expect(tasks.spotDifferenceTolerancePercent).toBe(4);
+  });
+
+  it('refuses a puzzle grid outside 2 to 6', () => {
+    const bad = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as typeof DEFAULT_SETTINGS;
+    bad.tasks.picturePuzzleGrid = { rows: 1, cols: 7 };
+    expect(() => GameSettingsSchema.parse(bad)).toThrow();
+  });
+
   it('loads a single lock length saved by an older version', () => {
     const old = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as { tasks: Record<string, unknown> };
     old.tasks.lockoutSeconds = 90;
@@ -31,6 +46,8 @@ describe('DEFAULT_SETTINGS', () => {
     expect(s.tasks.lockoutAttempts).toBe(3);
     expect(s.tasks.lockoutSeconds).toEqual([60, 120, 240]);
     expect(s.tasks.hangmanMaxWrong).toBe(6);
+    expect(s.tasks.picturePuzzleGrid).toEqual({ rows: 3, cols: 3 });
+    expect(s.tasks.spotDifferenceTolerancePercent).toBe(4);
     expect(s.phases).toEqual({ round1Seconds: 2_100, pauseSeconds: 600, round2Seconds: 2_100 });
     expect(s.phases.round1Seconds + s.phases.round2Seconds).toBe(4_200);
     expect(s.chat).toEqual({ messagesPerRound: 5, maxLength: 300 });

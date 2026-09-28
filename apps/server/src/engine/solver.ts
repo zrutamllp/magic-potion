@@ -5,6 +5,7 @@ import type {
   HangmanProgress,
   PictionaryProgress,
   EscapeProgress,
+  PuzzleProgress,
   SpotProgress,
 } from './checkers/playTasks';
 import type { QuestionsProgress } from './checkers/questions';
@@ -50,8 +51,16 @@ export function correctSubmissions(
     case 'alien_translator':
       return [{ answer: secret<'alien_translator'>(ctx).answer[0] }];
     case 'picture_puzzle': {
-      const pub = ctx.publicData as { rows: number; cols: number };
-      return [{ order: Array.from({ length: pub.rows * pub.cols }, (_, i) => i) }];
+      // Put each spot's tile in place with one swap, in order.
+      const order = [...(progress as PuzzleProgress).order];
+      const swaps: unknown[] = [];
+      for (let i = 0; i < order.length; i++) {
+        if (order[i] === i) continue;
+        const j = order.indexOf(i);
+        [order[i], order[j]] = [order[j] as number, order[i] as number];
+        swaps.push({ swap: [i, j] });
+      }
+      return swaps;
     }
     case 'hangman': {
       const p = progress as HangmanProgress;
@@ -107,11 +116,9 @@ export function wrongSubmission(
   switch (task.key) {
     case 'vault':
       return { code: '000000' };
-    case 'picture_puzzle': {
-      const pub = ctx.publicData as { rows: number; cols: number };
-      const n = pub.rows * pub.cols;
-      return { order: Array.from({ length: n }, (_, i) => (i + 1) % n) };
-    }
+    // A swap is never wrong.
+    case 'picture_puzzle':
+      return null;
     case 'hangman': {
       const p = attempt.progress as HangmanProgress;
       const phrase = secret<'hangman'>(ctx).phrase.toLowerCase();

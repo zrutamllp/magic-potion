@@ -60,9 +60,9 @@ Ethical Dilemma is the exception: it has no hint, and any complete answer passes
 |---|---|---|---|---|---|---|
 | 1 | The Vault | Common | Solve 3 on-screen clues for 3 digits of a 6-digit code. The other 3 digits are a fragment held by another team. | All 6 digits entered | 12 min | One of the 3 on-screen digits |
 | 2 | Find the Code | Common | Decode a message. Part of the cipher key is on screen; the rest is a fragment held by another team. | Decoded code entered | 12 min | One more letter of the key |
-| 3 | Picture Puzzle | Unique | Drag scrambled tiles to rebuild an image | Image complete | 12 min | Numbers on correctly placed tiles |
+| 3 | Picture Puzzle | Unique | Swap scrambled tiles to rebuild an image (click one tile, then another, or drag). A small preview of the finished picture is shown. The grid is a setting (default 3x3). | Image complete | 12 min | A number on every tile: the spot where it belongs |
 | 4 | Hangman | Unique | Guess letters of a phrase. 6 wrong guesses fail the task. | Phrase revealed | 8 min | One letter revealed |
-| 5 | Spot the Difference | Unique | Click 7 differences between two images | All 7 found | 8 min | One area highlighted |
+| 5 | Spot the Difference | Unique | Click 7 differences between two images. Clicks near a difference count (tolerance is a setting, default 4% of the image width). A miss costs nothing. | All 7 found | 8 min | One area highlighted |
 | 6 | Alien Translator | Unique | Translate alien symbols using a partial legend | Translation entered | 12 min | Three more symbols decoded |
 | 7 | Sound Sleuth | Unique | Listen to an audio story, answer 3 questions | All 3 correct | 10 min | Transcript of one clue |
 | 8 | Pictionary | Unique | The game draws pictures stroke by stroke; guess 5 words | All 5 guessed | 8 min | First letter of the current word |
@@ -76,9 +76,9 @@ Task content (images, words, riddles, audio, dashboards, answers) is uploaded pe
 ### Server-side checking
 
 - Text answers: compare after trimming, lowercasing and collapsing spaces.
-- Riddle answers are more forgiving: case, spaces, punctuation and the words "a", "an" and "the" are ignored, and each riddle can list several accepted answers.
-- Picture Puzzle: the client sends the tile order; the server checks it.
-- Spot the Difference: the client sends click coordinates; the server checks them against secret hit areas.
+- Riddle and Data Story answers are more forgiving: case, spaces, punctuation and the words "a", "an" and "the" are ignored, thousands commas are ignored ("1,650" = "1650") but decimal points are kept, and each question can list several accepted answers.
+- Picture Puzzle: the client sends one swap at a time; the server keeps the tile order and checks it. A swap is never a wrong try.
+- Spot the Difference: the client sends click coordinates in image pixels; the server checks them against secret hit areas, grown by the tolerance setting. If a click is near two differences, the nearest one not yet found counts.
 - Hangman: the client sends one letter at a time; the server reveals matching positions.
 - Pictionary: the drawing strokes are public; the words are secret.
 - Escape Room: each stage is checked on the server before the next stage is sent.

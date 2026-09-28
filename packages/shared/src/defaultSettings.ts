@@ -23,6 +23,9 @@ export const DEFAULT_SETTINGS: GameSettings = {
     // 1st lock 60 seconds, 2nd 2 minutes, 3rd and later 4 minutes.
     lockoutSeconds: [60, 120, 240],
     hangmanMaxWrong: 6,
+    picturePuzzleGrid: { rows: 3, cols: 3 },
+    // A click this far outside a difference (in % of the image width) still finds it.
+    spotDifferenceTolerancePercent: 4,
     timerSeconds: {
       vault: minutes(12),
       find_code: minutes(12),

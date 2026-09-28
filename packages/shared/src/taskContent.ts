@@ -48,13 +48,15 @@ export const TaskContentSchemas = {
       ),
   },
   picture_puzzle: {
+    // The grid size is a game setting (tasks.picturePuzzleGrid). Width and height give the
+    // picture's shape. Content saved with rows and cols still loads: they are ignored.
     public: z.object({
       title: text,
       imageUrl: url,
-      rows: z.number().int().min(2),
-      cols: z.number().int().min(2),
+      width: z.number().int().positive(),
+      height: z.number().int().positive(),
     }),
-    // The solved order is tile 0..n-1; the server scrambles and checks it.
+    // The solved order is tile 0..n-1; the server scrambles it and checks every swap.
     secret: z.object({}),
   },
   hangman: {
@@ -116,6 +118,8 @@ export const TaskContentSchemas = {
   },
   data_story: {
     public: z.object({
+      // The dashboard heading. Optional; content saved without it still loads.
+      title: text.optional(),
       charts: z
         .array(
           z.object({

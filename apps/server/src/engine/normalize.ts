@@ -9,12 +9,15 @@ export function matchesAny(answer: string, accepted: readonly string[]): boolean
   return a.length > 0 && accepted.some((x) => normalizeAnswer(x) === a);
 }
 
-// Riddle answers are more forgiving: case, spaces, punctuation and the words "a", "an" and
-// "the" are ignored, so "The Tooth-Brush." matches "toothbrush".
+// Riddle and Data Story answers are more forgiving: case, spaces, punctuation and the words
+// "a", "an" and "the" are ignored, so "The Tooth-Brush." matches "toothbrush". Numbers keep
+// their decimal point ("12.5" is not "125") and drop thousands commas ("1,650" is "1650").
 export function normalizeLoose(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/(\d),(?=\d)/g, '$1')
+    .replace(/[^\p{L}\p{N}\s.]/gu, ' ')
+    .replace(/(?<!\d)\.|\.(?!\d)/g, ' ')
     .split(/\s+/)
     .filter((w) => w !== '' && w !== 'a' && w !== 'an' && w !== 'the')
     .join('');

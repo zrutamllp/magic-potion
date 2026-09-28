@@ -34,6 +34,16 @@ export const GameSettingsSchema = z.object({
     // Games saved when this was a single number still load.
     lockoutSeconds: z.union([seconds.transform((s) => [s]), z.array(seconds).min(1)]),
     hangmanMaxWrong: count,
+    // Picture Puzzle grid. Games saved before it was a setting load with 3x3.
+    picturePuzzleGrid: z
+      .object({
+        rows: z.number().int().min(2).max(6),
+        cols: z.number().int().min(2).max(6),
+      })
+      .default({ rows: 3, cols: 3 }),
+    // Spot the Difference: extra room around every difference, as a % of the image width,
+    // so trackpad clicks near a difference still count.
+    spotDifferenceTolerancePercent: z.number().min(0).max(20).default(4),
     timerSeconds: z.record(TaskKeySchema, seconds),
   }),
   phases: z.object({

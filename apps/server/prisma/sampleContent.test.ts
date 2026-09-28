@@ -4,6 +4,8 @@ import {
   TaskKeySchema,
   parseTaskContent,
 } from '@magic-potion/shared';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { forbiddenPhrases } from '@magic-potion/shared';
 import {
@@ -100,5 +102,74 @@ describe('sample content pack', () => {
     expect(sampleContentFor([])).toBe(SAMPLE_TASK_CONTENT);
     expect(() => parseTasksArg(['--tasks', 'riddle,hangman'])).toThrow();
     expect(() => parseTasksArg(['--tasks', 'riddle,hangman,nope'])).toThrow();
+  });
+
+  // Sample images are served by the web app from apps/web/public. Tasks with built screens
+  // only: Batch 4 media arrives with its screens.
+  it('has every sample image file it points to', () => {
+    const publicDir = fileURLToPath(new URL('../../web/public', import.meta.url));
+    const built = SAMPLE_TASK_CONTENT.filter((c) =>
+      ['picture_puzzle', 'spot_difference'].includes(c.key),
+    );
+    const urls = JSON.stringify(built).match(/"\/sample\/[^"]+"/g) ?? [];
+    expect(urls.length).toBeGreaterThanOrEqual(3);
+    for (const u of urls) expect(existsSync(publicDir + JSON.parse(u)), u).toBe(true);
+  });
+
+  it('keeps every Spot the Difference area inside the picture', () => {
+    for (const c of SAMPLE_TASK_CONTENT.filter((c) => c.key === 'spot_difference')) {
+      const { publicData, secretData } = parseTaskContent('spot_difference', c);
+      for (const a of secretData.areas) {
+        expect(a.x - a.r).toBeGreaterThanOrEqual(0);
+        expect(a.y - a.r).toBeGreaterThanOrEqual(0);
+        expect(a.x + a.r).toBeLessThanOrEqual(publicData.width);
+        expect(a.y + a.r).toBeLessThanOrEqual(publicData.height);
+      }
+    }
+  });
+
+  // Each answer is worked out again from the chart data, so the numbers and answers cannot drift.
+  it('Data Story answers match their charts', () => {
+    const stories = SAMPLE_TASK_CONTENT.filter((c) => c.key === 'data_story').map((c) =>
+      parseTaskContent('data_story', c),
+    );
+    const chart = (i: number, id: string) => {
+      const found = stories[i]!.publicData.charts.find((c) => c.id === id);
+      if (!found) throw new Error(`missing chart ${id}`);
+      return found.data;
+    };
+    const top = (d: { label: string; value: number }[]) =>
+      d.reduce((a, b) => (b.value > a.value ? b : a)).label;
+    const bottom = (d: { label: string; value: number }[]) =>
+      d.reduce((a, b) => (b.value < a.value ? b : a)).label;
+    const value = (d: { label: string; value: number }[], label: string) =>
+      d.find((x) => x.label === label)!.value;
+
+    const [one, two] = stories;
+    // Variant 1
+    expect(one!.secretData.answers[0]).toContain(top(chart(0, 'sales')));
+    const orders = chart(0, 'orders');
+    const drops = orders.filter((d, i) => i > 0 && d.value < orders[i - 1]!.value);
+    expect(drops.map((d) => d.label)).toEqual(['Jun']);
+    expect(one!.secretData.answers[1]).toContain('Jun');
+    const complaints = chart(0, 'complaints');
+    expect(one!.secretData.answers[2]).toContain(
+      String(value(complaints, 'Late delivery') - value(complaints, 'Damaged item')),
+    );
+    // Variant 2
+    expect(two!.secretData.answers[0]).toContain(bottom(chart(1, 'packed')));
+    expect(two!.secretData.answers[1]).toContain(
+      String(chart(1, 'returns').reduce((sum, d) => sum + d.value, 0)),
+    );
+    const dispatch = chart(1, 'dispatch');
+    expect(two!.secretData.answers[2]).toContain(
+      String(value(dispatch, 'Week 35') - value(dispatch, 'Week 38')),
+    );
+    // Every hint points at a chart that exists.
+    for (const s of stories) {
+      for (const id of s.secretData.hintChartIds) {
+        expect(s.publicData.charts.map((c) => c.id)).toContain(id);
+      }
+    }
   });
 });

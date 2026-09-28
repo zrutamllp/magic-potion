@@ -19,4 +19,13 @@ describe('answer matching', () => {
     expect(matchesAnyLoose('the', ['the'])).toBe(false);
     expect(matchesAnyLoose('?!', ['x'])).toBe(false);
   });
+
+  it('loose rule keeps numbers apart: commas drop, decimal points stay', () => {
+    expect(matchesAnyLoose('1,650', ['1650'])).toBe(true);
+    expect(matchesAnyLoose('12.5', ['12.5'])).toBe(true);
+    expect(matchesAnyLoose('12.5', ['125'])).toBe(false);
+    expect(matchesAnyLoose('22.', ['22'])).toBe(true);
+    expect(matchesAnyLoose('June.', ['june'])).toBe(true);
+    expect(normalizeLoose('Rs. 1,20,000')).toBe('rs120000');
+  });
 });

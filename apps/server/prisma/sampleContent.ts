@@ -69,14 +69,16 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
       ],
     },
   },
+  // Sample images live in apps/web/public/sample/ (SVGs). Phase 6 uploads replace the URLs.
+  // The grid size is a game setting (tasks.picturePuzzleGrid).
   {
     key: 'picture_puzzle',
     variant: 1,
     publicData: {
-      title: 'The Shattered Blueprint',
-      imageUrl: '/sample/picture-puzzle.jpg',
-      rows: 3,
-      cols: 4,
+      title: 'Office by the river',
+      imageUrl: '/sample/picture-puzzle.svg',
+      width: 800,
+      height: 600,
     },
     secretData: {},
   },
@@ -99,24 +101,26 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
     publicData: { category: 'In your inbox' },
     secretData: { phrase: 'Out of office reply' },
   },
+  // Hit areas are in image pixels. The right picture changes: clock hands, sun, picture on the
+  // wall, flower, mug colour, one pen, notebook colour.
   {
     key: 'spot_difference',
     variant: 1,
     publicData: {
-      leftImageUrl: '/sample/spot-left.jpg',
-      rightImageUrl: '/sample/spot-right.jpg',
+      leftImageUrl: '/sample/spot-left.svg',
+      rightImageUrl: '/sample/spot-right.svg',
       width: 800,
       height: 600,
     },
     secretData: {
       areas: [
-        { x: 120, y: 90, r: 40 },
-        { x: 400, y: 60, r: 40 },
-        { x: 680, y: 140, r: 40 },
-        { x: 220, y: 320, r: 40 },
-        { x: 560, y: 300, r: 40 },
-        { x: 150, y: 520, r: 40 },
-        { x: 640, y: 500, r: 40 },
+        { x: 430, y: 105, r: 45 },
+        { x: 235, y: 95, r: 40 },
+        { x: 650, y: 140, r: 45 },
+        { x: 120, y: 290, r: 35 },
+        { x: 565, y: 445, r: 40 },
+        { x: 705, y: 385, r: 35 },
+        { x: 230, y: 520, r: 40 },
       ],
     },
   },
@@ -378,52 +382,119 @@ export const SAMPLE_TASK_CONTENT: SampleTaskContent[] = [
     },
     secretData: {},
   },
+  // Answers ignore case, spaces, punctuation and thousands commas (see normalizeLoose).
   {
     key: 'data_story',
     variant: 1,
     publicData: {
+      title: 'Sales and delivery, July to September',
       charts: [
         {
           id: 'sales',
-          title: 'Sales by region (units)',
+          title: 'Sales by region (₹ lakh)',
           type: 'bar',
           data: [
-            { label: 'North', value: 420 },
-            { label: 'South', value: 310 },
-            { label: 'East', value: 280 },
-            { label: 'West', value: 350 },
+            { label: 'North', value: 42 },
+            { label: 'South', value: 58 },
+            { label: 'East', value: 31 },
+            { label: 'West', value: 47 },
           ],
         },
         {
-          id: 'visitors',
-          title: 'Website visitors per month (thousands)',
+          id: 'orders',
+          title: 'Orders delivered per month',
           type: 'line',
           data: [
-            { label: 'January', value: 32 },
-            { label: 'February', value: 28 },
-            { label: 'March', value: 21 },
-            { label: 'April', value: 35 },
+            { label: 'Apr', value: 1200 },
+            { label: 'May', value: 1350 },
+            { label: 'Jun', value: 1100 },
+            { label: 'Jul', value: 1500 },
+            { label: 'Aug', value: 1650 },
+            { label: 'Sep', value: 1720 },
           ],
         },
         {
-          id: 'team',
-          title: 'Where the team works (%)',
-          type: 'pie',
+          id: 'complaints',
+          title: 'Customer complaints in September',
+          type: 'bar',
           data: [
-            { label: 'Office', value: 60 },
-            { label: 'Remote', value: 40 },
+            { label: 'Late delivery', value: 36 },
+            { label: 'Damaged item', value: 14 },
+            { label: 'Wrong item', value: 9 },
+            { label: 'Billing', value: 6 },
           ],
         },
       ],
       questions: [
-        'Which region sold the most units?',
-        'In which month were website visitors lowest?',
-        'What percent of the team works remotely?',
+        'Which region had the highest sales?',
+        'In which month did orders delivered go down from the month before?',
+        'How many more complaints were about late delivery than about damaged items?',
       ],
     },
     secretData: {
-      answers: [['north'], ['march', 'mar'], ['40', '40%', '40 %', 'forty']],
-      hintChartIds: ['sales', 'visitors', 'team'],
+      answers: [
+        ['South', 'South region'],
+        ['June', 'Jun'],
+        ['22', 'twenty two', 'twenty-two'],
+      ],
+      hintChartIds: ['sales', 'orders', 'complaints'],
+    },
+  },
+  {
+    key: 'data_story',
+    variant: 2,
+    publicData: {
+      title: 'Warehouse operations, this week',
+      charts: [
+        {
+          id: 'packed',
+          title: 'Orders packed per day',
+          type: 'bar',
+          data: [
+            { label: 'Mon', value: 320 },
+            { label: 'Tue', value: 410 },
+            { label: 'Wed', value: 380 },
+            { label: 'Thu', value: 290 },
+            { label: 'Fri', value: 450 },
+            { label: 'Sat', value: 260 },
+          ],
+        },
+        {
+          id: 'returns',
+          title: 'Returns by reason',
+          type: 'bar',
+          data: [
+            { label: 'Size issue', value: 48 },
+            { label: 'Changed mind', value: 30 },
+            { label: 'Damaged', value: 17 },
+            { label: 'Late', value: 11 },
+          ],
+        },
+        {
+          id: 'dispatch',
+          title: 'Average dispatch time (hours)',
+          type: 'line',
+          data: [
+            { label: 'Week 35', value: 30 },
+            { label: 'Week 36', value: 26 },
+            { label: 'Week 37', value: 22 },
+            { label: 'Week 38', value: 18 },
+          ],
+        },
+      ],
+      questions: [
+        'On which day were the fewest orders packed?',
+        'How many returns were there in total this week?',
+        'By how many hours did average dispatch time fall from Week 35 to Week 38?',
+      ],
+    },
+    secretData: {
+      answers: [
+        ['Saturday', 'Sat'],
+        ['106', 'one hundred six', 'one hundred and six'],
+        ['12', 'twelve'],
+      ],
+      hintChartIds: ['packed', 'returns', 'dispatch'],
     },
   },
 ];

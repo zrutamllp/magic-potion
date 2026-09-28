@@ -35,6 +35,7 @@ const CHECKERS: { [K in TaskKey]: TaskChecker<K, never> } = {
   data_story: questionsChecker<'data_story'>({
     accepted: (ctx) => ctx.secretData.answers,
     hintText: (ctx, i) => ctx.secretData.hintChartIds[i] ?? '',
+    loose: true,
   }),
 } as unknown as { [K in TaskKey]: TaskChecker<K, never> };
 
