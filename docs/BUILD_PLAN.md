@@ -81,6 +81,7 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 
 - Multiple Render instances with a Redis adapter.
 - Hostinger VPS as a self-hosted option for clients who need it.
+- More questions per task, set from the admin panel, not in code (Sunny, after Batch 2). For example, Ethical Dilemma with about 10 scenarios and Riddle with 10 to 12 riddles. Today the content schemas fix the counts (Riddle exactly 3, one dilemma scenario) and the only content is the sample pack in `apps/server/prisma/sampleContent.ts`. To do: make the count per task a game setting or part of the uploaded content, loosen the schemas in `packages/shared/src/taskContent.ts`, and let admins add and edit questions in Phase 6 (content upload). Before building, decide with Sunny: are all questions played in one try, or is a set drawn from a bigger pool? Does the timer or the points change with more questions? For Ethical Dilemma, is each scenario answered in one task, and is every answer saved for the debrief?
 - Languages other than English.
 - Unique team codes across games. Team login finds the team by code among games that have not ended, and refuses a code that two live games share. Phase 6 should generate codes that never clash.
 - Replace the Phase 3 test screens (`apps/web/src/pages/TeamPage.tsx`, `StaffDevPage.tsx`) with the real player screens (Phase 4) and admin panel (Phase 6), and remove the dev-only "finish all tasks" route (`ENABLE_DEV_TOOLS`) once the task screens exist.
