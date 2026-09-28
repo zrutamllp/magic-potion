@@ -60,6 +60,8 @@ First-time database setup:
 
 `DIRECT_URL` must be Neon's direct host (no `-pooler` in the host name). Migrations through the pooler can leave a lock behind.
 
+Use `sslmode=verify-full` in both Neon strings (Neon's copy button gives `sslmode=require`). The app also changes `require` to `verify-full` itself (`withVerifyFullSsl` in `apps/server/src/db.ts`), so older strings work without the pg SSL warning.
+
 ## Test the player screens with the short demo
 
 About 15 minutes for a whole game.
