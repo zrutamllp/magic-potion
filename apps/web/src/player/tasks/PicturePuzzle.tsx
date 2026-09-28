@@ -1,4 +1,5 @@
 import { useState, type DragEvent } from 'react';
+import { Check } from 'lucide-react';
 import { Card } from '../ui/basics';
 import { SubmitFeedback, useTaskSubmit } from './parts';
 import type { TaskPlayProps } from './TaskShell';
@@ -12,12 +13,13 @@ interface PuzzleView {
   cols: number;
   // order[spot] is the tile shown at that spot. Tile t belongs at spot t.
   order: number[];
-  // After the hint, every tile shows the number of the spot where it belongs.
-  numbers: boolean;
+  // After the hint: the spots whose tile is in its right place, worked out by the server after
+  // every swap. Null before the hint. Wrong tiles get no mark.
+  inPlace: number[] | null;
 }
 
 export function PicturePuzzle({ task, view, hint, giveUp }: TaskPlayProps) {
-  const { content, rows, cols, order, numbers } = view as PuzzleView;
+  const { content, rows, cols, order, inPlace } = view as PuzzleView;
   const { submit, feedback } = useTaskSubmit(task.id);
   // The spot picked first, waiting for a second click.
   const [picked, setPicked] = useState<number | null>(null);
@@ -57,6 +59,7 @@ export function PicturePuzzle({ task, view, hint, giveUp }: TaskPlayProps) {
           const row = Math.floor(tile / cols);
           const col = tile % cols;
           const isPicked = picked === spot;
+          const placed = inPlace?.includes(spot) ?? false;
           return (
             <button
               key={spot}
@@ -69,7 +72,7 @@ export function PicturePuzzle({ task, view, hint, giveUp }: TaskPlayProps) {
               }}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => onDrop(e, spot)}
-              aria-label={`Spot ${spot + 1}${numbers ? `, tile ${tile + 1}` : ''}${isPicked ? ', picked' : ''}`}
+              aria-label={`Spot ${spot + 1}${placed ? ', in place' : ''}${isPicked ? ', picked' : ''}`}
               aria-pressed={isPicked}
               data-tile={tile}
               className={`relative cursor-pointer rounded-sm bg-no-repeat outline-none focus-visible:ring-4 focus-visible:ring-brand ${
@@ -83,9 +86,9 @@ export function PicturePuzzle({ task, view, hint, giveUp }: TaskPlayProps) {
                 }%`,
               }}
             >
-              {numbers && (
-                <span className="absolute top-1 left-1 flex h-8 min-w-8 items-center justify-center rounded-full bg-page/85 px-1.5 text-xl font-extrabold text-info">
-                  {tile + 1}
+              {placed && (
+                <span className="absolute top-1.5 right-1.5 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-success shadow-lg">
+                  <Check className="h-6 w-6 text-white" strokeWidth={4} aria-hidden />
                 </span>
               )}
             </button>
@@ -108,11 +111,6 @@ export function PicturePuzzle({ task, view, hint, giveUp }: TaskPlayProps) {
             ? 'Click a tile, then another tile, to swap them.'
             : 'Now click the tile to swap with.'}
         </p>
-        {numbers && (
-          <p className="text-lg text-info">
-            Spots 1 to {rows * cols}: left to right, top to bottom.
-          </p>
-        )}
         <SubmitFeedback feedback={feedback?.tone === 'bad' ? feedback : null} />
         <div className="flex flex-wrap items-center gap-2">
           {hint}

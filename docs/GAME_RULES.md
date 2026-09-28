@@ -60,7 +60,7 @@ Ethical Dilemma is the exception: it has no hint, and any complete answer passes
 |---|---|---|---|---|---|---|
 | 1 | The Vault | Common | Solve 3 on-screen clues for 3 digits of a 6-digit code. The other 3 digits are a fragment held by another team. | All 6 digits entered | 12 min | One of the 3 on-screen digits |
 | 2 | Find the Code | Common | Decode a message. Part of the cipher key is on screen; the rest is a fragment held by another team. | Decoded code entered | 12 min | One more letter of the key |
-| 3 | Picture Puzzle | Unique | Swap scrambled tiles to rebuild an image (click one tile, then another, or drag). A small preview of the finished picture is shown. The grid is a setting (default 3x3). | Image complete | 12 min | A number on every tile: the spot where it belongs |
+| 3 | Picture Puzzle | Unique | Swap scrambled tiles to rebuild an image (click one tile, then another, or drag). A small preview of the finished picture is shown. The grid is a setting (default 3x3). | Image complete | 12 min | A green tick on every tile already in its right place, updated after every swap until the try ends |
 | 4 | Hangman | Unique | Guess letters of a phrase. 6 wrong guesses fail the task. | Phrase revealed | 8 min | One letter revealed |
 | 5 | Spot the Difference | Unique | Click 7 differences between two images. Clicks near a difference count (tolerance is a setting, default 4% of the image width). A miss costs nothing. | All 7 found | 8 min | One area highlighted |
 | 6 | Alien Translator | Unique | Translate alien symbols using a partial legend | Translation entered | 12 min | Three more symbols decoded |

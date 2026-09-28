@@ -533,7 +533,7 @@ const puzzleView = {
   rows: 3,
   cols: 3,
   order: [1, 0, 2, 3, 4, 5, 6, 7, 8],
-  numbers: false,
+  inPlace: null as number[] | null,
 };
 
 const spotView = {
@@ -629,24 +629,36 @@ describe('Picture Puzzle', () => {
     });
   });
 
-  it('shows the finished picture, and tile numbers only after the hint', () => {
-    const { unmount } = renderGame(<TaskScreen taskId="p" />, { state: playing() });
+  it('shows the finished picture, and no marks before the hint', () => {
+    renderGame(<TaskScreen taskId="p" />, { state: playing() });
     expect(screen.getByAltText('Finished picture: Office by the river')).toBeInTheDocument();
-    expect(screen.queryByText(/Spots 1 to 9/)).toBeNull();
-    expect(screen.getByRole('button', { name: 'Spot 1' })).toBeInTheDocument();
-    unmount();
-    renderGame(<TaskScreen taskId="p" />, {
-      state: withTasks([
+    expect(screen.queryAllByRole('button', { name: /in place/ })).toHaveLength(0);
+  });
+
+  it('after the hint, ticks only the tiles in their right place, with no numbers', () => {
+    const hinted = (inPlace: number[]) =>
+      withTasks([
         puzzle({
           status: 'IN_PROGRESS',
-          running: running({ hintsUsed: 1, view: { ...puzzleView, numbers: true } }),
+          running: running({ hintsUsed: 1, view: { ...puzzleView, inPlace } }),
         }),
-      ]),
+      ]);
+    // Spots 1 and 2 hold each other's tiles; the other 7 are in place.
+    const { unmount } = renderGame(<TaskScreen taskId="p" />, {
+      state: hinted([2, 3, 4, 5, 6, 7, 8]),
     });
-    // Tile 2 sits in spot 1: its number says where it belongs.
-    expect(screen.getByRole('button', { name: 'Spot 1, tile 2' })).toHaveTextContent('2');
-    expect(screen.getByText('Spots 1 to 9: left to right, top to bottom.')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /, in place/ })).toHaveLength(7);
+    expect(screen.getByRole('button', { name: 'Spot 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Spot 3, in place' })).toBeInTheDocument();
+    // No tile shows a number.
+    for (const tile of screen.getAllByRole('button', { name: /^Spot \d/ })) {
+      expect(tile.textContent).toBe('');
+    }
     expect(screen.getByText('Hint used.')).toBeInTheDocument();
+    // The server sends new marks after every swap; the screen shows whatever it sends.
+    unmount();
+    renderGame(<TaskScreen taskId="p" />, { state: hinted([0, 1, 2, 3, 4, 5, 6, 7, 8]) });
+    expect(screen.getAllByRole('button', { name: /, in place/ })).toHaveLength(9);
   });
 
   it('has a compact hint that asks first', async () => {

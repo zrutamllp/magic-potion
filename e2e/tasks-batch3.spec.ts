@@ -122,9 +122,34 @@ test('Batch 3 tasks', async ({ browser }) => {
     await spots(page).nth(0).click();
   }
 
+  // The hint ticks the tiles already in place (spot 1 now), with no numbers on any tile.
   await useHint(page);
-  await expect(spots(page).first()).toHaveAccessibleName(/tile \d/);
+  await expect(spots(page).first()).toHaveAccessibleName('Spot 1, in place');
+  const ticked = async () =>
+    spots(page).evaluateAll(
+      (els) => els.filter((el) => el.getAttribute('aria-label')?.includes('in place')).length,
+    );
+  const inPlace = async () =>
+    spots(page).evaluateAll(
+      (els) => els.filter((el, i) => el.getAttribute('data-tile') === String(i)).length,
+    );
+  expect(await ticked()).toBe(await inPlace());
+  for (const text of await spots(page).allTextContents()) expect(text.trim()).toBe('');
   await shot(page, 'puzzle-4-hint');
+
+  // The ticks follow every swap: put the tile for spot 2 in place and a new tick appears.
+  if ((await tileAt(page, 1)) !== 1) {
+    const from = await spots(page).evaluateAll((els) =>
+      els.findIndex((el) => el.getAttribute('data-tile') === '1'),
+    );
+    const before = await ticked();
+    await spots(page).nth(1).click();
+    await spots(page).nth(from).click();
+    await expect(spots(page).nth(1)).toHaveAccessibleName('Spot 2, in place');
+    expect(await ticked()).toBeGreaterThan(before);
+    expect(await ticked()).toBe(await inPlace());
+  }
+  await shot(page, 'puzzle-4b-hint-after-swap');
 
   // Progress is kept by the server: a refresh shows the same order.
   const before = await spots(page).evaluateAll((els) =>

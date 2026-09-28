@@ -171,11 +171,35 @@ describe('Picture Puzzle', () => {
     }
   });
 
-  it('shows numbers on the tiles only after the hint', () => {
-    const start = initProgress('picture_puzzle', ctx);
-    expect(publicView('picture_puzzle', ctx, start)).toMatchObject({ numbers: false });
+  it('after the hint, marks the tiles in their right spot, and keeps up with every swap', () => {
+    // Tiles 0 and 1 swapped, 2 and 3 swapped, the rest in place.
+    const start = { order: [1, 0, 3, 2, 4, 5, 6, 7, 8], hint: false };
+    expect(publicView('picture_puzzle', ctx, start)).toMatchObject({ inPlace: null });
     const hinted = applyHint('picture_puzzle', ctx, start);
-    expect(publicView('picture_puzzle', ctx, hinted)).toMatchObject({ numbers: true });
+    expect(publicView('picture_puzzle', ctx, hinted)).toMatchObject({
+      inPlace: [4, 5, 6, 7, 8],
+    });
+    // Fix tiles 0 and 1: both spots get a mark.
+    const fixed = checkSubmission('picture_puzzle', ctx, hinted, { swap: [0, 1] });
+    if (fixed.status === 'invalid') throw new Error('unexpected');
+    expect(publicView('picture_puzzle', ctx, fixed.progress)).toMatchObject({
+      inPlace: [0, 1, 4, 5, 6, 7, 8],
+    });
+    // Move a right tile away: its mark goes.
+    const moved = checkSubmission('picture_puzzle', ctx, fixed.progress, { swap: [4, 5] });
+    if (moved.status === 'invalid') throw new Error('unexpected');
+    expect(publicView('picture_puzzle', ctx, moved.progress)).toMatchObject({
+      inPlace: [0, 1, 6, 7, 8],
+    });
+  });
+
+  it('never says where a wrong tile belongs', () => {
+    const hinted = applyHint('picture_puzzle', ctx, {
+      order: [1, 0, 2, 3, 4, 5, 6, 7, 8],
+      hint: false,
+    });
+    const view = publicView('picture_puzzle', ctx, hinted) as Record<string, unknown>;
+    expect(Object.keys(view).sort()).toEqual(['cols', 'content', 'inPlace', 'order', 'rows']);
   });
 });
 

@@ -38,7 +38,8 @@ export const picturePuzzleChecker = defineChecker<'picture_puzzle', PuzzleProgre
       ? { status: 'solved', progress: next }
       : { status: 'correct', progress: next };
   },
-  // The hint shows on every tile the number of the spot where it belongs.
+  // The hint marks every tile that is already in its right spot. The marks are worked out from
+  // the current order each time, so they follow every swap until the try ends.
   hint: (_ctx, progress) => ({ ...progress, hint: true }),
   // The grid comes from the order the try started with, so a settings change never breaks it.
   publicView: (ctx, progress) => {
@@ -50,7 +51,10 @@ export const picturePuzzleChecker = defineChecker<'picture_puzzle', PuzzleProgre
       rows: fits ? rows : side,
       cols: fits ? cols : side,
       order: progress.order,
-      numbers: progress.hint,
+      // Spots holding their right tile, after the hint only. Never says where other tiles go.
+      inPlace: progress.hint
+        ? progress.order.flatMap((tile, spot) => (tile === spot ? [spot] : []))
+        : null,
     };
   },
 });
