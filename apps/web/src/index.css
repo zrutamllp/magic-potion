@@ -77,6 +77,25 @@ body {
   }
 }
 
+/* Pictionary: each stroke draws itself along its length (pathLength is 1). This is part of
+   the puzzle, so it stays on for reduced motion too. */
+@keyframes draw-stroke {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.draw-stroke {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation-name: draw-stroke;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
 /* Countdowns and money keep the same width as digits change. */
 .nums {
   font-variant-numeric: tabular-nums;

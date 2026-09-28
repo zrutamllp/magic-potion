@@ -23,6 +23,7 @@ import {
   hasLockout,
   type Running,
 } from './parts';
+import { Pictionary } from './Pictionary';
 import { PicturePuzzle } from './PicturePuzzle';
 import { Riddle } from './Riddle';
 import { SpotDifference } from './SpotDifference';
@@ -46,6 +47,7 @@ const WIDE: readonly PlayerTaskView['key'][] = [
   'alien_translator',
   'ethical_dilemma',
   'guess_celebrity',
+  'pictionary',
   'picture_puzzle',
   'spot_difference',
   'data_story',
@@ -57,6 +59,7 @@ const PLAY: Partial<Record<PlayerTaskView['key'], ComponentType<TaskPlayProps>>>
   alien_translator: AlienTranslator,
   find_code: FindCode,
   guess_celebrity: GuessCelebrity,
+  pictionary: Pictionary,
   picture_puzzle: PicturePuzzle,
   spot_difference: SpotDifference,
   data_story: DataStory,

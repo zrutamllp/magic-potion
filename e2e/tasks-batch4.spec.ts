@@ -4,8 +4,8 @@ import { createGames, deleteGames, login, shooter, staff, tab, type Games } from
 // Batch 4 task screenshots (Alien Translator, Guess the Celebrity, Pictionary, Escape Room):
 // `npm run screenshots:batch4`. A team draws 3 unique tasks, so there are two sets of games:
 // one with Alien Translator, Guess the Celebrity and Pictionary, one with Escape Room (plus two
-// others). Each task is played for real: brief, playing, wrong answer, hint, failed, then solved
-// on the next try. Every screen checks that its main parts fit a 1280x720 window without
+// others). Each task is played for real: brief, playing, wrong answer, hint, then solved (Alien
+// Translator and Guess the Celebrity fail once first). Every screen checks that its main parts fit a 1280x720 window without
 // scrolling.
 
 const shot = shooter('screenshots/phase5/batch4');
@@ -92,6 +92,21 @@ async function faceName(page: Page): Promise<string> {
 
 async function guess(page: Page, name: string) {
   await page.getByLabel('Name', { exact: true }).fill(name);
+  await page.getByRole('button', { name: 'Guess', exact: true }).click();
+}
+
+// ---------- Pictionary ----------
+
+// The 5 sample words, in order, typed the way a team might.
+const WORDS = ['A key', 'Coffee Mug', 'lightbulb', 'Laptops', 'rocket ship'];
+
+async function wordIndex(page: Page): Promise<number> {
+  const text = (await page.getByText(/^Word \d of 5$/).textContent()) ?? '';
+  return Number(/Word (\d)/.exec(text)?.[1] ?? '1') - 1;
+}
+
+async function guessWord(page: Page, word: string) {
+  await page.getByLabel('Your guess').fill(word);
   await page.getByRole('button', { name: 'Guess', exact: true }).click();
 }
 
@@ -189,4 +204,42 @@ test('Batch 4: Alien Translator, Guess the Celebrity, Pictionary', async ({ brow
   await guess(page, first);
   await expect(page.getByText('Solved!')).toBeVisible();
   await shot(page, 'celebrity-9-solved');
+
+  // ---------- Pictionary ----------
+  await openTask(page, 'Pictionary');
+  await shot(page, 'pictionary-1-brief');
+  await start(page, 'Start Task');
+  await expect(page.getByText('Word 1 of 5')).toBeVisible();
+  await fits(page, page.getByRole('img', { name: 'Drawing 1' }));
+  await fits(page, page.getByRole('button', { name: 'Give up' }));
+  await fits(page, page.getByLabel('Guessed'));
+  // Mid-drawing, then the finished picture.
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: 'screenshots/phase5/batch4/pictionary-2-drawing.png' });
+  await page.waitForTimeout(5000);
+  await shot(page, 'pictionary-3-drawn');
+
+  await guessWord(page, 'door');
+  await expect(page.getByText('Not right. Try again.')).toBeVisible();
+  await shot(page, 'pictionary-4-wrong');
+  await guessWord(page, WORDS[0]!);
+  await expect(page.getByText('Word 2 of 5')).toBeVisible();
+  await useHint(page);
+  await expect(page.getByText(/First letter: C/)).toBeVisible();
+  await page.waitForTimeout(6000);
+  await shot(page, 'pictionary-5-hint');
+
+  // Funds are low after two fails, so this one is solved on the same try.
+  for (let i = 1; i < 5; i++) {
+    await expect(page.getByText(`Word ${i + 1} of 5`)).toBeVisible();
+    expect(await wordIndex(page)).toBe(i);
+    if (i === 4) {
+      await page.waitForTimeout(6000);
+      await fits(page, page.getByLabel('Guessed'));
+      await shot(page, 'pictionary-6-last-word');
+    }
+    await guessWord(page, WORDS[i]!);
+  }
+  await expect(page.getByText('Solved!')).toBeVisible();
+  await shot(page, 'pictionary-7-solved');
 });

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Ack, PlayerState, PlayerTaskView } from '@magic-potion/shared';
 import { playerState, renderGame, task } from '../test/fixtures';
 import { FORBIDDEN } from '../test/forbidden';
+import { DRAW_SECONDS, strokeTimings } from './Pictionary';
 import { toImagePoint } from './SpotDifference';
 import { TaskScreen } from './TaskShell';
 
@@ -890,5 +891,72 @@ describe('Guess the Celebrity', () => {
       state: playing({ ...celebrityView, hint: 'S___ K___' }),
     });
     expect(screen.getByText('S___ K___')).toBeInTheDocument();
+  });
+});
+
+const pictionaryView = {
+  drawing: {
+    strokes: [
+      [
+        [0, 0],
+        [30, 0],
+      ],
+      [
+        [0, 10],
+        [90, 10],
+      ],
+    ] as [number, number][][],
+  },
+  current: 1,
+  total: 5,
+  guesses: ['A key'],
+  hint: null as null | { index: number; letter: string },
+};
+const pictionary = (o: Partial<PlayerTaskView> = {}) =>
+  task({ id: 'pi', key: 'pictionary', name: 'Pictionary', type: 'UNIQUE', ...o });
+
+describe('Pictionary', () => {
+  const playing = (view = pictionaryView) =>
+    withTasks([pictionary({ status: 'IN_PROGRESS', running: running({ view }) })]);
+
+  it('draws the strokes one after another, at an even speed', () => {
+    const timings = strokeTimings(pictionaryView.drawing.strokes);
+    expect(timings[0]).toEqual({ delay: 0, duration: DRAW_SECONDS / 4 });
+    expect(timings[1]).toEqual({ delay: DRAW_SECONDS / 4, duration: (DRAW_SECONDS * 3) / 4 });
+    const { container } = renderGame(<TaskScreen taskId="pi" />, { state: playing() });
+    const lines = container.querySelectorAll('polyline.draw-stroke');
+    expect(lines).toHaveLength(2);
+    expect((lines[1] as SVGElement).style.animationDelay).toBe(`${DRAW_SECONDS / 4}s`);
+  });
+
+  it('shows "Word 2 of 5" and the words guessed so far, and sends a guess', async () => {
+    const { send } = renderGame(<TaskScreen taskId="pi" />, {
+      state: playing(),
+      ack: { ok: true, value: { status: 'wrong' } } as Ack,
+    });
+    expect(screen.getByText(/^Word/)).toHaveTextContent('Word 2 of 5');
+    expect(within(screen.getByLabelText('Guessed')).getByText('A key')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Your guess'), { target: { value: 'mug' } });
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Guess' })));
+    expect(send).toHaveBeenCalledWith('task:submit', {
+      taskId: 'pi',
+      submission: { answer: 'mug' },
+    });
+    expect(await screen.findByText('Not right. Try again.')).toBeInTheDocument();
+  });
+
+  it('Draw again redraws the picture from the start', () => {
+    const { container } = renderGame(<TaskScreen taskId="pi" />, { state: playing() });
+    const before = container.querySelector('polyline');
+    fireEvent.click(screen.getByRole('button', { name: 'Draw again' }));
+    expect(container.querySelector('polyline')).not.toBe(before);
+  });
+
+  it('shows the first letter after the hint, and never shows the word length', () => {
+    renderGame(<TaskScreen taskId="pi" />, {
+      state: playing({ ...pictionaryView, hint: { index: 1, letter: 'C' } }),
+    });
+    expect(screen.getByText(/First letter:/)).toHaveTextContent('First letter: C');
+    expect(screen.queryByText(/_/)).toBeNull();
   });
 });
