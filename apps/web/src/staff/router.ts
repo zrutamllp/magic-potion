@@ -12,6 +12,7 @@ export const GAME_TABS = [
   'inbox',
   'teams',
   'facilitators',
+  'debrief',
   // Full-screen pages opened from the live dashboard, not tabs in the setup bar.
   'projector',
 ] as const;

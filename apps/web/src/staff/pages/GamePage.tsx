@@ -7,6 +7,7 @@ import { errorText, useStaff } from '../StaffContext';
 import { SmallButton, Status, inputBase, useAction } from '../ui';
 import { BrandingTab } from './BrandingTab';
 import { ContentTab } from './ContentTab';
+import { DebriefTab } from './DebriefTab';
 import { InboxTab } from './InboxTab';
 import { FacilitatorsTab } from './FacilitatorsTab';
 import { SettingsTab } from './SettingsTab';
@@ -22,6 +23,7 @@ const TAB_LABEL: Record<GameTab, string> = {
   inbox: 'Inbox',
   teams: 'Teams',
   facilitators: 'Co-facilitators',
+  debrief: 'Debrief',
   projector: 'Projector',
 };
 
@@ -85,6 +87,7 @@ export function GamePage({ gameId, tab }: { gameId: string; tab: GameTab }) {
           {tab === 'inbox' && <InboxTab game={game} onChange={setGame} />}
           {tab === 'teams' && <TeamsTab game={game} onChange={setGame} />}
           {tab === 'facilitators' && <FacilitatorsTab game={game} onChange={setGame} />}
+          {tab === 'debrief' && <DebriefTab game={game} onChange={setGame} />}
         </>
       )}
     </div>

@@ -16,6 +16,7 @@ import { PreviewService } from '../packs/preview';
 import type { PackService } from '../packs/service';
 import type { LiveStore } from '../live/store';
 import { addAdminRoutes } from './admin';
+import { addDebriefRoutes } from './debrief';
 import { addLiveRoutes } from './live';
 import { addTeamRoutes } from './team';
 import { addPackRoutes } from './packs';
@@ -167,6 +168,7 @@ export function createApiRouter({
   });
 
   if (admin) addAdminRoutes(staff, admin, mainAdminOnly, files);
+  if (live) addDebriefRoutes(staff, { gameEngine, mainAdminOnly, store: live });
   if (live) addLiveRoutes(staff, { auth, gameEngine, mainAdminOnly, store: live, admin, onAudit });
   if (admin && packs) addPackRoutes(staff, packs, admin, preview, mainAdminOnly);
 

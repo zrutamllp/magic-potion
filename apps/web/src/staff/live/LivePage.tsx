@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ArrowLeft,
+  ClipboardList,
   FastForward,
   Megaphone,
   MonitorPlay,
@@ -142,7 +143,7 @@ type Confirm = 'start' | 'end' | null;
 const COMPACT = 'px-3 py-1 text-sm';
 
 export function ControlBar({ status, onBack }: { status: LiveStatus; onBack: () => void }) {
-  const { api } = useStaff();
+  const { api, go } = useStaff();
   const { state, receivedAt, now, isAdmin, gameId } = useLiveView();
   const { game, potion } = state;
   const action = useAction();
@@ -268,6 +269,15 @@ export function ControlBar({ status, onBack }: { status: LiveStatus; onBack: () 
                 <FastForward className="h-4 w-4" aria-hidden />
               )}
               {END_PHASE_TEXT[game.phase].label}
+            </SmallButton>
+          )}
+          {game.phase === 'REVEAL' && (
+            <SmallButton
+              className={COMPACT}
+              variant="outline"
+              onClick={() => go({ page: 'game', gameId, tab: 'debrief' })}
+            >
+              <ClipboardList className="h-4 w-4" aria-hidden /> Debrief
             </SmallButton>
           )}
           {!game.ended && (
