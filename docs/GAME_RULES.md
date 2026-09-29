@@ -96,6 +96,7 @@ Task content (images, photos, words, riddles, dashboards, answers) is uploaded p
 - Find the Code fragments show key pairs ("⌘ = R, ❖ = T") whose symbols appear in the needing team's message.
 - Fragment values for other teams are secret. A team only ever receives its own held fragments.
 - If a holder team is missing (never logged in, dropped out or removed), staff can release that fragment directly to the team that needs it. The main admin can do this for any team; a co-facilitator for their assigned teams. This is audited.
+- When the admin removes a team from a running game, every fragment it held that is not yet released goes at once to the team that needs it (unless that team was removed too). Each release is audited.
 
 ## 5. Wallets and funds
 

@@ -2,6 +2,7 @@ import { UNDOABLE_ACTIONS, type EngineResult } from '@magic-potion/shared';
 import type { Json } from '../checkers';
 import { fail, ok, type Draft } from '../draft';
 import { runningAttempt, type TeamState } from '../state';
+import { releaseToNeedingTeam } from './fragments';
 import { stopAttempt } from './phases';
 
 // Facilitator actions during a live game (GAME_RULES section 11, Phase 6C). Who may do what is
@@ -246,14 +247,7 @@ export function releaseFragment(
   if (fragment.releasedAt !== null) return fail('FRAGMENT_ALREADY_RELEASED');
   const found = activeTeam(d, fragment.neededByTeamId);
   if (!found.ok) return found;
-  d.updateFragment(fragment, { releasedAt: d.now, releasedByStaffId: staffUserId });
-  d.audit({
-    staffUserId,
-    action: 'RELEASE_FRAGMENT',
-    teamId: fragment.neededByTeamId,
-    before: { released: false },
-    after: { released: true, kind: fragment.kind, holderTeamId: fragment.holderTeamId },
-  });
+  releaseToNeedingTeam(d, staffUserId, fragment);
   staffAction(d, 'RELEASE_FRAGMENT', fragment.neededByTeamId);
   return ok({ teamId: fragment.neededByTeamId });
 }

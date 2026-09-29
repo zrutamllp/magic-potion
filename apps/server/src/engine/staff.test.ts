@@ -320,6 +320,60 @@ describe('releasing a missing team fragment', () => {
   });
 });
 
+describe('removing a team releases the fragments it held', () => {
+  const held = (g: { engine: GameEngine }, teamId: string) =>
+    Object.values(g.engine.state.fragments).filter((f) => f.holderTeamId === teamId);
+
+  it('gives each one to the team that needs it, audited, and touches no other fragment', async () => {
+    const g = await started();
+    const fromB = held(g, B);
+    expect(fromB.length).toBeGreaterThan(0);
+    const others = Object.values(g.engine.state.fragments).filter((f) => f.holderTeamId !== B);
+    const found = (id: string) => g.engine.teamView(id)?.foundItems.length ?? 0;
+    const before = Object.fromEntries([A, C].map((id) => [id, found(id)]));
+
+    await g.engine.removeTeam(ADMIN, B, 'Left early');
+
+    for (const f of fromB) {
+      expect(g.engine.state.fragments[f.id]).toMatchObject({
+        releasedAt: T0,
+        releasedByStaffId: ADMIN,
+      });
+    }
+    for (const id of [A, C]) {
+      const gained = fromB.filter((f) => f.neededByTeamId === id).length;
+      expect(found(id)).toBe((before[id] ?? 0) + gained);
+    }
+    for (const f of others) expect(g.engine.state.fragments[f.id]?.releasedAt).toBeNull();
+
+    const rows = audits(g.persistence.log).filter((r) => r.action === 'RELEASE_FRAGMENT');
+    expect(rows).toHaveLength(fromB.length);
+    expect(rows[0]).toMatchObject({
+      staffUserId: ADMIN,
+      reason: 'Holder team removed from the game',
+    });
+    // Never the fragment value in the audit log.
+    for (const f of fromB) expect(JSON.stringify(rows)).not.toContain(f.value);
+  });
+
+  it('skips fragments already released, and fragments needed by a removed team', async () => {
+    const g = await started();
+    const [first, ...rest] = held(g, B);
+    if (!first) throw new Error('no fragment');
+    await g.engine.releaseFragment('cofac-1', first.id);
+    // Remove the team that needs another of B's fragments first.
+    const skipped = rest.find((f) => f.neededByTeamId !== first.neededByTeamId);
+    if (!skipped) throw new Error('B should hold a fragment for another team');
+    await g.engine.removeTeam(ADMIN, skipped.neededByTeamId, 'Left');
+
+    await g.engine.removeTeam(ADMIN, B, 'Left early');
+
+    // Released earlier by the co-facilitator: kept as it was.
+    expect(g.engine.state.fragments[first.id]).toMatchObject({ releasedByStaffId: 'cofac-1' });
+    expect(g.engine.state.fragments[skipped.id]?.releasedAt).toBeNull();
+  });
+});
+
 describe('facilitator messages', () => {
   it('reach every team inbox as an alert', async () => {
     const g = await started();

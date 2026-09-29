@@ -18,6 +18,7 @@ import { isPlayPhase, phasePlayMs } from '../playClock';
 import { activeTeams, runningAttempt } from '../state';
 import type { EngineResult } from '@magic-potion/shared';
 import { postAlert } from './alerts';
+import { releaseToNeedingTeam } from './fragments';
 import { freezeTimers, potionOf, unfreezeTimers, unfreezeTransfers } from './timers';
 
 const SORT_ORDER = Object.fromEntries(TASK_DEFINITIONS.map((t) => [t.key, t.sortOrder])) as Record<
@@ -292,6 +293,13 @@ export function removeTeam(
     after: { status: 'REMOVED' },
     reason,
   });
+  // Its fragments go straight to the teams that need them, so no team is left waiting on a
+  // team that is gone. Fragments already released, or needed by a removed team, are skipped.
+  for (const fragment of Object.values(d.state.fragments)) {
+    if (fragment.holderTeamId !== teamId || fragment.releasedAt !== null) continue;
+    if (d.team(fragment.neededByTeamId)?.status !== 'ACTIVE') continue;
+    releaseToNeedingTeam(d, staffUserId, fragment, 'Holder team removed from the game');
+  }
   d.emit({ type: 'teamRemoved', teamId });
   const potion = potionOf(d.state);
   if (
