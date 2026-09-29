@@ -535,6 +535,9 @@ model InboxResponse {
   photoUrl          String?
   photoStatus       PhotoStatus?
   reviewedByStaffId String?
+  // Set when the photo file was deleted after the keep time (settings.inbox.photoRetentionDays).
+  // The status stays, so an accepted photo still counts.
+  photoDeletedAt    DateTime?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 

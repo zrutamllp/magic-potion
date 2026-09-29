@@ -163,6 +163,24 @@ export class GameEngine {
     return this.run((d) => undoChange(d, staffUserId, target, reason));
   }
 
+  // Team photos past their keep time: the files are already deleted; forget the addresses.
+  // The status stays, so an accepted photo still counts.
+  forgetPhotos(urls: readonly string[]) {
+    return this.run((d) => {
+      const gone = new Set(urls);
+      let count = 0;
+      for (const team of Object.values(d.state.teams)) {
+        for (const r of Object.values(team.inbox)) {
+          if (r.photoUrl === null || !gone.has(r.photoUrl)) continue;
+          d.saveInboxResponse(team, r.inboxItemId, { photoUrl: null, photoDeletedAt: d.now });
+          count++;
+        }
+      }
+      if (count > 0) d.emit({ type: 'staffAction', action: 'DELETE_TEAM_PHOTOS', teamId: null });
+      return ok({ count });
+    });
+  }
+
   // ---------- Team commands ----------
   // Each successful team action also records the team's last activity time.
 

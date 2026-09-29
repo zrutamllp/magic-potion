@@ -21,6 +21,8 @@ import { createApiRouter } from './http/api';
 import { PrismaLiveStore } from './live/prismaStore';
 import { Realtime } from './realtime/server';
 import { BlobFileStore } from './uploads/blob';
+import { PhotoCleanup } from './uploads/photoCleanup';
+import { PrismaPhotoCleanupStore } from './uploads/photoCleanupStore';
 
 const env = loadEnv();
 const clientOrigins = parseOrigins(env.CLIENT_ORIGIN);
@@ -73,6 +75,20 @@ if (packStore) {
   }).catch((error: unknown) => console.error('Could not create the Sample pack:', error));
 }
 
+const files = env.BLOB_READ_WRITE_TOKEN ? new BlobFileStore(env.BLOB_READ_WRITE_TOKEN) : undefined;
+
+// Deletes team photos after their keep time (hourly, and once at start).
+const photoCleanup =
+  prisma && files && engines
+    ? new PhotoCleanup({
+        store: new PrismaPhotoCleanupStore(prisma),
+        files,
+        now: () => systemClock.now(),
+        loadedEngine: (gameId) => engines.loaded(gameId),
+      })
+    : undefined;
+photoCleanup?.start();
+
 const app = createApp({
   clientOrigins,
   checkDb: prisma ? () => prisma.$queryRaw`SELECT 1` : undefined,
@@ -82,7 +98,7 @@ const app = createApp({
         engine: (id) => live.engine(id),
         admin,
         packs,
-        files: env.BLOB_READ_WRITE_TOKEN ? new BlobFileStore(env.BLOB_READ_WRITE_TOKEN) : undefined,
+        files,
         live: prisma ? new PrismaLiveStore(prisma) : undefined,
         onAudit: (gameId) => live.auditChanged(gameId),
         devTools,
@@ -112,6 +128,7 @@ if (engines) {
 
 async function shutdown(signal: string): Promise<void> {
   console.log(`${signal} received, shutting down`);
+  photoCleanup?.stop();
   await live?.close();
   server.close();
   await engines?.stop();

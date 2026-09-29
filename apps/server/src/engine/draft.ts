@@ -387,6 +387,7 @@ export class Draft {
       photoUrl: null,
       photoStatus: null,
       reviewedByStaffId: null,
+      photoDeletedAt: null,
       ...patch,
     };
     team.inbox[itemId] = created;

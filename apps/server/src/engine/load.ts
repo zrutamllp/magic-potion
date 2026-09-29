@@ -128,6 +128,7 @@ export async function loadGame(
             correct: r.correct,
             photoUrl: r.photoUrl,
             photoStatus: r.photoStatus,
+            photoDeletedAt: ms(r.photoDeletedAt),
             reviewedByStaffId: r.reviewedByStaffId,
           },
         ]),

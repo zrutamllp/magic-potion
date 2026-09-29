@@ -58,6 +58,8 @@ export interface InboxResponseState {
   photoUrl: string | null;
   photoStatus: PhotoStatus | null;
   reviewedByStaffId: string | null;
+  // Set when the photo file was deleted after the keep time.
+  photoDeletedAt: number | null;
 }
 
 export interface TeamState {

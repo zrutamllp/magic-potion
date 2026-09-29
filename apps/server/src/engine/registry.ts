@@ -51,6 +51,11 @@ export class EngineRegistry {
     return engine;
   }
 
+  // The engine if this game is already in memory, without loading it.
+  loaded(gameId: string): Promise<GameEngine> | undefined {
+    return this.engines.get(gameId);
+  }
+
   // Drops a Lobby game's engine after the admin changes its settings or teams, so the next
   // get() loads it again from the database. A game that has started is never dropped: its
   // engine holds the live state and timers.
