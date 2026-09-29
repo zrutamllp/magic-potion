@@ -17,7 +17,8 @@ export function videoEmbed(url: string): { kind: 'iframe' | 'video'; src: string
   return { kind: 'video', src: url };
 }
 
-export function Lobby({ onLogOut }: { onLogOut: (message: string | null) => void }) {
+// Without onLogOut (staff "View as team") there is no Log out button.
+export function Lobby({ onLogOut }: { onLogOut?: (message: string | null) => void }) {
   const { state } = useGame();
   const { branding, potion } = state;
   const video = branding.introVideoUrl ? videoEmbed(branding.introVideoUrl) : null;
@@ -32,12 +33,14 @@ export function Lobby({ onLogOut }: { onLogOut: (message: string | null) => void
         <span className="ml-auto">
           <ConnectionDot />
         </span>
-        <button
-          onClick={() => onLogOut(null)}
-          className="flex items-center gap-2 text-ink-muted hover:text-ink"
-        >
-          <LogOut className="h-4 w-4" aria-hidden /> Log out
-        </button>
+        {onLogOut && (
+          <button
+            onClick={() => onLogOut(null)}
+            className="flex items-center gap-2 text-ink-muted hover:text-ink"
+          >
+            <LogOut className="h-4 w-4" aria-hidden /> Log out
+          </button>
+        )}
       </header>
 
       <section className="mt-6 flex flex-col items-center gap-8 rounded-3xl border border-brand/50 bg-gradient-to-br from-brand/40 via-card to-accent/20 p-8 md:flex-row">

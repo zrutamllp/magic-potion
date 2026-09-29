@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { errorText } from './StaffContext';
 
 // Small form pieces for the admin panel, in the same dark card style as the player app but a
@@ -128,4 +128,80 @@ export function randomPassword(length = 12): string {
   const bytes = new Uint32Array(length);
   crypto.getRandomValues(bytes);
   return [...bytes].map((b) => alphabet[b % alphabet.length]).join('');
+}
+
+// A modal box with a form. Escape or Cancel closes it. Used by the live dashboard (Phase 6C).
+export function Dialog({
+  title,
+  children,
+  onClose,
+  onSubmit,
+  submitLabel,
+  tone = 'brand',
+  busy = false,
+  canSubmit = true,
+  error,
+  wide = false,
+}: {
+  title: string;
+  children?: ReactNode;
+  onClose: () => void;
+  // Leave out for a dialog with only a Close button.
+  onSubmit?: () => void;
+  submitLabel?: string;
+  tone?: 'brand' | 'danger' | 'success';
+  busy?: boolean;
+  canSubmit?: boolean;
+  error?: string | null;
+  wide?: boolean;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    if (onSubmit && canSubmit && !busy) onSubmit();
+  }
+
+  const border = {
+    brand: 'border-brand/60',
+    danger: 'border-danger/60',
+    success: 'border-success/60',
+  }[tone];
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6"
+    >
+      <form
+        onSubmit={submit}
+        className={`w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border ${border} bg-card p-6`}
+      >
+        <h2 className={`text-xl font-extrabold ${tone === 'danger' ? 'text-danger' : ''}`}>
+          {title}
+        </h2>
+        <div className="mt-3 space-y-3 text-base">{children}</div>
+        <div className="mt-3">
+          <Status error={error} />
+        </div>
+        <div className="mt-4 flex gap-2">
+          {onSubmit && (
+            <SmallButton type="submit" tone={tone} disabled={!canSubmit || busy}>
+              {busy ? 'Working…' : submitLabel}
+            </SmallButton>
+          )}
+          <SmallButton variant="outline" tone="muted" onClick={onClose}>
+            {onSubmit ? 'Cancel' : 'Close'}
+          </SmallButton>
+        </div>
+      </form>
+    </div>
+  );
 }

@@ -5,6 +5,7 @@ import { TASK_KEYS, type TaskKey } from '@magic-potion/shared';
 // The page is served at /staff, so a refresh keeps the same screen.
 
 export const GAME_TABS = [
+  'live',
   'settings',
   'branding',
   'content',

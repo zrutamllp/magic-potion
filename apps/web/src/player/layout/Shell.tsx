@@ -55,7 +55,7 @@ export function Shell({
   onLogOut,
 }: {
   children: ReactNode;
-  onLogOut: (message: string | null) => void;
+  onLogOut?: (message: string | null) => void;
 }) {
   const game = useGame();
   const { state, feed, route } = game;
@@ -130,7 +130,7 @@ function Sidebar({
   activeTab: Tab;
   counts: Partial<Record<Tab, number>>;
   onNavigate: (tab: Tab) => void;
-  onLogOut: (message: string | null) => void;
+  onLogOut?: (message: string | null) => void;
 }) {
   const { potion } = useGame().state;
   return (
@@ -175,12 +175,14 @@ function Sidebar({
             </p>
           </div>
         </div>
-        <button
-          onClick={() => onLogOut(null)}
-          className="mt-3 flex items-center gap-2 text-ink-muted hover:text-ink"
-        >
-          <LogOut className="h-4 w-4" aria-hidden /> Log out
-        </button>
+        {onLogOut && (
+          <button
+            onClick={() => onLogOut(null)}
+            className="mt-3 flex items-center gap-2 text-ink-muted hover:text-ink"
+          >
+            <LogOut className="h-4 w-4" aria-hidden /> Log out
+          </button>
+        )}
       </div>
     </aside>
   );

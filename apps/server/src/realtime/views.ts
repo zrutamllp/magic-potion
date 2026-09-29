@@ -37,6 +37,7 @@ function clockView(s: GameState, now: number): GameClockView {
     phaseMsLeft: phaseMsLeft(s, now),
     playMsRemaining: playMsRemaining(s, now, s.settings.phases),
     serverNow: now,
+    ended: s.endedAt !== null,
   };
 }
 

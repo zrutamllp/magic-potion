@@ -33,6 +33,8 @@ export interface GameClockView {
   phaseMsLeft: number | null;
   playMsRemaining: number;
   serverNow: number;
+  // True once the admin has ended the game at the Reveal.
+  ended: boolean;
 }
 
 export interface PotionView {

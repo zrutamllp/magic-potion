@@ -178,6 +178,7 @@ function previewState(task: PlayerTaskView, branding: GameSettings['branding']):
       timersRunning: true,
       phaseMsLeft: null,
       playMsRemaining: 0,
+      ended: false,
       serverNow: 0,
     },
     branding,

@@ -254,7 +254,8 @@ function Screens({
   );
 }
 
-function PhaseScreen({ onLogOut }: { onLogOut: (message: string | null) => void }) {
+// The screen for the current phase. Also used by staff "View as team" (no Log out there).
+export function PhaseScreen({ onLogOut }: { onLogOut?: (message: string | null) => void }) {
   return (
     <GameContext.Consumer>
       {(game) => {

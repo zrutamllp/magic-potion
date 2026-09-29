@@ -40,6 +40,7 @@ export function playerState(overrides: Partial<PlayerState> = {}): PlayerState {
       timersRunning: true,
       phaseMsLeft: 20 * 60_000,
       playMsRemaining: 55 * 60_000,
+      ended: false,
       serverNow: 0,
     },
     branding: DEFAULT_SETTINGS.branding,

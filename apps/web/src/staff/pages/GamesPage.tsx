@@ -114,6 +114,9 @@ function GameRow({
           </span>
           {isAdmin ? (
             <>
+              <SmallButton onClick={() => go({ page: 'game', gameId: g.id, tab: 'live' })}>
+                Live
+              </SmallButton>
               <SmallButton
                 variant="outline"
                 onClick={() => go({ page: 'game', gameId: g.id, tab: 'settings' })}
@@ -147,7 +150,9 @@ function GameRow({
               )}
             </>
           ) : (
-            <span className="text-sm text-ink-muted">Dashboard coming soon</span>
+            <SmallButton onClick={() => go({ page: 'game', gameId: g.id, tab: 'live' })}>
+              Open dashboard
+            </SmallButton>
           )}
         </span>
       </div>

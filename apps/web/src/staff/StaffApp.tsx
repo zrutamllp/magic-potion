@@ -5,6 +5,7 @@ import { ApiError, apiPost } from '../lib/api';
 import { load, save } from '../lib/session';
 import { Button, fieldClass } from '../player/ui/basics';
 import { PotionBottle } from '../player/ui/PotionBottle';
+import { LivePage } from './live/LivePage';
 import { GamePage } from './pages/GamePage';
 import { GamesPage } from './pages/GamesPage';
 import { PackPage } from './pages/PackPage';
@@ -13,8 +14,8 @@ import { StaffPage } from './pages/StaffPage';
 import { confirmLeave, useStaffRoute, type StaffRoute } from './router';
 import { StaffProvider, useStaffApi, type FreshLogins } from './StaffContext';
 
-// The staff side: login, then the admin panel (Phase 6A: games, settings, teams, staff).
-// Co-facilitators see their games; the live dashboard for them comes in 6C.
+// The staff side: login, then the admin panel (Phase 6A: games, settings, teams, staff) and the
+// live dashboard (Phase 6C). Co-facilitators see their games and the live dashboard only.
 
 const LOGIN_KEY = 'mp.staffLogin';
 
@@ -54,6 +55,19 @@ function Panel({
   const [freshLogins, setFreshLogins] = useState<FreshLogins | null>(null);
   const loggedOut = useCallback((message: string) => onLogOut(message), [onLogOut]);
   const api = useStaffApi(login.token, loggedOut);
+  const isAdmin = login.staff.role === 'MAIN_ADMIN';
+  // The live dashboard uses the whole screen, so 20 teams fit a laptop. Co-facilitators have
+  // no setup tabs: any game page opens its dashboard.
+  const liveGame =
+    route.page === 'game' && (route.tab === 'live' || !isAdmin) ? route.gameId : null;
+
+  if (liveGame) {
+    return (
+      <StaffProvider value={{ login, api, go, freshLogins, setFreshLogins }}>
+        <LivePage key={liveGame} gameId={liveGame} />
+      </StaffProvider>
+    );
+  }
 
   return (
     <StaffProvider value={{ login, api, go, freshLogins, setFreshLogins }}>

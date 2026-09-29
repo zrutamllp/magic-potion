@@ -23,7 +23,7 @@ export type LiveStatus = 'connecting' | 'online' | 'offline';
 // Login problems that need a new login rather than a retry.
 const LOGIN_ENDED = new Set(['NOT_LOGGED_IN', 'SESSION_ENDED', 'SESSION_REPLACED', 'NOT_ALLOWED']);
 
-interface Snapshot<S> {
+export interface Snapshot<S> {
   state: S;
   // When it arrived, on the monotonic clock. Countdowns start from here.
   receivedAt: number;
@@ -47,6 +47,8 @@ function useLive<S>(
   auth: Record<string, string> | null,
   fullEvent: 'state:full' | 'staff:full',
   updateEvent: 'state:update' | 'staff:update',
+  // Extra listeners for this kind of connection (the staff dashboard). Must be stable.
+  extra?: (socket: Client) => void,
 ): Live<S> {
   const [status, setStatus] = useState<LiveStatus>('connecting');
   const [snapshot, setSnapshot] = useState<Snapshot<S> | null>(null);
@@ -75,6 +77,7 @@ function useLive<S>(
     on(fullEvent, onFull);
     on(updateEvent, onUpdate);
     socket.on('feed:item', (item) => setFeed((f) => upsertFeed(f, item)));
+    extra?.(socket);
     // Set when the login has ended, so the disconnect that follows is not retried.
     let loginEnded = false;
     socket.on('session:ended', (p) => {
@@ -109,7 +112,7 @@ function useLive<S>(
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [authKey, fullEvent, updateEvent]);
+  }, [authKey, fullEvent, updateEvent, extra]);
 
   const send = useCallback<Live<S>['send']>((event, payload) => {
     const socket = socketRef.current;
@@ -132,4 +135,41 @@ export function useStaffLive(token: string | null, gameId: string | null): Live<
     'staff:full',
     'staff:update',
   );
+}
+
+// "View as team": the team's own state and feed, exactly as the team receives them.
+export interface WatchedTeam {
+  teamId: string;
+  snapshot: Snapshot<PlayerState>;
+  feed: FeedItem[];
+}
+
+export interface DashboardLive extends Live<StaffState> {
+  watched: WatchedTeam | null;
+  // Goes up each time the server says the audit log changed.
+  auditVersion: number;
+}
+
+// The facilitator dashboard's connection (Phase 6C).
+export function useDashboardLive(token: string | null, gameId: string | null): DashboardLive {
+  const [watched, setWatched] = useState<WatchedTeam | null>(null);
+  const [auditVersion, setAuditVersion] = useState(0);
+  const extra = useCallback((socket: Client) => {
+    socket.on('staff:team', (p) => {
+      const snapshot = { state: p.state, receivedAt: monotonicNow() };
+      setWatched((w) => ({
+        teamId: p.teamId,
+        snapshot,
+        feed: p.feed ?? (w?.teamId === p.teamId ? w.feed : []),
+      }));
+    });
+    socket.on('staff:audit', () => setAuditVersion((v) => v + 1));
+  }, []);
+  const live = useLive<StaffState>(
+    token && gameId ? { token, as: 'staff', gameId } : null,
+    'staff:full',
+    'staff:update',
+    extra,
+  );
+  return { ...live, watched, auditVersion };
 }

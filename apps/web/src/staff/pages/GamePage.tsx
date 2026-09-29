@@ -15,6 +15,7 @@ import { TeamsTab } from './TeamsTab';
 // One game's setup: settings, branding, teams and co-facilitators.
 
 const TAB_LABEL: Record<GameTab, string> = {
+  live: 'Live',
   settings: 'Settings',
   branding: 'Branding',
   content: 'Content',
