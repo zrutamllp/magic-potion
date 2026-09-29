@@ -5,6 +5,7 @@ import type {
   ClientToServerEvents,
   FeedItem,
   PlayerState,
+  ProjectorState,
   ServerToClientEvents,
   StaffState,
 } from '@magic-potion/shared';
@@ -45,8 +46,8 @@ export interface Live<S> {
 
 function useLive<S>(
   auth: Record<string, string> | null,
-  fullEvent: 'state:full' | 'staff:full',
-  updateEvent: 'state:update' | 'staff:update',
+  fullEvent: 'state:full' | 'staff:full' | 'projector:full',
+  updateEvent: 'state:update' | 'staff:update' | 'projector:update',
   // Extra listeners for this kind of connection (the staff dashboard). Must be stable.
   extra?: (socket: Client) => void,
 ): Live<S> {
@@ -134,6 +135,15 @@ export function useStaffLive(token: string | null, gameId: string | null): Live<
     token && gameId ? { token, as: 'staff', gameId } : null,
     'staff:full',
     'staff:update',
+  );
+}
+
+// The projector view (Phase 6D): read only, every team.
+export function useProjectorLive(token: string | null, gameId: string | null) {
+  return useLive<ProjectorState>(
+    token && gameId ? { token, as: 'projector', gameId } : null,
+    'projector:full',
+    'projector:update',
   );
 }
 

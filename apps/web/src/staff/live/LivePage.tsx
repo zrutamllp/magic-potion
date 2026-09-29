@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ArrowLeft, FastForward, Megaphone, Pause, Play, Plus, Square } from 'lucide-react';
+import {
+  ArrowLeft,
+  FastForward,
+  Megaphone,
+  MonitorPlay,
+  Pause,
+  Play,
+  Plus,
+  Square,
+} from 'lucide-react';
 import type { StaffState } from '@magic-potion/shared';
 import { useDashboardLive, type LiveStatus } from '../../lib/live';
 import { formatMs, msLeft, useTicker } from '../../lib/time';
@@ -183,6 +192,14 @@ export function ControlBar({ status, onBack }: { status: LiveStatus; onBack: () 
         </p>
       </div>
       <ConnectionState status={status} />
+      <SmallButton
+        variant="outline"
+        tone="muted"
+        className={COMPACT}
+        onClick={() => window.open(`/staff#/games/${gameId}/projector`, '_blank')}
+      >
+        <MonitorPlay className="h-4 w-4" aria-hidden /> Projector
+      </SmallButton>
 
       {isAdmin && (
         <div className="ml-auto flex flex-wrap items-center gap-2">

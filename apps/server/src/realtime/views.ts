@@ -6,6 +6,7 @@ import {
   type PlayerInboxView,
   type PlayerState,
   type PotionView,
+  type ProjectorState,
   type StaffState,
   type StaffTeamView,
   type StuckReason,
@@ -348,6 +349,42 @@ function staffTeamView(
         holderOnline: isOnline(f.holderTeamId),
         released: f.releasedAt !== null,
       })),
+  };
+}
+
+// The shared screen: every active team, the potion, the clock. No scores or ranks until Round 2.
+export function buildProjectorState(engine: GameEngine, now: number): ProjectorState {
+  const s = engine.state;
+  const active = Object.values(s.teams)
+    .filter((t) => t.status === 'ACTIVE')
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  const final = s.potionSnapshots.FINAL;
+  const ranked = s.phase === 'ROUND2' || s.phase === 'REVEAL';
+  const board = ranked ? engine.leaderboard() : null;
+  return {
+    game: clockView(s, now),
+    branding: s.settings.branding,
+    potion: potionView(engine),
+    finalPotion: final ? { percent: potionPercent(final), ...final } : null,
+    teams: active.map((t) => ({
+      id: t.id,
+      name: t.name,
+      tasksDone: Object.values(t.tasks).filter((x) => x.status === 'DONE').length,
+    })),
+    leaderboard: board
+      ? {
+          final: s.phase === 'REVEAL',
+          valid: board.valid,
+          rows: board.entries.map((e) => ({
+            teamId: e.teamId,
+            name: e.name,
+            rank: e.rank,
+            tasksDone: e.tasksCompleted,
+            score: e.score.total,
+          })),
+        }
+      : null,
+    fullPotionBonus: s.settings.scoring.fullPotionBonus,
   };
 }
 

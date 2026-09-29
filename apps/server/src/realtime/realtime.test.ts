@@ -8,6 +8,7 @@ import type {
   FeedItem,
   FindCodeCipher,
   PlayerState,
+  ProjectorState,
   ServerToClientEvents,
   StaffState,
 } from '@magic-potion/shared';
@@ -602,5 +603,69 @@ describe('facilitator dashboard (Phase 6C)', () => {
     await engine.renameTeam(ADMIN.id, A, 'Owls');
     await waitFor(() => a.feed[0]?.kind === 'chat' && a.feed[0].teamName === 'Owls', 'new name');
     expect(a.state().team.name).toBe('Owls');
+  });
+});
+
+describe('projector (Phase 6D)', () => {
+  async function projector(who = ADMIN) {
+    const socket = socketFor({ token: await staffToken(who), as: 'projector', gameId: 'game-1' });
+    let state: ProjectorState | null = null;
+    socket.on('projector:full', (p) => (state = p.state));
+    socket.on('projector:update', (p) => (state = p.state));
+    await waitFor(() => state !== null, 'projector:full');
+    return () => state as unknown as ProjectorState;
+  }
+
+  it('shows every team, even to a co-facilitator, and updates live', async () => {
+    await started();
+    const view = await projector(COFAC);
+    expect(view().teams.map((t) => t.name)).toEqual(['Team 1', 'Team 2', 'Team 3']);
+    await finishAllTasks(engine, B, 2);
+    await waitFor(() => view().teams.find((t) => t.id === B)?.tasksDone === 2, 'tasks x/5');
+  });
+
+  it('never shows scores or ranks in Round 1 or the Pause', async () => {
+    await started();
+    await finishAllTasks(engine, A, 3);
+    const view = await projector();
+    expect(view().leaderboard).toBeNull();
+    expect(JSON.stringify(view())).not.toMatch(/"score"|"rank"/);
+    await engine.endPhase(ADMIN.id);
+    await waitFor(() => view().game.phase === 'PAUSE', 'pause');
+    expect(view().leaderboard).toBeNull();
+    expect(view().potion.halftime).not.toBeNull();
+  });
+
+  it('ranks teams from Round 2, and shows halftime and final potion at the Reveal', async () => {
+    await started();
+    await finishAllTasks(engine, A, 3);
+    await engine.endPhase(ADMIN.id);
+    await engine.endPhase(ADMIN.id);
+    const view = await projector();
+    expect(view().game.phase).toBe('ROUND2');
+    expect(view().leaderboard?.rows[0]).toMatchObject({ teamId: A, rank: 1, tasksDone: 3 });
+    expect(view().leaderboard?.final).toBe(false);
+    expect(view().finalPotion).toBeNull();
+    await engine.endPhase(ADMIN.id);
+    await waitFor(() => view().game.phase === 'REVEAL', 'reveal');
+    expect(view().leaderboard).toMatchObject({ final: true, valid: false });
+    expect(view().finalPotion).toMatchObject({ completedTeams: 0, totalTeams: 3 });
+  });
+
+  it('has no actions: a projector cannot follow a team', async () => {
+    await started();
+    const socket = socketFor({ token: await staffToken(), as: 'projector', gameId: 'game-1' });
+    await new Promise((r) => socket.on('projector:full', r));
+    const ack = await Promise.race([
+      new Promise((resolve) =>
+        (socket.emit as (e: string, p: unknown, a: (x: unknown) => void) => void)(
+          'staff:watch',
+          { teamId: A },
+          resolve,
+        ),
+      ),
+      new Promise((resolve) => setTimeout(() => resolve('no answer'), 300)),
+    ]);
+    expect(ack).toBe('no answer');
   });
 });

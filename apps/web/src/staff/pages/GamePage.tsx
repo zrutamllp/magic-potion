@@ -22,7 +22,11 @@ const TAB_LABEL: Record<GameTab, string> = {
   inbox: 'Inbox',
   teams: 'Teams',
   facilitators: 'Co-facilitators',
+  projector: 'Projector',
 };
+
+// The projector opens full screen from the Live page, so it is not in the setup bar.
+const SETUP_BAR = GAME_TABS.filter((t) => t !== 'projector');
 
 export interface GameTabProps {
   game: AdminGame;
@@ -59,7 +63,7 @@ export function GamePage({ gameId, tab }: { gameId: string; tab: GameTab }) {
         <>
           <Header game={game} onChange={setGame} />
           <nav className="mb-4 flex gap-1 border-b border-line" aria-label="Game setup">
-            {GAME_TABS.map((t) => (
+            {SETUP_BAR.map((t) => (
               <button
                 key={t}
                 type="button"

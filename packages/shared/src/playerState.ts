@@ -242,3 +242,34 @@ export interface StaffState {
   // Null unless dev tools are on and this is the main admin. The real debrief view is Phase 6.
   devDilemmaAnswers: StaffDilemmaAnswerView[] | null;
 }
+
+// ---------- Projector (Phase 6D) ----------
+// What the room sees on the shared screen. Always every active team (GAME_RULES section 10),
+// but in Round 1 no scores or ranks anywhere: the leaderboard is null until Round 2.
+
+export interface ProjectorTeamView {
+  id: string;
+  name: string;
+  tasksDone: number;
+}
+
+export interface ProjectorRowView {
+  teamId: string;
+  name: string;
+  rank: number;
+  tasksDone: number;
+  score: number;
+}
+
+export interface ProjectorState {
+  game: GameClockView;
+  branding: GameSettings['branding'];
+  potion: PotionView;
+  // Saved when Round 2 ends. Null before the Reveal.
+  finalPotion: { percent: number; completedTeams: number; totalTeams: number } | null;
+  // Sorted by name, never by progress.
+  teams: ProjectorTeamView[];
+  // Null in the Lobby, Round 1 and the Pause. Ranked (1, 2, 2, 4) from Round 2.
+  leaderboard: { final: boolean; valid: boolean; rows: ProjectorRowView[] } | null;
+  fullPotionBonus: number;
+}

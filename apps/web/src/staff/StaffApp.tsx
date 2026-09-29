@@ -5,6 +5,7 @@ import { ApiError, apiPost } from '../lib/api';
 import { load, save } from '../lib/session';
 import { Button, fieldClass } from '../player/ui/basics';
 import { PotionBottle } from '../player/ui/PotionBottle';
+import { ProjectorPage } from '../projector/ProjectorPage';
 import { LivePage } from './live/LivePage';
 import { GamePage } from './pages/GamePage';
 import { GamesPage } from './pages/GamesPage';
@@ -58,6 +59,14 @@ function Panel({
   const isAdmin = login.staff.role === 'MAIN_ADMIN';
   // The live dashboard uses the whole screen, so 20 teams fit a laptop. Co-facilitators have
   // no setup tabs: any game page opens its dashboard.
+  // The projector is for the main admin and co-facilitators alike (GAME_RULES section 11).
+  if (route.page === 'game' && route.tab === 'projector') {
+    return (
+      <StaffProvider value={{ login, api, go, freshLogins, setFreshLogins }}>
+        <ProjectorPage key={route.gameId} gameId={route.gameId} />
+      </StaffProvider>
+    );
+  }
   const liveGame =
     route.page === 'game' && (route.tab === 'live' || !isAdmin) ? route.gameId : null;
 

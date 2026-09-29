@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { GamePhase, StaffRole } from './enums';
 import type { StaffWatchSchema } from './live';
-import type { FeedItem, PlayerState, StaffState } from './playerState';
+import type { FeedItem, PlayerState, ProjectorState, StaffState } from './playerState';
 
 // The Socket.IO contract between server and browser, and the REST login bodies.
 // Every payload a browser sends is checked against these schemas on the server.
@@ -88,6 +88,9 @@ export interface ServerToClientEvents {
   'staff:team': (p: { teamId: string; state: PlayerState; feed?: FeedItem[] }) => void;
   // Staff only: the audit log changed; fetch it again.
   'staff:audit': () => void;
+  // The projector view (read only; any staff member of the game).
+  'projector:full': (p: { state: ProjectorState; feed: FeedItem[] }) => void;
+  'projector:update': (p: { state: ProjectorState }) => void;
   'feed:item': (item: FeedItem) => void;
   'session:ended': (p: { code: string; message: string }) => void;
 }

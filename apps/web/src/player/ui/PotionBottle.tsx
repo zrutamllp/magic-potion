@@ -32,6 +32,8 @@ const SIZES = {
   md: 'w-24',
   lg: 'w-36',
   xl: 'w-52',
+  // The caller sets the width (the projector sizes it to the screen).
+  fluid: '',
 } as const;
 
 export function PotionBottle({

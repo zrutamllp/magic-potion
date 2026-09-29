@@ -26,6 +26,7 @@ import type { EngineEvent } from '../engine/events';
 import {
   buildFeed,
   buildPlayerState,
+  buildProjectorState,
   buildStaffState,
   canSee,
   feedChanges,
@@ -81,7 +82,9 @@ type StaffData = {
   // Null for the main admin (every team).
   teams: ReadonlySet<string> | null;
 };
-type SocketData = TeamData | StaffData;
+// The projector: read only, every team, for any staff member of the game.
+type ProjectorData = { kind: 'projector'; gameId: string };
+type SocketData = TeamData | StaffData | ProjectorData;
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents, object, SocketData>;
 type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, object, SocketData>;
 
@@ -104,6 +107,7 @@ export class Realtime {
   // Open sockets per team, for the "online" dot on the staff screen.
   private readonly online = new Map<string, number>();
   private readonly staffSockets = new Map<string, Set<IoSocket>>();
+  private readonly projectorSockets = new Map<string, Set<IoSocket>>();
   // "View as team": the team each staff socket is following.
   private readonly watching = new Map<IoSocket, string>();
   private refreshTimer: NodeJS.Timeout | null = null;
@@ -161,6 +165,7 @@ export class Realtime {
         return;
       }
       if (data.kind === 'team') this.onTeam(socket, data, engine);
+      else if (data.kind === 'projector') this.onProjector(socket, data, engine);
       else this.onStaff(socket, data, engine);
     });
     this.io = io;
@@ -196,7 +201,7 @@ export class Realtime {
 
   private async authenticate(socket: IoSocket): Promise<SocketData> {
     const { token, as, gameId } = (socket.handshake.auth ?? {}) as Record<string, unknown>;
-    if (as === 'staff') {
+    if (as === 'staff' || as === 'projector') {
       const result = await this.opts.auth.verifyStaff(token);
       if (!result.ok) throw authError(result.code);
       const staff = result.value;
@@ -207,6 +212,8 @@ export class Realtime {
         if (teams.size === 0) throw authError('NOT_ALLOWED');
       }
       await this.loadOrFail(gameId);
+      // Co-facilitators may show the projector too; it always shows every team.
+      if (as === 'projector') return { kind: 'projector', gameId };
       return { kind: 'staff', staff, gameId, teams };
     }
     const result = await this.opts.auth.verifyTeam(token);
@@ -324,6 +331,24 @@ export class Realtime {
     });
   }
 
+  private onProjector(socket: IoSocket, data: ProjectorData, engine: GameEngine): void {
+    let set = this.projectorSockets.get(data.gameId);
+    if (!set) this.projectorSockets.set(data.gameId, (set = new Set()));
+    set.add(socket);
+    socket.emit('projector:full', {
+      state: buildProjectorState(engine, this.opts.clock.now()),
+      feed: [],
+    });
+    socket.on('disconnect', () => set.delete(socket));
+  }
+
+  private pushProjector(gameId: string, engine: GameEngine): void {
+    const sockets = this.projectorSockets.get(gameId);
+    if (!sockets?.size) return;
+    const state = buildProjectorState(engine, this.opts.clock.now());
+    for (const socket of sockets) socket.emit('projector:update', { state });
+  }
+
   // Exactly what the team itself is sent: its own player state and its own feed.
   private sendWatched(socket: IoSocket, engine: GameEngine, teamId: string, withFeed: boolean) {
     if (!engine.state.teams[teamId]) return;
@@ -405,6 +430,7 @@ export class Realtime {
       io.to(rooms).emit('feed:item', item);
     }
     this.pushStaff(gameId, engine, feed, { full: renamed, audit });
+    this.pushProjector(gameId, engine);
   }
 
   // Tells the browsers of ended logins why, then disconnects them. They do not reconnect.
