@@ -71,4 +71,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
     receivedMultiplier: 2,
     fullPotionBonus: 15_000,
   },
+  staff: {
+    coFacilitatorAdjustLimit: 2_000,
+    stuckIdleSeconds: minutes(5),
+  },
 };

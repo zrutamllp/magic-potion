@@ -25,6 +25,15 @@ describe('DEFAULT_SETTINGS', () => {
     expect(tasks.spotDifferenceTolerancePercent).toBe(4);
   });
 
+  it('loads settings saved before the facilitator dashboard existed', () => {
+    const old = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as Record<string, unknown>;
+    delete old.staff;
+    expect(GameSettingsSchema.parse(old).staff).toEqual({
+      coFacilitatorAdjustLimit: 2_000,
+      stuckIdleSeconds: 300,
+    });
+  });
+
   it('refuses a puzzle grid outside 2 to 6', () => {
     const bad = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as typeof DEFAULT_SETTINGS;
     bad.tasks.picturePuzzleGrid = { rows: 1, cols: 7 };
@@ -66,6 +75,7 @@ describe('DEFAULT_SETTINGS', () => {
       receivedMultiplier: 2,
       fullPotionBonus: 15_000,
     });
+    expect(s.staff).toEqual({ coFacilitatorAdjustLimit: 2_000, stuckIdleSeconds: 300 });
   });
 
   it('has the task timers from the task list', () => {

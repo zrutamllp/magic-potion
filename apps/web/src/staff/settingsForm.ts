@@ -343,6 +343,30 @@ export const FIELD_GROUPS: FieldGroup[] = [
     ],
   },
   {
+    title: 'Facilitator dashboard',
+    fields: [
+      whole(
+        'staff.adjustLimit',
+        'Co-facilitator funds change up to',
+        'points',
+        (s) => s.staff.coFacilitatorAdjustLimit,
+        (s, v) => {
+          s.staff.coFacilitatorAdjustLimit = v;
+        },
+        { help: 'Per change, up or down. Larger changes wait for the main admin to approve.' },
+      ),
+      minutes(
+        'staff.stuckIdle',
+        'Flag a team as stuck after no action for',
+        (s) => s.staff.stuckIdleSeconds,
+        (s, v) => {
+          s.staff.stuckIdleSeconds = v;
+        },
+        'Only counts while a round is running.',
+      ),
+    ],
+  },
+  {
     title: 'Scoring',
     scoring: true,
     fields: [

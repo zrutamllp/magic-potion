@@ -90,6 +90,16 @@ export const GameSettingsSchema = z.object({
     receivedMultiplier: money,
     fullPotionBonus: money,
   }),
+  // Facilitator dashboard (Phase 6C). Games saved before it existed load with the defaults.
+  staff: z
+    .object({
+      // A co-facilitator may change a team's Task Funds by up to this much per change.
+      // Larger changes go to the main admin for approval.
+      coFacilitatorAdjustLimit: money,
+      // A team with no action for this long during a running round is flagged "stuck".
+      stuckIdleSeconds: seconds,
+    })
+    .default({ coFacilitatorAdjustLimit: 2_000, stuckIdleSeconds: 300 }),
 });
 
 export type GameSettings = z.infer<typeof GameSettingsSchema>;

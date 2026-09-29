@@ -4,6 +4,7 @@ export * from './defaultSettings';
 export * from './engineErrors';
 export * from './enums';
 export * from './health';
+export * from './live';
 export * from './playerState';
 export * from './playerText';
 export * from './realtime';

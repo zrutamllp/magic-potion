@@ -25,3 +25,11 @@ export const FORBIDDEN_PLAYER_TEXT: readonly RegExp[] = [
 export function forbiddenPhrases(text: string): string[] {
   return FORBIDDEN_PLAYER_TEXT.filter((p) => p.test(text)).map((p) => p.source);
 }
+
+// The words in a text that match the list, for a warning ("help", "together").
+export function forbiddenMatches(text: string): string[] {
+  const found = FORBIDDEN_PLAYER_TEXT.map((p) => p.exec(text)?.[0]).filter(
+    (m): m is string => m !== undefined,
+  );
+  return [...new Set(found.map((m) => m.trim().toLowerCase()))];
+}

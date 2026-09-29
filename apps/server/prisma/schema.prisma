@@ -212,6 +212,9 @@ model Team {
   finishedAt                 DateTime?
   finishPlaySecondsRemaining Int?
 
+  // The team's last game action or login. The facilitator dashboard flags idle teams (Phase 6C).
+  lastActionAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

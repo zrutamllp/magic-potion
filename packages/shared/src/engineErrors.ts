@@ -34,6 +34,20 @@ export const ENGINE_ERRORS = {
   CHAT_EMPTY: 'Type a message first.',
   CHAT_TOO_LONG: 'That message is too long.',
   CHAT_LIMIT_REACHED: 'You have used all your messages for this round.',
+  // Staff actions (Phase 6C). Shown to staff only.
+  INVALID_ADJUSTMENT: 'Enter a whole amount that is not zero.',
+  REASON_REQUIRED: 'Type a reason.',
+  NAME_TAKEN: 'Another team already has that name.',
+  NOT_LOCKED: 'This task is not locked.',
+  FRAGMENT_NOT_FOUND: 'That fragment was not found.',
+  FRAGMENT_ALREADY_RELEASED: 'That fragment has already been released.',
+  ADJUSTMENT_NOT_FOUND: 'That request was not found.',
+  ADJUSTMENT_CLOSED: 'That request has already been decided.',
+  NOTHING_TO_UNDO: 'That change cannot be undone.',
+  ALREADY_UNDONE: 'That change has already been undone.',
+  UNDO_OUT_OF_DATE: 'The team has been renamed again since. Rename it instead.',
+  MESSAGE_EMPTY: 'Type a message first.',
+  GAME_ENDED: 'The game has ended.',
 } as const;
 
 export type EngineErrorCode = keyof typeof ENGINE_ERRORS;

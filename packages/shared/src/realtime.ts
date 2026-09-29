@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { GamePhase, StaffRole } from './enums';
+import type { StaffWatchSchema } from './live';
 import type { FeedItem, PlayerState, StaffState } from './playerState';
 
 // The Socket.IO contract between server and browser, and the REST login bodies.
@@ -71,6 +72,8 @@ export interface ClientToServerEvents {
   'task:hint': (p: z.infer<typeof TaskIdSchema>, ack: AckFn) => void;
   'task:submit': (p: z.infer<typeof TaskSubmitSchema>, ack: AckFn) => void;
   'task:giveUp': (p: z.infer<typeof TaskIdSchema>, ack: AckFn) => void;
+  // Staff only: follow one team's own view ("View as team"), or stop with null.
+  'staff:watch': (p: z.infer<typeof StaffWatchSchema>, ack: AckFn) => void;
 }
 
 // Server to browser. The full state comes on every (re)connect, so a browser never needs
@@ -80,6 +83,10 @@ export interface ServerToClientEvents {
   'state:update': (p: { state: PlayerState }) => void;
   'staff:full': (p: { state: StaffState; feed: FeedItem[] }) => void;
   'staff:update': (p: { state: StaffState }) => void;
+  // Staff only: exactly what the watched team sees, sent on every change.
+  'staff:team': (p: { teamId: string; state: PlayerState; feed: FeedItem[] }) => void;
+  // Staff only: the audit log changed; fetch it again.
+  'staff:audit': () => void;
   'feed:item': (item: FeedItem) => void;
   'session:ended': (p: { code: string; message: string }) => void;
 }
