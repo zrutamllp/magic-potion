@@ -46,25 +46,20 @@ test('Batch 1 tasks', async ({ browser }) => {
   await expect(page.getByRole('region', { name: 'Found items' })).toBeVisible();
   await shot(page, 'home-found-items');
 
-  // The staff test page lists who holds which fragment (dev tools only).
+  // The dashboard's Dev tools box shows who holds this team's fragments (dev tools only).
   const staffContext = await browser.newContext();
-  await staffContext.addInitScript(
-    ([token, gameId]) => {
-      sessionStorage.setItem(
-        'mp.staff',
-        JSON.stringify({ token, staff: { id: 'x', name: 'Admin', role: 'MAIN_ADMIN' } }),
-      );
-      sessionStorage.setItem('mp.staff.game', JSON.stringify(gameId));
-    },
-    [games.staffToken, games.a.id],
-  );
+  await staffContext.addInitScript((token) => {
+    sessionStorage.setItem(
+      'mp.staffLogin',
+      JSON.stringify({ token, staff: { id: 'x', name: 'Admin', role: 'MAIN_ADMIN' } }),
+    );
+  }, games.staffToken);
   const staffPage = await staffContext.newPage();
-  await staffPage.goto('/dev/staff');
-  const fragments = staffPage
-    .getByRole('heading', { name: /Fragments \(dev tools only/ })
-    .locator('..');
-  await expect(fragments).toContainText('The Vault');
-  await fragments.scrollIntoViewIfNeeded();
+  await staffPage.goto(`/staff#/games/${games.a.id}/live`);
+  await staffPage.getByRole('row', { name: new RegExp(team.name) }).click();
+  const devBox = staffPage.getByRole('region', { name: 'Dev tools' });
+  await expect(devBox).toContainText('Vault');
+  await devBox.scrollIntoViewIfNeeded();
   await shot(staffPage, 'staff-dev-fragments');
 
   // ---------- The Vault ----------

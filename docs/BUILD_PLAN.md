@@ -94,11 +94,11 @@ Original list:
 - ~~More questions per task, set from the admin panel.~~ Done in 6B: question pools (Riddle, Hangman, Pictionary, Guess the Celebrity, Data Story questions) draw a fresh set per try; the per-try counts are settings; Ethical Dilemma plays one scenario per game, chosen by the admin.
 - Languages other than English.
 - ~~Unique team codes across games.~~ Done in 6A: new codes are checked against every team code in every game. Older demo and screenshot games keep their codes.
-- From 6C: remove the `/dev/staff` test page (`apps/web/src/pages/StaffDevPage.tsx`) once 6D is done. It now opens only while the server has `ENABLE_DEV_TOOLS=true`; the live dashboard at `/staff` replaces it.
+- ~~From 6C: remove the `/dev/staff` test page once 6D is done.~~ Done in 6D: its fragment values and "Finish all 5 tasks" moved to a Dev tools box in the dashboard's team panel (dev tools and main admin only), and the Ethical Dilemma answers to the Debrief.
 - From 6C: a co-facilitator's team list is read when their dashboard connects; if the admin changes their teams mid-game, they reload the page to see the change.
 - From 6C: the stuck flag's idle clock counts from the round start or the team's last action; time spent paused by the admin can count toward it right after Resume.
 - Replace the Phase 3 test screens (`apps/web/src/pages/TeamPage.tsx`, `StaffDevPage.tsx`) with the real player screens (Phase 4) and admin panel (Phase 6), and remove the dev-only "finish all tasks" route (`ENABLE_DEV_TOOLS`) once the task screens exist.
-- Vercel rewrite so deep links such as `/dev/staff` load the app in production (Phase 7).
+- Vercel rewrite so deep links such as `/staff` load the app in production (Phase 7).
 - Team photo upload in the Inbox (needs Vercel Blob storage): Phase 6, with content upload. The card shows its status until then.
 - ~~Hint, fail penalty and facilitator adjustment lines in the Funds transaction list.~~ Done (hints and fails in Phase 5, adjustments in 6C).
 - ~~Facilitator messages in the inbox: Phase 6.~~ Done in 6C (Message all).

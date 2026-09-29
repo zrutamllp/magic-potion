@@ -198,22 +198,21 @@ test('Batch 2 tasks', async ({ browser }) => {
   await expect(page.getByText('Answer saved.')).toBeVisible();
   await shot(page, 'dilemma-4-saved');
 
-  // The staff test page lists the saved answer (dev tools only).
+  // The saved answer appears in the facilitator's Debrief, which opens at the Reveal.
+  for (let i = 0; i < 3; i++) await staff(games, `/games/${games.a.id}/end-phase`);
   const staffContext = await browser.newContext();
-  await staffContext.addInitScript(
-    ([token, gameId]) => {
-      sessionStorage.setItem(
-        'mp.staff',
-        JSON.stringify({ token, staff: { id: 'x', name: 'Admin', role: 'MAIN_ADMIN' } }),
-      );
-      sessionStorage.setItem('mp.staff.game', JSON.stringify(gameId));
-    },
-    [games.staffToken, games.a.id],
-  );
+  await staffContext.addInitScript((token) => {
+    sessionStorage.setItem(
+      'mp.staffLogin',
+      JSON.stringify({ token, staff: { id: 'x', name: 'Admin', role: 'MAIN_ADMIN' } }),
+    );
+  }, games.staffToken);
   const staffPage = await staffContext.newPage();
-  await staffPage.goto('/dev/staff');
-  const answers = staffPage.getByRole('heading', { name: /Ethical Dilemma answers/ }).locator('..');
+  await staffPage.goto(`/staff#/games/${games.a.id}/debrief`);
+  const answers = staffPage
+    .getByRole('heading', { name: 'Ethical Dilemma answers' })
+    .locator('xpath=ancestor::section[1]');
   await expect(answers).toContainText('The news is theirs to give');
   await answers.scrollIntoViewIfNeeded();
-  await shot(staffPage, 'staff-dev-dilemma-answers');
+  await shot(staffPage, 'staff-debrief-dilemma-answers');
 });

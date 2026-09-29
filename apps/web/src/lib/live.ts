@@ -130,14 +130,6 @@ export function useTeamLive(token: string | null): Live<PlayerState> {
   return useLive<PlayerState>(token ? { token, as: 'team' } : null, 'state:full', 'state:update');
 }
 
-export function useStaffLive(token: string | null, gameId: string | null): Live<StaffState> {
-  return useLive<StaffState>(
-    token && gameId ? { token, as: 'staff', gameId } : null,
-    'staff:full',
-    'staff:update',
-  );
-}
-
 // The projector view (Phase 6D): read only, every team.
 export function useProjectorLive(token: string | null, gameId: string | null) {
   return useLive<ProjectorState>(

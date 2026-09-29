@@ -215,17 +215,13 @@ export interface StaffTeamView {
 // never to players.
 export interface StaffFragmentView {
   kind: 'VAULT' | 'FIND_CODE';
+  neededByTeamId: string;
   neededByTeamName: string;
   holderTeamName: string;
   value: string;
 }
 
 // The Ethical Dilemma answers given so far (saved for the debrief). Testing only, like fragments.
-export interface StaffDilemmaAnswerView {
-  teamName: string;
-  option: string;
-  reason: string;
-}
 
 export interface StaffState {
   game: GameClockView;
@@ -239,8 +235,6 @@ export interface StaffState {
   devTools: boolean;
   // Null unless dev tools are on and this is the main admin.
   devFragments: StaffFragmentView[] | null;
-  // Null unless dev tools are on and this is the main admin. The real debrief view is Phase 6.
-  devDilemmaAnswers: StaffDilemmaAnswerView[] | null;
 }
 
 // ---------- Projector (Phase 6D) ----------

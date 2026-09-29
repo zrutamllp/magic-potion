@@ -19,7 +19,7 @@ import { phaseMsLeft, playMsRemaining, timersRunning } from '../engine/playClock
 import { potionPercent } from '../engine/potion';
 import { messagesLeft } from '../engine/rules/chat';
 import type { GameContent, GameState, TeamState, TransferState } from '../engine/state';
-import { dilemmaAnswer, taskName } from '../engine/views';
+import { taskName } from '../engine/views';
 
 // Turns engine state into what one browser may see. Built only from public fields:
 // never task answers, never another team's fragments, never inbox answers.
@@ -255,6 +255,7 @@ export function buildStaffState(
       ? Object.values(s.fragments)
           .map((f) => ({
             kind: f.kind,
+            neededByTeamId: f.neededByTeamId,
             neededByTeamName: teamName(s, f.neededByTeamId),
             holderTeamName: teamName(s, f.holderTeamId),
             value: f.value,
@@ -263,16 +264,6 @@ export function buildStaffState(
             (a, b) =>
               a.kind.localeCompare(b.kind) ||
               a.neededByTeamName.localeCompare(b.neededByTeamName, undefined, { numeric: true }),
-          )
-      : null,
-    devDilemmaAnswers: devAdmin
-      ? Object.values(s.teams)
-          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-          .flatMap((t) =>
-            Object.values(t.tasks).flatMap((task) => {
-              const answer = dilemmaAnswer(engine.gameContent, task);
-              return answer ? [{ teamName: t.name, ...answer }] : [];
-            }),
           )
       : null,
   };

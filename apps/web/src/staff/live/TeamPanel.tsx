@@ -12,6 +12,7 @@ import {
   ResetLoginDialog,
 } from './dialogs';
 import { ago, duration } from './format';
+import { DevTools } from './DevTools';
 import { TeamPhoto } from './photos';
 import { taskLocked } from './TeamTable';
 
@@ -174,6 +175,7 @@ export function TeamPanel({ team, onClose }: { team: StaffTeamView; onClose: () 
             </ul>
           </section>
         )}
+        <DevTools team={team} />
         <section>
           <h3 className="mb-1 text-sm font-bold tracking-wide text-ink-muted uppercase">
             Team photo

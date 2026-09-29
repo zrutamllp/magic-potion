@@ -98,7 +98,6 @@ function staffState(patch: Partial<StaffState> = {}): StaffState {
     limits: { coFacilitatorAdjustLimit: 2_000, stuckIdleSeconds: 300 },
     devTools: false,
     devFragments: null,
-    devDilemmaAnswers: null,
     ...patch,
   };
 }
@@ -423,6 +422,53 @@ describe('team photos', () => {
     unmount();
     renderLive(<TeamPanel team={withPhoto('ACCEPTED', null).teams[0]!} onClose={vi.fn()} />);
     expect(screen.getByText(/Photo deleted/)).toBeInTheDocument();
+  });
+});
+
+describe('dev tools box', () => {
+  const devState = () =>
+    staffState({
+      devTools: true,
+      devFragments: [
+        {
+          kind: 'VAULT',
+          neededByTeamId: 'team-1',
+          neededByTeamName: 'Owls',
+          holderTeamName: 'Foxes',
+          value: '4-2-9',
+        },
+        {
+          kind: 'VAULT',
+          neededByTeamId: 'team-2',
+          neededByTeamName: 'Foxes',
+          holderTeamName: 'Owls',
+          value: '7-7-1',
+        },
+      ],
+    });
+
+  it('shows the main admin this team’s fragment values and Finish all 5 tasks', async () => {
+    const post = vi.fn(async () => ({ ok: true, value: null }));
+    renderLive(<TeamPanel team={team()} onClose={vi.fn()} />, {
+      state: devState(),
+      api: fakeApi({ post: post as unknown as StaffApi['post'] }),
+    });
+    const box = screen.getByRole('region', { name: 'Dev tools' });
+    expect(box).toHaveTextContent('4-2-9');
+    expect(box).not.toHaveTextContent('7-7-1');
+    fireEvent.click(within(box).getByRole('button', { name: 'Finish all 5 tasks' }));
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/games/game-1/dev/finish-tasks/team-1'));
+  });
+
+  it('is hidden without dev tools, and from co-facilitators', () => {
+    const { unmount } = renderLive(<TeamPanel team={team()} onClose={vi.fn()} />);
+    expect(screen.queryByRole('region', { name: 'Dev tools' })).toBeNull();
+    unmount();
+    renderLive(<TeamPanel team={team()} onClose={vi.fn()} />, {
+      state: devState(),
+      login: COFAC,
+    });
+    expect(screen.queryByRole('region', { name: 'Dev tools' })).toBeNull();
   });
 });
 

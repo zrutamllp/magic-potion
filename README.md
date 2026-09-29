@@ -26,7 +26,6 @@ npm run dev
 
 - Web: http://localhost:5173 (team login; it also shows "Server OK" when the API answers).
 - Staff panel and live dashboard: http://localhost:5173/staff
-- Staff test page (only with `ENABLE_DEV_TOOLS=true`, removed after Phase 6D): http://localhost:5173/dev/staff
 - API: http://localhost:4000/healthz
 
 The server runs without a database until `DATABASE_URL` is set; `/healthz` then reports `"db": "not_configured"`.
@@ -96,7 +95,7 @@ All 12 tasks are playable. Use the short demo from the section above.
 
 - **The Vault:** answer the 3 clues for the first 3 digits (8, 3, 6 in the sample). The Vault shows its marker, for example "Vault 🍎"; the last 3 digits are the Found item with the same marker ("Fragment: 🍎 1-4-3") on another team's Home. Type all 6 digits and press **Open the vault**. Three wrong codes lock the task: 60 seconds the first time, 2 minutes the second, 4 minutes after that.
 - **Find the Code:** each team decodes its own random 6- or 7-letter code (not a word, so it cannot be guessed). The known letters are filled in; typing a letter under one symbol fills every copy of it. The key shows "?" for symbols with no known letter; the missing pairs ("⌘ = R, ❖ = T") are a Found item on another team's Home. Submit the code.
-- **Quick testing:** with `ENABLE_DEV_TOOLS=true`, the staff page `/dev/staff` shows a **Fragments** table: for each team, who holds its Vault and Find the Code fragment, and the value. Players never see it.
+- **Quick testing:** with `ENABLE_DEV_TOOLS=true`, the main admin sees a **Dev tools** box in each team's panel on the live dashboard: who holds that team's Vault and Find the Code fragments, and the values, plus a **Finish all 5 tasks** button. Players never see it, and it never appears in production.
 - **Shell:** try **Use hint** (it shows how the 1,500 is paid: Support Funds first), **Give up** (−3,500 Task Funds) and **Try again**. The Funds tab lists the hint and fail lines.
 
 `npm run screenshots:batch1` saves the Batch 1 screens (brief, playing, hint, locked, failed, solved, Funds lines) to `screenshots/phase5/batch1/`.
@@ -109,7 +108,7 @@ From `apps/server`, run `npm run db:seed -- --reset-demo --short --tasks riddle,
   - Set 1: keyboard · footsteps · comb (or zip). Set 2: clock (or watch) · towel · calendar (or diary). Set 3: coin · age · needle.
 - **Hangman:** click letters or type them on the keyboard. The phrase shows by word, with lives left (6 hearts), wrong letters, and "R is in the phrase." / "R is not in the phrase.". The hint reveals one letter (shown in blue). The 6th wrong letter fails the try (−3,500) with "Too many wrong letters."; **Try again** gives a new phrase.
   - Phrases: PRINTER OUT OF PAPER (Office problem) · QUARTERLY REVIEW MEETING (On the calendar) · OUT OF OFFICE REPLY (In your inbox).
-- **Ethical Dilemma:** read the scenario, pick one of the 4 options, type a one-line reason and press **Submit answer**. Any complete answer passes; nothing is marked right or wrong. There is no hint, and Give up sits next to Submit. The done screen shows "Answer saved." with the team's choice and reason. With `ENABLE_DEV_TOOLS=true`, `/dev/staff` lists every saved answer under **Ethical Dilemma answers** (the real debrief view and CSV come in Phase 6).
+- **Ethical Dilemma:** read the scenario, pick one of the 4 options, type a one-line reason and press **Submit answer**. Any complete answer passes; nothing is marked right or wrong. There is no hint, and Give up sits next to Submit. The done screen shows "Answer saved." with the team's choice and reason. Every saved answer appears in the game's **Debrief** (grouped by option) and in the Ethical Dilemma CSV.
 
 `npm run screenshots:batch2` plays all three for real and saves the screens to `screenshots/phase5/batch2/`, checking that each main button fits a 1280×720 window without scrolling.
 
