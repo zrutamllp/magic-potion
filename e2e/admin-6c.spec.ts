@@ -243,7 +243,7 @@ test('live control and facilitator dashboard', async ({ browser }) => {
   await expect(row(adminPage, logins[0]!.name)).toContainText('14,500');
 
   // ---------- Audit log and undo ----------
-  await adminPage.getByRole('button', { name: 'Audit log' }).click();
+  await adminPage.getByRole('button', { name: 'Audit' }).click();
   await expect(adminPage.getByText(/Approved a funds change \+3,000/)).toBeVisible();
   await shot(adminPage, '14-audit-log');
   const undoRow = adminPage

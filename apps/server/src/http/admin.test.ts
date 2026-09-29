@@ -32,6 +32,7 @@ function setup(opts: { uploads?: boolean } = {}) {
       saved.push({ folder, contentType, bytes: data.length });
       return `https://blob.example.com/${folder}/random-${saved.length}.${extension}`;
     },
+    remove: async () => {},
   };
   const { engine } = memoryEngine({ teams: 3, clock: new FakeClock(T0) });
   const api = createApiRouter({

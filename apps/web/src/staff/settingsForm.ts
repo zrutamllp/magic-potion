@@ -9,7 +9,7 @@ import {
 // (or seconds where they are short), so nobody edits JSON or counts seconds. This file turns
 // settings into text fields and back, and says what is wrong in plain words.
 
-export type Unit = 'minutes' | 'seconds' | 'points' | 'count' | 'percent' | 'times';
+export type Unit = 'minutes' | 'seconds' | 'days' | 'points' | 'count' | 'percent' | 'times';
 
 export interface FieldDef {
   key: string;
@@ -340,6 +340,16 @@ export const FIELD_GROUPS: FieldGroup[] = [
         },
         { min: 1, max: 20 },
       ),
+      whole(
+        'inbox.photoRetention',
+        'Delete team photos after',
+        'days',
+        (s) => s.inbox.photoRetentionDays,
+        (s, v) => {
+          s.inbox.photoRetentionDays = v;
+        },
+        { min: 1, max: 365, help: 'Days after the game. The photos show real people.' },
+      ),
     ],
   },
   {
@@ -517,7 +527,13 @@ export function fromForm(
 }
 
 export function unitLabel(unit: Unit): string {
-  return { minutes: 'min', seconds: 'sec', points: 'points', count: '', percent: '%', times: 'x' }[
-    unit
-  ];
+  return {
+    minutes: 'min',
+    seconds: 'sec',
+    days: 'days',
+    points: 'points',
+    count: '',
+    percent: '%',
+    times: 'x',
+  }[unit];
 }

@@ -7,10 +7,11 @@ import { errorText, useStaff } from '../StaffContext';
 import { Dialog, SmallButton, Status, inputClass, useAction } from '../ui';
 import { useLiveView } from './context';
 import { auditText, clockTime, signed } from './format';
+import { PhotoGrid } from './photos';
 
 // The right-hand column: chat, transfers, fund change approvals and the audit log.
 
-type FeedTab = 'chat' | 'transfers' | 'approvals' | 'audit';
+type FeedTab = 'chat' | 'transfers' | 'approvals' | 'photos' | 'audit';
 
 export function Feeds({ feed }: { feed: FeedItem[] }) {
   const { state, isAdmin } = useLiveView();
@@ -23,7 +24,8 @@ export function Feeds({ feed }: { feed: FeedItem[] }) {
       id: 'approvals',
       label: `${isAdmin ? 'Approvals' : 'Requests'}${pending ? ` (${pending})` : ''}`,
     },
-    { id: 'audit', label: 'Audit log' },
+    { id: 'photos', label: 'Photos' },
+    { id: 'audit', label: 'Audit' },
   ];
   return (
     <section className="flex min-h-0 w-[380px] shrink-0 flex-col rounded-2xl border border-line bg-card">
@@ -55,6 +57,7 @@ export function Feeds({ feed }: { feed: FeedItem[] }) {
           />
         )}
         {tab === 'approvals' && <Approvals requests={state.pendingAdjustments} />}
+        {tab === 'photos' && <PhotoGrid />}
         {tab === 'audit' && <AuditLog />}
       </div>
     </section>

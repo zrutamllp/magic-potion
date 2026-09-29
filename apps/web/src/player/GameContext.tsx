@@ -19,6 +19,8 @@ export interface Game {
   feed: FeedItem[];
   status: LiveStatus;
   send: Live<PlayerState>['send'];
+  // Sends the team photo (a REST upload: too big for the socket). Answers like an action.
+  uploadPhoto: (itemId: string, file: Blob) => Promise<Ack>;
   // Countdowns: ms left now, counted from when the state arrived. "phase" stops only when the
   // admin pauses; "timer" (tasks, transfers) stops whenever play is not running.
   phaseMsLeft: () => number | null;

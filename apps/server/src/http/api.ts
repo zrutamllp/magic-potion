@@ -17,6 +17,7 @@ import type { PackService } from '../packs/service';
 import type { LiveStore } from '../live/store';
 import { addAdminRoutes } from './admin';
 import { addLiveRoutes } from './live';
+import { addTeamRoutes } from './team';
 import { addPackRoutes } from './packs';
 
 // REST routes under /api: logins, and the staff game controls that Phase 6 will build on.
@@ -90,6 +91,8 @@ export function createApiRouter({
     if (!body.success) return invalid(res);
     sendAuth(res, await auth.loginStaff(body.data, req.ip ?? ''));
   });
+
+  addTeamRoutes(api, { auth, engine, files });
 
   // Every route below needs a staff login.
   const staff = express.Router();

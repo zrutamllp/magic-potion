@@ -277,6 +277,15 @@ export function buildStaffState(
   };
 }
 
+// Staff see the team's latest photo so they can check it (and reject it if needed).
+function teamPhoto(s: GameState, t: TeamState): StaffTeamView['photo'] {
+  for (const r of Object.values(t.inbox)) {
+    if (s.inboxItems[r.inboxItemId]?.kind !== 'PHOTO' || r.photoStatus === null) continue;
+    return { itemId: r.inboxItemId, status: r.photoStatus, url: r.photoUrl };
+  }
+  return null;
+}
+
 // A team looks stuck when its Task Funds are below zero (it cannot start a task), or when it
 // has done nothing for a while during a running round (the idle time is a setting).
 export function stuckReasons(s: GameState, team: TeamState, now: number): StuckReason[] {
@@ -327,6 +336,7 @@ function staffTeamView(
     score: t.status === 'ACTIVE' ? score : null,
     lastActivityAt: t.lastActionAt,
     stuck: stuckReasons(s, t, now),
+    photo: teamPhoto(s, t),
     // Who holds each fragment this team needs; never the value.
     neededFragments: Object.values(s.fragments)
       .filter((f) => f.neededByTeamId === t.id)

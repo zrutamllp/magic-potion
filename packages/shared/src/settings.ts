@@ -79,6 +79,9 @@ export const GameSettingsSchema = z.object({
     releaseAtPlaySeconds: z.array(z.number().int().nonnegative()).length(3),
     reward: money,
     answerAttempts: count,
+    // Team photos show real people, so they are deleted this many days after the game.
+    // Games saved before it was a setting load with 30.
+    photoRetentionDays: z.number().int().min(1).max(365).default(30),
   }),
   scoring: z.object({
     pointsPerTask: money,

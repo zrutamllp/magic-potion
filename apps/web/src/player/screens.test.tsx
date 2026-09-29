@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { FeedItem, PlayerState } from '@magic-potion/shared';
+import type { FeedItem, PlayerInboxView, PlayerState } from '@magic-potion/shared';
 import { Shell } from './layout/Shell';
 import { PlayerApp } from './PlayerApp';
 import { FORBIDDEN } from './test/forbidden';
@@ -385,6 +385,60 @@ describe('Funds', () => {
 });
 
 describe('Inbox', () => {
+  const photoItem = (patch: Partial<PlayerInboxView> = {}): PlayerInboxView => ({
+    id: 'p1',
+    kind: 'PHOTO',
+    title: 'Team photo',
+    body: 'Upload a photo of the whole team.',
+    publicData: {},
+    done: false,
+    attemptsLeft: null,
+    photoStatus: null,
+    ...patch,
+  });
+
+  it('uploads the team photo and says who sees it and when it is deleted', async () => {
+    const { upload } = renderGame(<Inbox />, { state: playerState({ inbox: [photoItem()] }) });
+    expect(
+      screen.getByText(
+        'Only the facilitators see this photo. It is deleted automatically after 30 days.',
+      ),
+    ).toBeInTheDocument();
+    const file = new File(['x'], 'team.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByLabelText('Photo for Team photo'), { target: { files: [file] } });
+    await waitFor(() => expect(upload).toHaveBeenCalledWith('p1', file));
+  });
+
+  it('uses the retention days from the game settings', () => {
+    const state = playerState({ inbox: [photoItem()] });
+    state.settings.inbox.photoRetentionDays = 7;
+    renderGame(<Inbox />, { state });
+    expect(screen.getByText(/deleted automatically after 7 days/)).toBeInTheDocument();
+  });
+
+  it('asks for a new photo after a reject, and shows an accepted one as done', () => {
+    const { unmount } = renderGame(<Inbox />, {
+      state: playerState({ inbox: [photoItem({ photoStatus: 'REJECTED' })] }),
+    });
+    expect(
+      screen.getByText('Your photo was not accepted. You can upload a new one.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Upload photo/ })).toBeEnabled();
+    unmount();
+    renderGame(<Inbox />, {
+      state: playerState({ inbox: [photoItem({ done: true, photoStatus: 'ACCEPTED' })] }),
+    });
+    expect(screen.getByText('Photo accepted. +1,000 points.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Upload photo/ })).toBeNull();
+  });
+
+  it('keeps the upload closed while the game is paused', () => {
+    const state = playerState({ inbox: [photoItem()] });
+    state.game.timersRunning = false;
+    renderGame(<Inbox />, { state });
+    expect(screen.getByRole('button', { name: /Upload photo/ })).toBeDisabled();
+  });
+
   it('shows bonus questions with tries left, and alerts', () => {
     const state = playerState({
       inbox: [

@@ -64,6 +64,7 @@ function team(patch: Partial<StaffTeamView> = {}): StaffTeamView {
         released: false,
       },
     ],
+    photo: null,
     ...patch,
   };
 }
@@ -316,7 +317,7 @@ describe('feeds', () => {
   it('lists the audit log with Undo only where allowed', async () => {
     const get = vi.fn(async () => rows);
     renderLive(<Feeds feed={[]} />, { api: fakeApi({ get: get as unknown as StaffApi['get'] }) });
-    fireEvent.click(screen.getByRole('button', { name: 'Audit log' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Audit' }));
     await screen.findByText(/Changed Task Funds \+1,000/);
     expect(screen.getByText('Paused the game')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /Undo/ })).toHaveLength(1);
@@ -375,6 +376,53 @@ describe('feeds', () => {
     expect(screen.getByText('Hi all')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Transfers' }));
     expect(screen.getByText('Owls sent 500 to Foxes (on the way)')).toBeInTheDocument();
+  });
+});
+
+describe('team photos', () => {
+  const withPhoto = (
+    status: 'ACCEPTED' | 'REJECTED',
+    url: string | null = 'https://blob.example.com/team-photos/a.webp',
+  ) =>
+    staffState({
+      teams: [
+        team({ photo: { itemId: 'p1', status, url } }),
+        team({ id: 'team-2', name: 'Foxes', photo: null }),
+      ],
+    });
+
+  it('lists every team photo and rejects one with a reason', async () => {
+    const post = vi.fn(async () => ({ ok: true, value: null }));
+    renderLive(<Feeds feed={[]} />, {
+      state: withPhoto('ACCEPTED'),
+      api: fakeApi({ post: post as unknown as StaffApi['post'] }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Photos' }));
+    expect(screen.getByRole('img', { name: 'Team photo of Owls' })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /Foxes/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
+    const dialog = screen.getByRole('dialog', { name: 'Reject the photo of Owls?' });
+    expect(within(dialog).getByRole('button', { name: 'Reject photo' })).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText('Reason (staff only)'), {
+      target: { value: 'Not the whole team' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reject photo' }));
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith('/games/game-1/live/teams/team-1/photo/reject', {
+        reason: 'Not the whole team',
+      }),
+    );
+  });
+
+  it('shows a rejected or deleted photo with no Reject button', () => {
+    const { unmount } = renderLive(
+      <TeamPanel team={withPhoto('REJECTED').teams[0]!} onClose={vi.fn()} />,
+    );
+    expect(screen.getByText('Rejected: waiting for a new photo')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
+    unmount();
+    renderLive(<TeamPanel team={withPhoto('ACCEPTED', null).teams[0]!} onClose={vi.fn()} />);
+    expect(screen.getByText(/Photo deleted/)).toBeInTheDocument();
   });
 });
 

@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import type { Ack, GameSettings, TeamLoginResponse } from '@magic-potion/shared';
-import { apiPost, ApiError } from '../lib/api';
+import { apiPost, apiUpload, ApiError } from '../lib/api';
 import { useTeamLive, type Live } from '../lib/live';
 import { load, save } from '../lib/session';
 import { msLeft, useTicker } from '../lib/time';
@@ -48,6 +48,19 @@ export function PlayerApp() {
     );
   }
   return <Connection key={login.token} token={login.token} onLogOut={logOut} />;
+}
+
+async function uploadPhoto(token: string, itemId: string, file: Blob): Promise<Ack> {
+  try {
+    await apiUpload(`/api/team/inbox/${encodeURIComponent(itemId)}/photo`, file, token);
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error ? error.message : 'The upload did not work. Please try again.',
+    };
+  }
 }
 
 // Brand colours from the game settings, as CSS variables for everything inside.
@@ -181,7 +194,7 @@ function Connection({
       </CenteredMessage>
     );
   }
-  return <Screens live={live} snapshot={live.snapshot} onLogOut={onLogOut} />;
+  return <Screens live={live} token={token} snapshot={live.snapshot} onLogOut={onLogOut} />;
 }
 
 export function CenteredMessage({ children }: { children: ReactNode }) {
@@ -196,10 +209,12 @@ export function CenteredMessage({ children }: { children: ReactNode }) {
 
 function Screens({
   live,
+  token,
   snapshot,
   onLogOut,
 }: {
   live: Live<PlayerState>;
+  token: string;
   snapshot: { state: PlayerState; receivedAt: number };
   onLogOut: (message: string | null) => void;
 }) {
@@ -232,6 +247,7 @@ function Screens({
     feed: live.feed,
     status: live.status,
     send: live.send,
+    uploadPhoto: (itemId, file) => uploadPhoto(token, itemId, file),
     phaseMsLeft: () => msLeft(state.game.phaseMsLeft, receivedAt, !state.game.frozen, now),
     timerMsLeft: (sent) => msLeft(sent, receivedAt, state.game.timersRunning, now) ?? 0,
     act,

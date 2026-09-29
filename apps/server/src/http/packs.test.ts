@@ -57,6 +57,7 @@ async function setup() {
       saved.push(folder);
       return `https://blob.example.com/${folder}/random-${saved.length}.${ext}`;
     },
+    remove: async () => {},
   };
   const api = createApiRouter({
     auth: fx.auth,

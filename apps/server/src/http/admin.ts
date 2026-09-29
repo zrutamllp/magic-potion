@@ -1,4 +1,4 @@
-import express, { type NextFunction, type Request, type Response, type Router } from 'express';
+import type { NextFunction, Request, Response, Router } from 'express';
 import type { z } from 'zod';
 import {
   AUTH_ERRORS,
@@ -16,7 +16,8 @@ import {
 import type { AdminResult, AdminService } from '../admin/service';
 import type { StaffAccount } from '../auth/store';
 import type { FileStore } from '../uploads/blob';
-import { MAX_UPLOAD_BYTES, cleanImage } from '../uploads/image';
+import { cleanImage } from '../uploads/image';
+import { readImage } from './rawImage';
 
 // Admin panel setup routes (Phase 6A), under /api/staff. Main admin only.
 
@@ -44,17 +45,6 @@ export function addAdminRoutes(
   files: FileStore | undefined,
 ): void {
   const id = (v: unknown) => String(v);
-
-  // The picture is the raw request body (Content-Type image/...), not a form.
-  const rawImage = express.raw({ type: () => true, limit: MAX_UPLOAD_BYTES });
-  const readImage = (req: Request, res: Response, next: NextFunction) =>
-    rawImage(req, res, (error?: unknown) => {
-      if (!error) return next();
-      res.status(413).json({
-        code: 'FILE_TOO_BIG',
-        message: `That picture is too big. The limit is ${MAX_UPLOAD_BYTES / 1024 / 1024} MB.`,
-      });
-    });
 
   // Pictures: the client logo and task pictures. Each is saved under a random name with all
   // metadata removed; the URL goes into the settings or the pack entry when the admin saves.

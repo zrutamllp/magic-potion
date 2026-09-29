@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react';
-import { Bell, Camera, CheckCircle2, HelpCircle } from 'lucide-react';
+import { useRef, useState, type FormEvent } from 'react';
+import { Bell, Camera, CheckCircle2, HelpCircle, Upload } from 'lucide-react';
 import type { PlayerInboxView } from '@magic-potion/shared';
 import { money } from '../../lib/time';
 import { useGame } from '../GameContext';
@@ -83,11 +83,7 @@ function BonusTask({ item }: { item: PlayerInboxView }) {
             {photo ? `Photo accepted. +${reward} points.` : `Correct! +${reward} points.`}
           </p>
         ) : photo ? (
-          <p className="mt-3 text-lg text-ink-muted">
-            {item.photoStatus === 'REJECTED'
-              ? 'Your photo was not accepted. You can upload a new one.'
-              : 'Photo upload is not available yet.'}
-          </p>
+          <PhotoUpload item={item} />
         ) : outOfTries ? (
           <p className="mt-3 text-lg text-danger">No tries left for this question.</p>
         ) : (
@@ -109,7 +105,53 @@ function BonusTask({ item }: { item: PlayerInboxView }) {
             </p>
           </form>
         )}
+        {photo && (
+          <p className="mt-3 text-base text-ink-muted">
+            Only the facilitators see this photo. It is deleted automatically after{' '}
+            {state.settings.inbox.photoRetentionDays} days.
+          </p>
+        )}
       </div>
     </Card>
+  );
+}
+
+// The team photo: pick a picture (or take one on a phone). It is accepted at once.
+function PhotoUpload({ item }: { item: PlayerInboxView }) {
+  const { state, act, uploadPhoto } = useGame();
+  const [busy, setBusy] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  const open = state.game.timersRunning;
+
+  async function send(file: File | undefined) {
+    if (!file) return;
+    setBusy(true);
+    await act(null, () => uploadPhoto(item.id, file));
+    setBusy(false);
+    if (input.current) input.current.value = '';
+  }
+
+  return (
+    <div className="mt-4">
+      {item.photoStatus === 'REJECTED' && (
+        <p className="mb-3 text-lg text-danger">
+          Your photo was not accepted. You can upload a new one.
+        </p>
+      )}
+      <input
+        ref={input}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        className="sr-only"
+        aria-label={`Photo for ${item.title}`}
+        onChange={(e) => void send(e.target.files?.[0])}
+        disabled={!open || busy}
+      />
+      <Button onClick={() => input.current?.click()} disabled={!open || busy}>
+        <Upload className="h-5 w-5" aria-hidden />
+        {busy ? 'Uploading…' : 'Upload photo'}
+      </Button>
+      <p className="mt-2 text-base text-ink-muted">PNG, JPG, WebP or GIF, up to 5 MB.</p>
+    </div>
   );
 }

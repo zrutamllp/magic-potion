@@ -25,7 +25,7 @@ import {
 } from './rules/funds';
 import { postAlert } from './rules/alerts';
 import { messagesLeft, sendChat } from './rules/chat';
-import { answerInbox, rejectPhoto, submitPhoto } from './rules/inbox';
+import { answerInbox, photoOpen, rejectPhoto, submitPhoto } from './rules/inbox';
 import {
   adjustFunds,
   clearLockout,
@@ -243,6 +243,12 @@ export class GameEngine {
   }
 
   // ---------- Queries ----------
+
+  // Checked before a photo is uploaded, so nothing is stored for a closed or finished task.
+  canSubmitPhoto(teamId: string, itemId: string): EngineResult<null> {
+    const result = photoOpen(this.draft(this.clock.now()), teamId, itemId);
+    return result.ok ? ok(null) : result;
+  }
 
   potion(): Potion {
     return potionOf(this.current);

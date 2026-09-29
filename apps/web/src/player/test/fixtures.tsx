@@ -110,12 +110,14 @@ export function renderGame(
 ) {
   const send = vi.fn(async () => opts.ack ?? ({ ok: true } as Ack));
   const go = vi.fn();
+  const upload = vi.fn(async () => opts.ack ?? ({ ok: true } as Ack));
   const state = opts.state ?? playerState();
   const game: Game = {
     state,
     feed: opts.feed ?? [],
     status: 'online',
     send: send as unknown as Game['send'],
+    uploadPhoto: upload,
     phaseMsLeft: () => state.game.phaseMsLeft,
     timerMsLeft: (ms) => ms,
     act: async (_done: string | null, run: () => Promise<Ack>) => (await run()).ok,
@@ -125,5 +127,5 @@ export function renderGame(
     go,
   };
   const result = render(<GameContext.Provider value={game}>{ui}</GameContext.Provider>);
-  return { ...result, send, go };
+  return { ...result, send, go, upload };
 }

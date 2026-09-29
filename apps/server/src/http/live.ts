@@ -6,6 +6,7 @@ import {
   BroadcastMessageSchema,
   DecideAdjustmentSchema,
   LiveRenameSchema,
+  RejectPhotoSchema,
   ReleaseFragmentSchema,
   RemoveTeamSchema,
   StopTaskSchema,
@@ -169,6 +170,22 @@ export function addLiveRoutes(staff: Router, deps: LiveDeps): void {
       return notAllowed(res);
     }
     send(res, await engine.releaseFragment(res.locals.staff.id, body.fragmentId));
+  });
+
+  // Rejecting a team photo removes its 1,000 until the team sends an accepted one. The team
+  // may upload again.
+  staff.post(`${base}/teams/:teamId/photo/reject`, async (req, res: Res) => {
+    const body = parse(RejectPhotoSchema, req, res);
+    if (!body) return;
+    const teamId = String(req.params.teamId);
+    const engine = await teamEngine(req, res, teamId);
+    if (!engine) return;
+    const team = engine.state.teams[teamId];
+    const itemId = Object.values(team?.inbox ?? {}).find(
+      (r) => engine.state.inboxItems[r.inboxItemId]?.kind === 'PHOTO',
+    )?.inboxItemId;
+    if (!itemId) return refuse(res, 400, 'NO_PHOTO', 'This team has not sent a photo.');
+    send(res, await engine.rejectPhoto(res.locals.staff.id, teamId, itemId, body.reason));
   });
 
   // ---------- Audit log and undo ----------

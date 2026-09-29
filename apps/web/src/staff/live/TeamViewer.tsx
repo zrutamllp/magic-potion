@@ -53,6 +53,7 @@ export function TeamViewer({
       feed: watched.feed,
       status,
       send: viewOnlySend,
+      uploadPhoto: viewOnlySend,
       phaseMsLeft: () => msLeft(state.game.phaseMsLeft, receivedAt, !state.game.frozen, now),
       timerMsLeft: (sent) => msLeft(sent, receivedAt, state.game.timersRunning, now) ?? 0,
       act,

@@ -82,6 +82,7 @@ export function PreviewModal({
         state,
         feed: [],
         status: 'online',
+        uploadPhoto: async () => ({ ok: false, message: 'Not in the preview.' }),
         send: (async (event: string, payload: { submission?: unknown }) => {
           const action = EVENTS[event];
           if (!action || !snapshot) return { ok: false, message: 'Not in the preview.' };

@@ -10,6 +10,7 @@ import type {
 } from './enums';
 import type {
   StaffAdjustmentRequestView,
+  StaffPhotoView,
   StaffNeededFragmentView,
   StaffTaskView,
   StuckReason,
@@ -206,6 +207,8 @@ export interface StaffTeamView {
   // Empty unless the team looks stuck.
   stuck: StuckReason[];
   neededFragments: StaffNeededFragmentView[];
+  // The team photo bonus task, once the team has sent one.
+  photo: StaffPhotoView | null;
 }
 
 // Who holds which team's fragment. Testing only: sent to the main admin when dev tools are on,

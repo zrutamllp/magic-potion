@@ -43,6 +43,16 @@ export function answerInbox(
   return ok({ correct, attemptsLeft: max - attempts });
 }
 
+// Whether the team may send a photo now: the upload route checks this before storing anything.
+export function photoOpen(d: Draft, teamId: string, itemId: string) {
+  const found = openItem(d, teamId, itemId);
+  if (!found.ok) return found;
+  const { team, item } = found.value;
+  if (item.kind !== 'PHOTO') return fail('INBOX_NOT_FOUND');
+  if (team.inbox[itemId]?.photoStatus === 'ACCEPTED') return fail('INBOX_ALREADY_DONE');
+  return ok({ team, item });
+}
+
 // The team photo is accepted automatically. A rejected photo can be uploaded again.
 export function submitPhoto(
   d: Draft,
@@ -50,12 +60,10 @@ export function submitPhoto(
   itemId: string,
   photoUrl: string,
 ): EngineResult {
-  const found = openItem(d, teamId, itemId);
+  const found = photoOpen(d, teamId, itemId);
   if (!found.ok) return found;
-  const { team, item } = found.value;
-  if (item.kind !== 'PHOTO') return fail('INBOX_NOT_FOUND');
+  const { team } = found.value;
   if (typeof photoUrl !== 'string' || photoUrl.trim() === '') return fail('INVALID_ANSWER');
-  if (team.inbox[itemId]?.photoStatus === 'ACCEPTED') return fail('INBOX_ALREADY_DONE');
   d.saveInboxResponse(team, itemId, {
     photoUrl,
     photoStatus: 'ACCEPTED',

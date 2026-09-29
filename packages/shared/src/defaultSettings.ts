@@ -61,6 +61,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
     releaseAtPlaySeconds: [minutes(10), minutes(30), minutes(55)],
     reward: 1_000,
     answerAttempts: 3,
+    photoRetentionDays: 30,
   },
   scoring: {
     pointsPerTask: 10_000,

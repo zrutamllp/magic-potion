@@ -34,6 +34,12 @@ describe('DEFAULT_SETTINGS', () => {
     });
   });
 
+  it('loads settings saved before team photos were auto-deleted', () => {
+    const old = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as { inbox: Record<string, unknown> };
+    delete old.inbox.photoRetentionDays;
+    expect(GameSettingsSchema.parse(old).inbox.photoRetentionDays).toBe(30);
+  });
+
   it('refuses a puzzle grid outside 2 to 6', () => {
     const bad = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as typeof DEFAULT_SETTINGS;
     bad.tasks.picturePuzzleGrid = { rows: 1, cols: 7 };
@@ -65,6 +71,7 @@ describe('DEFAULT_SETTINGS', () => {
       releaseAtPlaySeconds: [600, 1_800, 3_300],
       reward: 1_000,
       answerAttempts: 3,
+      photoRetentionDays: 30,
     });
     expect(s.scoring).toEqual({
       pointsPerTask: 10_000,

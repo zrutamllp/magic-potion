@@ -50,6 +50,8 @@ export const StopTaskSchema = TaskActionSchema.extend({
 
 export const ReleaseFragmentSchema = z.object({ fragmentId: z.string().min(1).max(64) });
 
+export const RejectPhotoSchema = z.object({ reason });
+
 export const StaffWatchSchema = z.object({ teamId: z.string().min(1).max(64).nullable() });
 
 // ---------- Views ----------
@@ -70,6 +72,14 @@ export interface StaffNeededFragmentView {
   holderTeamName: string;
   holderOnline: boolean;
   released: boolean;
+}
+
+// A team's photo for the bonus task, for staff only. Players never get the address.
+export interface StaffPhotoView {
+  itemId: string;
+  status: 'ACCEPTED' | 'REJECTED';
+  // Null once the photo was deleted after the retention time.
+  url: string | null;
 }
 
 export type StuckReason = 'NEGATIVE_FUNDS' | 'IDLE';

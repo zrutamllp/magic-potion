@@ -12,6 +12,7 @@ import {
   ResetLoginDialog,
 } from './dialogs';
 import { ago, duration } from './format';
+import { TeamPhoto } from './photos';
 import { taskLocked } from './TeamTable';
 
 // Everything about one team, and the actions staff may take on it (GAME_RULES section 11).
@@ -173,6 +174,12 @@ export function TeamPanel({ team, onClose }: { team: StaffTeamView; onClose: () 
             </ul>
           </section>
         )}
+        <section>
+          <h3 className="mb-1 text-sm font-bold tracking-wide text-ink-muted uppercase">
+            Team photo
+          </h3>
+          <TeamPhoto team={team} />
+        </section>
       </div>
 
       <footer className="grid grid-cols-2 gap-2 border-t border-line px-5 py-4">
