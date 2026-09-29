@@ -4,7 +4,7 @@ import {
   type PackItem,
   type TaskKey,
 } from '@magic-potion/shared';
-import type { Prisma} from '../generated/prisma/client';
+import type { Prisma } from '../generated/prisma/client';
 import { type PrismaClient } from '../generated/prisma/client';
 import type { NewItem, PackGame, PackStore, StoredPack } from './store';
 
