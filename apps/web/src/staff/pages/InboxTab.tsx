@@ -20,14 +20,20 @@ export function InboxTab({ game }: GameTabProps) {
   const action = useAction();
 
   useEffect(() => {
+    // A load that is no longer current must not overwrite what the admin has typed.
+    let current = true;
     api.get<{ locked: boolean; items: AdminInboxItem[] }>(`/games/${game.id}/inbox`).then(
       (r) => {
+        if (!current) return;
         setSaved(r.items);
         setItems(r.items);
         setLocked(r.locked);
       },
-      (e: unknown) => setLoadError(errorText(e)),
+      (e: unknown) => current && setLoadError(errorText(e)),
     );
+    return () => {
+      current = false;
+    };
   }, [api, game.id]);
 
   const dirty = useMemo(
@@ -86,7 +92,8 @@ export function InboxTab({ game }: GameTabProps) {
         <Status ok={dirty ? null : action.done} error={action.error} />
       </div>
       <p className="text-sm text-ink-muted">
-        Each bonus task is worth the reward set on the{' '}
+        Each is worth {game.settings.inbox.reward.toLocaleString('en-IN')} points; questions allow{' '}
+        {game.settings.inbox.answerAttempts} tries. Reward and release times are on the{' '}
         <button
           type="button"
           className="text-brand-soft underline"
@@ -94,8 +101,7 @@ export function InboxTab({ game }: GameTabProps) {
         >
           Settings
         </button>{' '}
-        tab ({game.settings.inbox.reward.toLocaleString('en-IN')} points), and arrives at the play
-        time set there. Questions allow {game.settings.inbox.answerAttempts} tries.
+        tab.
       </p>
       <fieldset disabled={locked} className="grid grid-cols-3 items-start gap-4">
         {items.map((item, n) => (
@@ -121,14 +127,17 @@ export function InboxTab({ game }: GameTabProps) {
                 onChange={(body) => patch(item.id, { body })}
                 error={problems[`${item.id}.body`]}
                 multiline
+                rows={2}
                 maxLength={300}
               />
               {item.kind === 'QUESTION' && (
                 <AnswersField
+                  rows={2}
                   value={item.answers}
                   onChange={(answers) => patch(item.id, { answers })}
                   error={problems[`${item.id}.answers`]}
-                  help="One per line. Case and extra spaces do not matter."
+                  label="Accepted answers (one per line)"
+                  help=""
                 />
               )}
               {item.kind === 'PHOTO' && (

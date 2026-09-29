@@ -156,6 +156,22 @@ Every change is written to the audit log. Changing a game in the Lobby reloads i
 
 `npm run screenshots:6a` sets up a whole game this way with a throwaway main admin (including a real logo upload), logs a team in to check the branding, starts the game, checks that settings lock, and saves the screens to `screenshots/phase6/6a/`. It deletes everything it made afterwards.
 
+## Content library (Phase 6B)
+
+**Content packs** (sidebar) hold the content of all 12 tasks and can be reused across games and clients. The built-in **Sample pack** is read-only: press **Copy**, give the copy a name, and edit the copy. Every new game starts with the Sample pack.
+
+- **Pack page:** the 12 tasks are on the left, each with how many entries it has. Pick a task, then an entry, edit the form, and press **Save**. Missing or wrong fields are marked in red. **Preview as player** plays the entry on the real task screen. Nothing is saved there, and answers never reach the browser.
+- **Question pools:** Riddle, Hangman, Pictionary, Guess the Celebrity and Data Story questions hold a pool. Each try draws a fresh set, starting with entries the team has not seen. The per-try counts are on the Settings tab (3 riddles, 3 Data Story questions and 5 drawings by default; Hangman plays one phrase).
+- **Import from Excel/CSV** (Riddle, Hangman, Ethical Dilemma, Data Story questions): download the template, fill one row per entry (several accepted answers in one cell, separated by `;`), and upload it. Every row is checked and problems are shown by row and column. Nothing is saved until you press **Add**.
+- **Pictures** (Picture Puzzle, Spot the Difference, Guess the Celebrity) are uploaded to Vercel Blob under random names, with hidden image details removed.
+- **Spot the Difference:** upload the original and the changed picture (same size), then click each difference, on either picture. Drag a circle to move it, and use the slider to resize it. **Blink** swaps the pictures so changes stand out. Exactly 7 are needed.
+- **Pictionary:** draw with the mouse on the pad; each line is one stroke, played back in order.
+- **A game's Content tab:** choose the pack and the one Ethical Dilemma scenario every team gets. Until Round 1 starts, the game follows the pack's latest content; from Round 1 it keeps its own copy.
+- **A game's Inbox tab:** the team photo text and the 2 bonus questions with their accepted answers.
+- **Games list:** **Archive** hides a finished game but keeps all its data (**Show archived** brings it back). **Delete** is offered only for a game that never started, and only after typing its name.
+
+`npm run screenshots:6b` does all of this with a throwaway admin, including a team seeing a different set of 3 riddles on its second try, and saves the screens to `screenshots/phase6/6b/`. It deletes the games, packs and pictures it made.
+
 ## Screenshots
 
 `npm run screenshots` saves a PNG of every player screen to `screenshots/phase4/` (git-ignored), at 1280×720 (a typical Zoom share) plus two at phone width. It uses the real server and database with two throwaway games that it creates and deletes; the Demo Game is not touched. It needs `ENABLE_DEV_TOOLS=true`, and runs `npm run dev` itself if it is not already running. First time only: `npx playwright install chromium`.

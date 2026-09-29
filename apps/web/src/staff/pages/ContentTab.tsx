@@ -16,22 +16,30 @@ export function ContentTab({ game }: GameTabProps) {
   const [dilemmaId, setDilemmaId] = useState<string | null>(null);
   const [dilemmas, setDilemmas] = useState<{ id: string; scenario: string }[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // True while another pack's scenarios load: the old ones must not be picked meanwhile.
+  const [loadingPack, setLoadingPack] = useState(false);
   const action = useAction();
 
   useEffect(() => {
+    // A load that is no longer current (the tab was left or reloaded) must not overwrite choices.
+    let current = true;
     Promise.all([
       api.get<GameContentInfo>(`/games/${game.id}/content`),
       api.get<PackSummary[]>('/packs'),
     ]).then(
       ([i, p]) => {
+        if (!current) return;
         setInfo(i);
         setPacks(p);
         setPackId(i.packId ?? '');
         setDilemmaId(i.dilemmaItemId ?? i.dilemmas[0]?.id ?? null);
         setDilemmas(i.dilemmas);
       },
-      (e: unknown) => setLoadError(errorText(e)),
+      (e: unknown) => current && setLoadError(errorText(e)),
     );
+    return () => {
+      current = false;
+    };
   }, [api, game.id]);
 
   // Choosing another pack shows its scenarios before saving.
@@ -43,7 +51,9 @@ export function ContentTab({ game }: GameTabProps) {
       setDilemmaId(info.dilemmaItemId ?? info.dilemmas[0]?.id ?? null);
       return;
     }
+    setLoadingPack(true);
     const detail = await action.run(() => api.get<PackDetail>(`/packs/${id}`));
+    setLoadingPack(false);
     if (!detail) return;
     const list = detail.items
       .filter((i) => i.taskKey === 'ethical_dilemma')
@@ -79,7 +89,10 @@ export function ContentTab({ game }: GameTabProps) {
   return (
     <div className="flex max-w-5xl flex-col gap-4">
       <div className="sticky top-0 z-10 -mx-6 flex items-center gap-3 border-b border-line bg-page px-6 py-3">
-        <SmallButton onClick={save} disabled={locked || !dirty || action.busy || !packId}>
+        <SmallButton
+          onClick={save}
+          disabled={locked || !dirty || action.busy || loadingPack || !packId}
+        >
           {action.busy ? 'Saving…' : 'Save content'}
         </SmallButton>
         {dirty && !action.error && (
@@ -134,7 +147,7 @@ export function ContentTab({ game }: GameTabProps) {
         {dilemmas.length === 0 && (
           <p className="text-ink-muted">This pack has no dilemma scenarios.</p>
         )}
-        <fieldset disabled={locked} className="flex flex-col gap-2">
+        <fieldset disabled={locked || loadingPack} className="flex flex-col gap-2">
           <legend className="sr-only">Scenario</legend>
           {dilemmas.map((d, i) => (
             <label

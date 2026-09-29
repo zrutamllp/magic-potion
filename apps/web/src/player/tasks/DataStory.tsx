@@ -4,7 +4,7 @@ import { Button, Card } from '../ui/basics';
 import { useTaskSubmit } from './parts';
 import type { TaskPlayProps } from './TaskShell';
 
-// Data Story: read a small dashboard and answer 3 questions, one at a time. The charts sit in
+// Data Story: read a small dashboard and answer its questions (3 by default), one at a time. The charts sit in
 // one row and the questions in a row below. Every value is printed on its chart in large text,
 // so it reads on a Zoom share at 1280x720.
 

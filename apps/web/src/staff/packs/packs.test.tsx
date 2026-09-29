@@ -123,6 +123,7 @@ describe('marking Spot the Difference areas', () => {
     withLayout();
     withStaff(<Harness />);
     expect(screen.getByRole('status')).toHaveTextContent('Mark 7 differences: 0 marked, 7 to go.');
+    fireEvent.click(screen.getByRole('button', { name: 'Mark the differences' }));
     // 300,100 on a 600x400 box is 600,200 on the 1200x800 picture.
     fireEvent.pointerDown(screen.getByTestId('mark-original'), { clientX: 300, clientY: 100 });
     expect(JSON.parse(screen.getByTestId('areas').textContent!)).toEqual([
@@ -142,6 +143,7 @@ describe('marking Spot the Difference areas', () => {
     withLayout();
     const seven = Array.from({ length: 7 }, (_, i) => ({ x: 100 + i * 140, y: 100, r: 30 }));
     withStaff(<Harness start={seven} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Mark the differences' }));
     expect(screen.getByRole('status')).toHaveTextContent('All 7 differences are marked.');
     fireEvent.pointerDown(screen.getByTestId('mark-original'), { clientX: 10, clientY: 10 });
     expect(screen.getByRole('alert')).toHaveTextContent(

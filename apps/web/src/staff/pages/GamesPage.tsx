@@ -280,8 +280,8 @@ function NewGame() {
           />
         </label>
         <p className="text-sm text-ink-muted">
-          The game starts with the default settings and the sample task content. You can change the
-          settings and team names next.
+          The game starts with the default settings and the Sample pack. You can change the
+          settings, content and team names next.
         </p>
         <Status error={action.error} />
         <SmallButton type="submit" disabled={action.busy}>

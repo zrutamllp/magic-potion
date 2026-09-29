@@ -61,6 +61,8 @@ export function TaskEditor({
     items[0] ? { kind: 'item', id: items[0].id } : null,
   );
   const [importing, setImporting] = useState(false);
+  // "Saved." after a new entry is saved, shown on that entry once it opens.
+  const [note, setNote] = useState<string | null>(null);
   const order = useAction();
   const selected =
     selection?.kind === 'item' ? items.find((i) => i.id === selection.id) : undefined;
@@ -68,6 +70,7 @@ export function TaskEditor({
   // Leaving an entry with unsaved changes asks first (the entry form marks itself unsaved).
   function select(next: Selection) {
     if (!confirmLeave()) return;
+    setNote(null);
     setSelection(next);
   }
 
@@ -186,7 +189,11 @@ export function TaskEditor({
             items={items}
             entry={selected ?? null}
             onPack={onPack}
-            onSelect={setSelection}
+            note={note}
+            onSelect={(next, saved) => {
+              setNote(saved ?? null);
+              setSelection(next);
+            }}
           />
         ) : (
           <Panel>
@@ -222,6 +229,7 @@ function EntryEditor({
   items,
   entry,
   onPack,
+  note,
   onSelect,
 }: {
   pack: PackDetail;
@@ -230,7 +238,9 @@ function EntryEditor({
   // Null for a new entry.
   entry: PackItem | null;
   onPack: (pack: PackDetail) => void;
-  onSelect: (selection: Selection) => void;
+  // A message carried over from the entry form that saved this entry.
+  note: string | null;
+  onSelect: (selection: Selection, note?: string) => void;
 }) {
   const { api } = useStaff();
   const forms = TASK_FORMS[task];
@@ -276,7 +286,7 @@ function EntryEditor({
         (a, b) => (!a || b.position > a.position ? b : a),
         undefined,
       );
-      if (added) onSelect({ kind: 'item', id: added.id });
+      if (added) onSelect({ kind: 'item', id: added.id }, 'Saved.');
     }
   }
 
@@ -313,7 +323,7 @@ function EntryEditor({
     <Panel className="min-w-0">
       <div className="sticky top-0 z-10 -mx-4 -mt-4 mb-3 flex flex-wrap items-center gap-2 rounded-t-2xl border-b border-line bg-card px-4 py-2">
         {!readOnly && (
-          <SmallButton onClick={save} disabled={action.busy || !dirty}>
+          <SmallButton onClick={save} disabled={action.busy || (entry !== null && !dirty)}>
             <Save className="h-4 w-4" aria-hidden /> {action.busy ? 'Saving…' : 'Save'}
           </SmallButton>
         )}
@@ -328,7 +338,7 @@ function EntryEditor({
         {dirty && !action.error && (
           <span className="text-sm font-semibold text-warning">You have unsaved changes</span>
         )}
-        <Status ok={dirty ? null : action.done} error={action.error} />
+        <Status ok={dirty ? null : (action.done ?? note)} error={action.error} />
       </div>
       {readOnly && (
         <p className="mb-2 text-sm text-ink-muted">

@@ -4,10 +4,10 @@
 //   node --env-file-if-exists=.env --import tsx scripts/adminTestUser.ts create
 //     prints JSON: { email, password }
 //   node --env-file-if-exists=.env --import tsx scripts/adminTestUser.ts delete <email> [blobUrl...]
-//     deletes that admin, the games and co-facilitators it made, their audit lines, and the
+//     deletes that admin, the games, content packs and co-facilitators it made, their audit lines, and the
 //     uploaded pictures given as blob URLs
 //
-// Local use only. Existing games and staff are never touched.
+// Local use only. Existing games, packs and staff are never touched.
 import { randomBytes } from 'node:crypto';
 import { del } from '@vercel/blob';
 import bcrypt from 'bcryptjs';
@@ -40,20 +40,30 @@ try {
     const admin = await prisma.staffUser.findUnique({ where: { email } });
     if (admin) {
       const made = await prisma.auditLog.findMany({
-        where: { staffUserId: admin.id, action: { in: ['CREATE_GAME', 'CREATE_STAFF'] } },
+        where: {
+          staffUserId: admin.id,
+          action: { in: ['CREATE_GAME', 'CREATE_STAFF', 'CREATE_PACK', 'COPY_PACK'] },
+        },
         select: { action: true, gameId: true, after: true },
       });
       const gameIds = made.filter((m) => m.action === 'CREATE_GAME').map((m) => m.gameId!);
       const staffIds = made
         .filter((m) => m.action === 'CREATE_STAFF')
         .map((m) => (m.after as { id: string }).id);
+      const packIds = made
+        .filter((m) => m.action === 'CREATE_PACK' || m.action === 'COPY_PACK')
+        .map((m) => (m.after as { id: string }).id);
       const staff = [admin.id, ...staffIds];
       await prisma.$transaction([
         prisma.game.deleteMany({ where: { id: { in: gameIds } } }),
+        // Only packs this admin made, never the Sample pack.
+        prisma.contentPack.deleteMany({ where: { id: { in: packIds }, builtIn: false } }),
         prisma.auditLog.deleteMany({ where: { staffUserId: { in: staff } } }),
         prisma.staffUser.deleteMany({ where: { id: { in: staff } } }),
       ]);
-      console.log(JSON.stringify({ games: gameIds.length, staff: staff.length }));
+      console.log(
+        JSON.stringify({ games: gameIds.length, packs: packIds.length, staff: staff.length }),
+      );
     }
     if (blobUrls.length > 0 && env.BLOB_READ_WRITE_TOKEN) {
       await del(blobUrls, { token: env.BLOB_READ_WRITE_TOKEN });

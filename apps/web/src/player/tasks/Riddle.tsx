@@ -4,7 +4,7 @@ import { Button, Card } from '../ui/basics';
 import { useTaskSubmit } from './parts';
 import type { TaskPlayProps } from './TaskShell';
 
-// Riddle: 3 riddles, each answered and checked on its own. The server accepts small
+// Riddle: a set of riddles (3 by default, drawn from the pool), each answered and checked on its own. The server accepts small
 // differences (case, spaces, "a", "an", "the") and a list of answers per riddle.
 
 interface RiddleView {
@@ -36,7 +36,7 @@ export function Riddle({ task, view }: TaskPlayProps) {
           <span>Riddle {checked + 1}:</span> <span>{feedback.text}</span>
         </p>
       ) : (
-        <p className="text-lg font-semibold">Answer all 3 riddles.</p>
+        <p className="text-lg font-semibold">Answer all {content.riddles.length} riddles.</p>
       )}
       <ol className="mt-1.5 space-y-1.5">
         {content.riddles.map((riddle, i) => {

@@ -54,13 +54,25 @@ function UploadButton({
   );
 }
 
+// The entry as it is now. Uploads finish later; reading this then keeps any change made while
+// the file was uploading (another upload, a typed name).
+function useLatest<T>(value: T) {
+  const ref = useRef(value);
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref;
+}
+
 // ---------- Picture Puzzle ----------
 
 type PuzzlePub = { title: string; imageUrl: string; width: number; height: number };
 
 export function PuzzleForm({ value, onChange, errors }: ItemFormProps) {
   const pub = (value.publicData ?? {}) as Partial<PuzzlePub>;
-  const set = (p: Partial<PuzzlePub>) => onChange({ publicData: { ...pub, ...p }, secretData: {} });
+  const latest = useLatest(value);
+  const set = (p: Partial<PuzzlePub>) =>
+    onChange({ publicData: { ...(latest.current.publicData as object), ...p }, secretData: {} });
   return (
     <div className="flex flex-col gap-3">
       <TextField
@@ -118,6 +130,7 @@ export function SpotForm({ value, onChange, errors }: ItemFormProps) {
   const pub = (value.publicData ?? {}) as Partial<SpotPub>;
   const areas = ((value.secretData as { areas?: Area[] } | undefined)?.areas ?? []) as Area[];
   const [blink, setBlink] = useState(false);
+  const [marking, setMarking] = useState(false);
   const [showRight, setShowRight] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
   const width = pub.width ?? 0;
@@ -127,8 +140,15 @@ export function SpotForm({ value, onChange, errors }: ItemFormProps) {
   // The extra click room players get, from the default setting (each game can change it).
   const room = (DEFAULT_SETTINGS.tasks.spotDifferenceTolerancePercent / 100) * width;
 
-  const emit = (p: Partial<SpotPub>, next: Area[] = areas) =>
-    onChange({ publicData: { ...pub, ...p }, secretData: { areas: next } });
+  const latest = useLatest(value);
+  const emit = (p: Partial<SpotPub>, next?: Area[]) => {
+    const now = latest.current;
+    const nowAreas = (now.secretData as { areas?: Area[] } | undefined)?.areas ?? [];
+    onChange({
+      publicData: { ...(now.publicData as object), ...p },
+      secretData: { areas: next ?? nowAreas },
+    });
+  };
   const setAreas = (next: Area[]) => {
     setRefused(null);
     emit({}, next);
@@ -191,8 +211,44 @@ export function SpotForm({ value, onChange, errors }: ItemFormProps) {
           {pub.rightHeight}). Upload the changed picture again at the same size.
         </p>
       )}
-      {ready && sameSize && (
+      {ready && sameSize && !marking && (
         <>
+          <div className="flex flex-wrap items-center gap-3">
+            <p
+              className={`text-sm font-semibold ${left === 0 ? 'text-success' : 'text-danger'}`}
+              role="status"
+            >
+              {status}
+            </p>
+            <SmallButton onClick={() => setMarking(true)}>Mark the differences</SmallButton>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {(['left', 'right'] as const).map((side) => (
+              <MarkingPicture
+                key={side}
+                label={side === 'left' ? 'Original' : 'Changed'}
+                src={side === 'left' ? pub.leftImageUrl! : pub.rightImageUrl!}
+                width={width}
+                height={height}
+                areas={areas}
+                room={room}
+              />
+            ))}
+          </div>
+        </>
+      )}
+      {ready && sameSize && marking && (
+        // Marking needs big pictures: the whole window, both pictures side by side.
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Mark the differences"
+          className="fixed inset-0 z-50 flex flex-col gap-3 overflow-y-auto bg-page p-5"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl font-extrabold">Mark the differences</h2>
+            <SmallButton onClick={() => setMarking(false)}>Done</SmallButton>
+          </div>
           <div className="flex flex-wrap items-center gap-3">
             <p
               className={`text-sm font-semibold ${left === 0 ? 'text-success' : 'text-danger'}`}
@@ -217,7 +273,12 @@ export function SpotForm({ value, onChange, errors }: ItemFormProps) {
               Two circles overlap. A click there counts for the nearest one not yet found.
             </p>
           )}
-          <div className={`grid gap-3 ${blink ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          <div
+            className={`mx-auto grid w-full gap-3 ${blink ? 'grid-cols-1' : 'grid-cols-2'}`}
+            style={{
+              maxWidth: `calc((100vh - 15rem) * ${(width / height) * (blink ? 1 : 2)} + 1rem)`,
+            }}
+          >
             {(blink ? [showRight ? 'right' : 'left'] : ['left', 'right']).map((side) => (
               <MarkingPicture
                 key={blink ? 'blink' : side}
@@ -270,7 +331,7 @@ export function SpotForm({ value, onChange, errors }: ItemFormProps) {
             {DEFAULT_SETTINGS.tasks.spotDifferenceTolerancePercent}% of the width by default; a game
             setting).
           </p>
-        </>
+        </div>
       )}
       <FieldError message={errors.find((e) => e.path === 'secret.areas')?.message} />
     </div>
@@ -293,8 +354,9 @@ function MarkingPicture({
   height: number;
   areas: Area[];
   room: number;
-  onAdd: (p: { x: number; y: number }) => void;
-  onMove: (index: number, p: { x: number; y: number }) => void;
+  // Without these the picture is a preview only.
+  onAdd?: (p: { x: number; y: number }) => void;
+  onMove?: (index: number, p: { x: number; y: number }) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const dragging = useRef<number | null>(null);
@@ -311,14 +373,14 @@ function MarkingPicture({
       <figcaption className="mb-1 text-xs font-semibold text-ink-muted">{label}</figcaption>
       <div
         ref={box}
-        data-testid={`mark-${label.toLowerCase()}`}
-        className="relative cursor-crosshair touch-none overflow-hidden rounded-lg border border-line select-none"
+        data-testid={onAdd ? `mark-${label.toLowerCase()}` : undefined}
+        className={`relative touch-none overflow-hidden rounded-lg border border-line select-none ${onAdd ? 'cursor-crosshair' : ''}`}
         style={{ aspectRatio: `${width} / ${height}` }}
         onPointerDown={(e: ReactPointerEvent) => {
-          if (dragging.current === null) onAdd(point(e));
+          if (onAdd && dragging.current === null) onAdd(point(e));
         }}
         onPointerMove={(e) => {
-          if (dragging.current === null) return;
+          if (dragging.current === null || !onMove) return;
           moved.current = true;
           onMove(dragging.current, point(e));
         }}
@@ -334,8 +396,9 @@ function MarkingPicture({
           {areas.map((a, i) => (
             <g
               key={i}
-              className="cursor-move"
+              className={onMove ? 'cursor-move' : undefined}
               onPointerDown={(e) => {
+                if (!onMove) return;
                 e.stopPropagation();
                 (
                   e.currentTarget.ownerSVGElement?.parentElement as HTMLElement | null
@@ -345,6 +408,7 @@ function MarkingPicture({
               }}
             >
               <circle
+                pointerEvents="none"
                 cx={a.x}
                 cy={a.y}
                 r={a.r + room}
@@ -391,6 +455,7 @@ type FaceSec = { names: string[] };
 export function CelebrityForm({ value, onChange, errors }: ItemFormProps) {
   const pub = (value.publicData ?? {}) as Partial<FacePub>;
   const sec = (value.secretData ?? {}) as Partial<FaceSec>;
+  const latest = useLatest(value);
   return (
     <div className="flex flex-col gap-3">
       <div>
@@ -413,7 +478,9 @@ export function CelebrityForm({ value, onChange, errors }: ItemFormProps) {
           <UploadButton
             use="face"
             label={pub.imageUrl ? 'Replace photo' : 'Upload photo'}
-            onUploaded={(img) => onChange({ publicData: { imageUrl: img.url }, secretData: sec })}
+            onUploaded={(img) =>
+              onChange({ publicData: { imageUrl: img.url }, secretData: latest.current.secretData })
+            }
           />
         </div>
         <FieldError message={errorAt(errors, 'public.imageUrl')} />
@@ -487,7 +554,7 @@ export function DrawingPad({
         ref={svg}
         data-testid="drawing-pad"
         viewBox="-4 -4 108 108"
-        className="h-64 w-64 cursor-crosshair touch-none rounded-xl border border-line bg-white"
+        className="h-64 w-64 shrink-0 cursor-crosshair touch-none rounded-xl border border-line bg-white"
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture?.(e.pointerId);
           setCurrent([at(e)]);
