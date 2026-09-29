@@ -84,7 +84,8 @@ export interface ServerToClientEvents {
   'staff:full': (p: { state: StaffState; feed: FeedItem[] }) => void;
   'staff:update': (p: { state: StaffState }) => void;
   // Staff only: exactly what the watched team sees, sent on every change.
-  'staff:team': (p: { teamId: string; state: PlayerState; feed: FeedItem[] }) => void;
+  // The feed comes the first time and whenever it changed.
+  'staff:team': (p: { teamId: string; state: PlayerState; feed?: FeedItem[] }) => void;
   // Staff only: the audit log changed; fetch it again.
   'staff:audit': () => void;
   'feed:item': (item: FeedItem) => void;

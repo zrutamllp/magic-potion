@@ -8,6 +8,12 @@ import type {
   TeamStatus,
   TeamTaskStatus,
 } from './enums';
+import type {
+  StaffAdjustmentRequestView,
+  StaffNeededFragmentView,
+  StaffTaskView,
+  StuckReason,
+} from './live';
 import type { GameSettings } from './settings';
 import type { TaskKey, TaskType } from './taskKeys';
 
@@ -189,6 +195,15 @@ export interface StaffTeamView {
   supportFunds: number;
   tasksDone: number;
   messagesLeft: number;
+  // Phase 6C dashboard.
+  tasks: StaffTaskView[];
+  // Live provisional score (no Full Potion Bonus until the Reveal). Null for a removed team.
+  score: number | null;
+  // The team's last action or login, as a server timestamp.
+  lastActivityAt: number | null;
+  // Empty unless the team looks stuck.
+  stuck: StuckReason[];
+  neededFragments: StaffNeededFragmentView[];
 }
 
 // Who holds which team's fragment. Testing only: sent to the main admin when dev tools are on,
@@ -212,6 +227,10 @@ export interface StaffState {
   potion: PotionView;
   staff: { id: string; name: string; role: StaffRole };
   teams: StaffTeamView[];
+  // Co-facilitator changes above the limit, waiting for the main admin. A co-facilitator sees
+  // only their own.
+  pendingAdjustments: StaffAdjustmentRequestView[];
+  limits: { coFacilitatorAdjustLimit: number; stuckIdleSeconds: number };
   devTools: boolean;
   // Null unless dev tools are on and this is the main admin.
   devFragments: StaffFragmentView[] | null;

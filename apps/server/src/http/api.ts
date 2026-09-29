@@ -14,7 +14,9 @@ import type { GameEngine } from '../engine/engine';
 import type { FileStore } from '../uploads/blob';
 import { PreviewService } from '../packs/preview';
 import type { PackService } from '../packs/service';
+import type { LiveStore } from '../live/store';
 import { addAdminRoutes } from './admin';
+import { addLiveRoutes } from './live';
 import { addPackRoutes } from './packs';
 
 // REST routes under /api: logins, and the staff game controls that Phase 6 will build on.
@@ -32,6 +34,10 @@ export interface ApiDeps {
   preview?: PreviewService;
   // Where uploaded pictures are saved. Uploads answer "not set up" without it.
   files?: FileStore;
+  // The audit log for the facilitator dashboard (Phase 6C). Its routes need it.
+  live?: LiveStore;
+  // Tells open dashboards the audit log changed outside the engine.
+  onAudit?: (gameId: string) => void;
   // Registers the dev-only routes. Never true in production.
   devTools: boolean;
 }
@@ -66,6 +72,8 @@ export function createApiRouter({
   admin,
   packs,
   files,
+  live,
+  onAudit,
   devTools,
   preview = new PreviewService(),
 }: ApiDeps): Router {
@@ -156,6 +164,7 @@ export function createApiRouter({
   });
 
   if (admin) addAdminRoutes(staff, admin, mainAdminOnly, files);
+  if (live) addLiveRoutes(staff, { auth, gameEngine, mainAdminOnly, store: live, admin, onAudit });
   if (admin && packs) addPackRoutes(staff, packs, admin, preview, mainAdminOnly);
 
   if (devTools) {

@@ -8,6 +8,7 @@ import {
   FundsSendSchema,
   InboxAnswerSchema,
   RequestIdSchema,
+  StaffWatchSchema,
   TaskIdSchema,
   TaskSubmitSchema,
   type Ack,
@@ -53,7 +54,24 @@ export interface RealtimeOptions {
   clock: Clock;
   clientOrigins: string[];
   devTools: boolean;
+  // How often open dashboards get fresh state even with no game event, so the "stuck team"
+  // flag appears on time. Tests turn it off with 0.
+  staffRefreshMs?: number;
 }
+
+// Events that only change what staff see (a team's last activity time).
+const STAFF_ONLY_EVENTS: ReadonlySet<EngineEvent['type']> = new Set(['teamSeen']);
+// Events that write an audit row, so open dashboards fetch the audit log again.
+const AUDITED_EVENTS: ReadonlySet<EngineEvent['type']> = new Set([
+  'staffAction',
+  'frozen',
+  'resumed',
+  'extended',
+  'phaseChanged',
+  'gameEnded',
+  'teamRemoved',
+  'photoReviewed',
+]);
 
 type TeamData = { kind: 'team'; teamId: string; gameId: string; tokenId: string };
 type StaffData = {
@@ -86,6 +104,9 @@ export class Realtime {
   // Open sockets per team, for the "online" dot on the staff screen.
   private readonly online = new Map<string, number>();
   private readonly staffSockets = new Map<string, Set<IoSocket>>();
+  // "View as team": the team each staff socket is following.
+  private readonly watching = new Map<IoSocket, string>();
+  private refreshTimer: NodeJS.Timeout | null = null;
   readonly auth: AuthService;
 
   constructor(private readonly opts: RealtimeOptions) {
@@ -143,12 +164,32 @@ export class Realtime {
       else this.onStaff(socket, data, engine);
     });
     this.io = io;
+    const every = this.opts.staffRefreshMs ?? 30_000;
+    if (every > 0) {
+      this.refreshTimer = setInterval(() => this.refreshStaff(), every);
+      this.refreshTimer.unref();
+    }
     return io;
   }
 
   async close(): Promise<void> {
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
+    this.refreshTimer = null;
     await this.io?.close();
     this.io = null;
+  }
+
+  // Fresh state to every open dashboard. Used for the idle flag, which changes with time only.
+  refreshStaff(): void {
+    for (const [gameId, sockets] of this.staffSockets) {
+      const engine = this.engines.get(gameId);
+      if (engine && sockets.size > 0) this.pushStaff(gameId, engine);
+    }
+  }
+
+  // An audited change made outside the engine (a login reset): dashboards fetch the log again.
+  auditChanged(gameId: string): void {
+    for (const socket of this.staffSockets.get(gameId) ?? []) socket.emit('staff:audit');
   }
 
   // ---------- Connecting ----------
@@ -190,6 +231,10 @@ export class Realtime {
     void socket.join([`game:${gameId}`, `team:${teamId}`, `session:${tokenId}`]);
     this.online.set(teamId, (this.online.get(teamId) ?? 0) + 1);
     this.touch(tokenId);
+    // A login counts as activity for the dashboard's "stuck team" flag.
+    engine
+      .markSeen(teamId)
+      .catch((error: unknown) => console.error('Could not record team activity:', error));
 
     const viewer: Viewer = { kind: 'team', teamId };
     socket.emit('state:full', {
@@ -251,7 +296,42 @@ export class Realtime {
       state: this.staffState(engine, data),
       feed: buildFeed(engine.state, { kind: 'staff', teams: data.teams }),
     });
-    socket.on('disconnect', () => set.delete(socket));
+    (socket as unknown as Socket).on('staff:watch', (payload: unknown, ack: unknown) => {
+      if (typeof ack !== 'function') return;
+      const parsed = StaffWatchSchema.safeParse(payload);
+      if (!parsed.success) {
+        ack({ ok: false, code: 'INVALID_REQUEST', message: AUTH_ERRORS.INVALID_REQUEST });
+        return;
+      }
+      const teamId = parsed.data.teamId;
+      if (teamId === null) {
+        this.watching.delete(socket);
+        ack({ ok: true });
+        return;
+      }
+      // Co-facilitators may only follow their assigned teams.
+      if (!engine.state.teams[teamId] || (data.teams && !data.teams.has(teamId))) {
+        ack({ ok: false, code: 'NOT_ALLOWED', message: AUTH_ERRORS.NOT_ALLOWED });
+        return;
+      }
+      this.watching.set(socket, teamId);
+      this.sendWatched(socket, engine, teamId, true);
+      ack({ ok: true });
+    });
+    socket.on('disconnect', () => {
+      set.delete(socket);
+      this.watching.delete(socket);
+    });
+  }
+
+  // Exactly what the team itself is sent: its own player state and its own feed.
+  private sendWatched(socket: IoSocket, engine: GameEngine, teamId: string, withFeed: boolean) {
+    if (!engine.state.teams[teamId]) return;
+    socket.emit('staff:team', {
+      teamId,
+      state: buildPlayerState(engine, teamId, this.opts.clock.now()),
+      ...(withFeed ? { feed: buildFeed(engine.state, { kind: 'team', teamId }) } : {}),
+    });
   }
 
   // ---------- Pushing ----------
@@ -267,12 +347,27 @@ export class Realtime {
     );
   }
 
-  private pushStaff(gameId: string, engine: GameEngine, feed: FeedItem[] = []): void {
+  private pushStaff(
+    gameId: string,
+    engine: GameEngine,
+    feed: FeedItem[] = [],
+    opts: { full?: boolean; audit?: boolean } = {},
+  ): void {
     for (const socket of this.staffSockets.get(gameId) ?? []) {
       const data = socket.data as StaffData;
-      socket.emit('staff:update', { state: this.staffState(engine, data) });
       const viewer: Viewer = { kind: 'staff', teams: data.teams };
-      for (const item of feed) if (canSee(viewer, item)) socket.emit('feed:item', item);
+      if (opts.full) {
+        socket.emit('staff:full', {
+          state: this.staffState(engine, data),
+          feed: buildFeed(engine.state, viewer),
+        });
+      } else {
+        socket.emit('staff:update', { state: this.staffState(engine, data) });
+        for (const item of feed) if (canSee(viewer, item)) socket.emit('feed:item', item);
+      }
+      const watched = this.watching.get(socket);
+      if (watched) this.sendWatched(socket, engine, watched, !!opts.full || feed.length > 0);
+      if (opts.audit) socket.emit('staff:audit');
     }
   }
 
@@ -281,20 +376,35 @@ export class Realtime {
   private push(gameId: string, engine: GameEngine, events: readonly EngineEvent[]): void {
     const io = this.io;
     if (!io) return;
+    const audit = events.some((e) => AUDITED_EVENTS.has(e.type));
+    if (events.every((e) => STAFF_ONLY_EVENTS.has(e.type))) {
+      this.pushStaff(gameId, engine, [], { audit });
+      return;
+    }
+    // A new team name appears in old feed lines too, so everyone gets the full feed again.
+    const renamed = events.some(
+      (e) => e.type === 'staffAction' && (e.action === 'RENAME_TEAM' || e.action === 'UNDO'),
+    );
     const now = this.opts.clock.now();
     for (const teamId of Object.keys(engine.state.teams)) {
       if (!io.sockets.adapter.rooms.get(`team:${teamId}`)?.size) continue;
-      io.to(`team:${teamId}`).emit('state:update', {
-        state: buildPlayerState(engine, teamId, now),
-      });
+      const state = buildPlayerState(engine, teamId, now);
+      if (renamed) {
+        io.to(`team:${teamId}`).emit('state:full', {
+          state,
+          feed: buildFeed(engine.state, { kind: 'team', teamId }),
+        });
+      } else {
+        io.to(`team:${teamId}`).emit('state:update', { state });
+      }
     }
-    const feed = feedChanges(engine.state, events);
+    const feed = renamed ? [] : feedChanges(engine.state, events);
     for (const item of feed) {
       const rooms =
         item.kind === 'chat' ? [`game:${gameId}`] : feedTeams(item).map((t) => `team:${t}`);
       io.to(rooms).emit('feed:item', item);
     }
-    this.pushStaff(gameId, engine, feed);
+    this.pushStaff(gameId, engine, feed, { full: renamed, audit });
   }
 
   // Tells the browsers of ended logins why, then disconnects them. They do not reconnect.

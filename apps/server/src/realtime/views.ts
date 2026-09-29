@@ -7,6 +7,8 @@ import {
   type PlayerState,
   type PotionView,
   type StaffState,
+  type StaffTeamView,
+  type StuckReason,
   type TransactionLine,
 } from '@magic-potion/shared';
 import type { StaffAccount } from '../auth/store';
@@ -15,7 +17,7 @@ import type { EngineEvent } from '../engine/events';
 import { phaseMsLeft, playMsRemaining, timersRunning } from '../engine/playClock';
 import { potionPercent } from '../engine/potion';
 import { messagesLeft } from '../engine/rules/chat';
-import type { GameContent, GameState, TransferState } from '../engine/state';
+import type { GameContent, GameState, TeamState, TransferState } from '../engine/state';
 import { dilemmaAnswer, taskName } from '../engine/views';
 
 // Turns engine state into what one browser may see. Built only from public fields:
@@ -220,6 +222,7 @@ export function buildStaffState(
 ): StaffState {
   const s = engine.state;
   const devAdmin = devTools && staff.role === 'MAIN_ADMIN';
+  const scores = new Map(engine.leaderboard().entries.map((e) => [e.teamId, e.score.total]));
   return {
     game: clockView(s, now),
     potion: potionView(engine),
@@ -227,17 +230,23 @@ export function buildStaffState(
     teams: Object.values(s.teams)
       .filter((t) => !teams || teams.has(t.id))
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-      .map((t) => ({
-        id: t.id,
-        code: t.code,
-        name: t.name,
-        status: t.status,
-        online: isOnline(t.id),
-        taskFunds: t.taskFunds,
-        supportFunds: t.supportFunds,
-        tasksDone: Object.values(t.tasks).filter((x) => x.status === 'DONE').length,
-        messagesLeft: messagesLeft(s, t.id),
+      .map((t) => staffTeamView(engine, t, scores.get(t.id) ?? null, isOnline, now)),
+    // The main admin decides every request; a co-facilitator follows their own.
+    pendingAdjustments: Object.values(s.adjustments)
+      .filter((a) => a.status === 'PENDING')
+      .filter((a) => staff.role === 'MAIN_ADMIN' || a.requestedById === staff.id)
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .map((a) => ({
+        id: a.id,
+        teamId: a.teamId,
+        teamName: teamName(s, a.teamId),
+        amount: a.amount,
+        reason: a.reason,
+        requestedByName: a.requestedByName,
+        requestedById: a.requestedById,
+        createdAt: a.createdAt,
       })),
+    limits: { ...s.settings.staff },
     devTools,
     // Testing aid only (dev tools, main admin). Never part of a player's state.
     devFragments: devAdmin
@@ -264,6 +273,70 @@ export function buildStaffState(
             }),
           )
       : null,
+  };
+}
+
+// A team looks stuck when its Task Funds are below zero (it cannot start a task), or when it
+// has done nothing for a while during a running round (the idle time is a setting).
+export function stuckReasons(s: GameState, team: TeamState, now: number): StuckReason[] {
+  if (team.status !== 'ACTIVE') return [];
+  const reasons: StuckReason[] = [];
+  if (team.taskFunds < 0) reasons.push('NEGATIVE_FUNDS');
+  const done = Object.values(team.tasks).filter((x) => x.status === 'DONE').length;
+  if (timersRunning(s) && done < TASKS_PER_TEAM) {
+    // Idle time counts from the round start (moved on by any pause) or the last action.
+    const since = Math.max(team.lastActionAt ?? 0, s.phaseStartedAt ?? 0);
+    if (now - since >= s.settings.staff.stuckIdleSeconds * 1000) reasons.push('IDLE');
+  }
+  return reasons;
+}
+
+function staffTeamView(
+  engine: GameEngine,
+  t: TeamState,
+  score: number | null,
+  isOnline: (teamId: string) => boolean,
+  now: number,
+): StaffTeamView {
+  const s = engine.state;
+  const view = engine.teamView(t.id);
+  return {
+    id: t.id,
+    code: t.code,
+    name: t.name,
+    status: t.status,
+    online: isOnline(t.id),
+    taskFunds: t.taskFunds,
+    supportFunds: t.supportFunds,
+    tasksDone: Object.values(t.tasks).filter((x) => x.status === 'DONE').length,
+    messagesLeft: messagesLeft(s, t.id),
+    tasks: (view?.tasks ?? []).map((task) => ({
+      id: task.id,
+      name: task.name,
+      type: task.type,
+      status: task.status,
+      running: task.running
+        ? {
+            number: task.running.number,
+            msLeft: task.running.msLeft,
+            lockMsLeft: task.running.lockMsLeft,
+          }
+        : null,
+    })),
+    score: t.status === 'ACTIVE' ? score : null,
+    lastActivityAt: t.lastActionAt,
+    stuck: stuckReasons(s, t, now),
+    // Who holds each fragment this team needs; never the value.
+    neededFragments: Object.values(s.fragments)
+      .filter((f) => f.neededByTeamId === t.id)
+      .sort((a, b) => a.kind.localeCompare(b.kind))
+      .map((f) => ({
+        id: f.id,
+        kind: f.kind,
+        holderTeamName: teamName(s, f.holderTeamId),
+        holderOnline: isOnline(f.holderTeamId),
+        released: f.releasedAt !== null,
+      })),
   };
 }
 

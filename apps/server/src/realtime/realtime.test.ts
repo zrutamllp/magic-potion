@@ -346,6 +346,7 @@ describe('potion and leaderboard', () => {
     expect(b.state().potion.percent).toBe(0);
     expect((await finishAllTasks(engine, A)).ok).toBe(true);
     await waitFor(() => b.state().potion.completedTeams === 1, 'potion update');
+    await waitFor(() => a.state().potion.completedTeams === 1, 'potion update for team 1');
     expect(a.state().potion.percent).toBeCloseTo(100 / 3);
     expect(a.state().team.tasksDone).toBe(5);
   });
@@ -510,5 +511,96 @@ describe('reloading a Lobby game', () => {
     expect(evicted).toEqual(['game-1']);
     await new Promise((r) => setTimeout(r, 50));
     expect(a.socket.connected).toBe(true);
+  });
+});
+
+describe('facilitator dashboard (Phase 6C)', () => {
+  it('sends tasks, a live score and pending requests to staff', async () => {
+    await started();
+    const s = await staffBrowser();
+    const row = s.state().teams.find((t) => t.id === A);
+    expect(row?.tasks).toHaveLength(5);
+    expect(row?.tasks[0]).toMatchObject({ status: 'NOT_STARTED', running: null });
+    expect(row?.score).toBe(20_000);
+    expect(s.state().limits).toEqual({ coFacilitatorAdjustLimit: 2_000, stuckIdleSeconds: 300 });
+    await engine.requestAdjustment({ id: COFAC.id, name: 'Co-facilitator' }, A, 3_000, 'x');
+    await waitFor(() => s.state().pendingAdjustments.length === 1, 'pending request');
+    expect(s.state().pendingAdjustments[0]).toMatchObject({ teamName: 'Team 1', amount: 3_000 });
+  });
+
+  it('flags a team with Task Funds below zero, or idle for 5 minutes in a round', async () => {
+    await started();
+    const s = await staffBrowser();
+    const stuck = (id: string) => s.state().teams.find((t) => t.id === id)?.stuck;
+    expect(stuck(A)).toEqual([]);
+    await engine.adjustFunds(ADMIN.id, A, -10_001, 'x');
+    await waitFor(() => stuck(A)?.includes('NEGATIVE_FUNDS') === true, 'negative funds flag');
+
+    clock.advance(2 * MIN);
+    await engine.sendChat(B, 'hello');
+    clock.advance(3 * MIN - 1);
+    realtime.refreshStaff();
+    await waitFor(() => stuck(C)?.length === 0, 'fresh state');
+    clock.advance(1);
+    realtime.refreshStaff();
+    await waitFor(() => stuck(C)?.includes('IDLE') === true, 'idle flag');
+    expect(stuck(B)).toEqual([]);
+    // Not while the game is paused.
+    await engine.freeze(ADMIN.id);
+    await waitFor(() => stuck(C)?.length === 0, 'no flag while paused');
+  });
+
+  it('records a team login as activity', async () => {
+    await started();
+    clock.advance(MIN);
+    await team(1);
+    await engine.idle();
+    expect(engine.state.teams[A]?.lastActionAt).toBe(T0 + MIN);
+  });
+
+  it('"View as team" sends exactly what the team sees, for allowed teams only', async () => {
+    await started();
+    const a = await team(1);
+    const s = await staffBrowser();
+    const seen: { state: PlayerState; feed?: FeedItem[] }[] = [];
+    s.socket.on('staff:team', (p) => seen.push(p));
+    expect(await send(s, 'staff:watch', { teamId: A })).toEqual({ ok: true });
+    await waitFor(() => seen.length === 1, 'first team view');
+    expect(seen[0]?.feed).toEqual([]);
+
+    await send(a, 'chat:send', { body: 'hello' });
+    await waitFor(() => seen.some((p) => p.feed?.length === 1), 'feed change');
+    await waitFor(() => a.feed.length === 1, 'team feed');
+    expect(seen.at(-1)?.state).toEqual(a.state());
+    expect(seen.at(-1)?.feed).toEqual(a.feed);
+
+    const cofac = await staffBrowser(COFAC);
+    expect(await send(cofac, 'staff:watch', { teamId: B })).toMatchObject({
+      ok: false,
+      code: 'NOT_ALLOWED',
+    });
+    expect(await send(cofac, 'staff:watch', { teamId: A })).toEqual({ ok: true });
+  });
+
+  it('tells dashboards to reload the audit log after a staff change', async () => {
+    await started();
+    const s = await staffBrowser();
+    let nudges = 0;
+    s.socket.on('staff:audit', () => nudges++);
+    await engine.adjustFunds(ADMIN.id, A, 100, 'x');
+    await waitFor(() => nudges === 1, 'audit nudge');
+    await engine.sendChat(B, 'hi');
+    await engine.idle();
+    expect(nudges).toBe(1);
+  });
+
+  it('resends the whole feed with the new name after a live rename', async () => {
+    await started();
+    const a = await team(1);
+    await send(a, 'chat:send', { body: 'hello' });
+    await waitFor(() => a.feed.length === 1, 'chat line');
+    await engine.renameTeam(ADMIN.id, A, 'Owls');
+    await waitFor(() => a.feed[0]?.kind === 'chat' && a.feed[0].teamName === 'Owls', 'new name');
+    expect(a.state().team.name).toBe('Owls');
   });
 });

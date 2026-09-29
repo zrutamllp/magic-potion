@@ -18,6 +18,7 @@ import { systemClock } from './engine/clock';
 import { EngineRegistry } from './engine/registry';
 import { devToolsEnabled, loadEnv, parseOrigins } from './env';
 import { createApiRouter } from './http/api';
+import { PrismaLiveStore } from './live/prismaStore';
 import { Realtime } from './realtime/server';
 import { BlobFileStore } from './uploads/blob';
 
@@ -82,6 +83,8 @@ const app = createApp({
         admin,
         packs,
         files: env.BLOB_READ_WRITE_TOKEN ? new BlobFileStore(env.BLOB_READ_WRITE_TOKEN) : undefined,
+        live: prisma ? new PrismaLiveStore(prisma) : undefined,
+        onAudit: (gameId) => live.auditChanged(gameId),
         devTools,
       })
     : undefined,
