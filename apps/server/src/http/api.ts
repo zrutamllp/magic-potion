@@ -12,6 +12,7 @@ import type { StaffAccount } from '../auth/store';
 import { finishAllTasks } from '../engine/devTools';
 import type { GameEngine } from '../engine/engine';
 import type { FileStore } from '../uploads/blob';
+import { PreviewService } from '../packs/preview';
 import type { PackService } from '../packs/service';
 import { addAdminRoutes } from './admin';
 import { addPackRoutes } from './packs';
@@ -27,6 +28,8 @@ export interface ApiDeps {
   admin?: AdminService;
   // Content packs (Phase 6B). Needs admin.
   packs?: PackService;
+  // Preview as player sessions (in memory). Tests pass one with a fake clock.
+  preview?: PreviewService;
   // Where uploaded pictures are saved. Uploads answer "not set up" without it.
   files?: FileStore;
   // Registers the dev-only routes. Never true in production.
@@ -57,7 +60,15 @@ function bearer(req: Request): string | undefined {
 const ExtendSchema = z.object({ seconds: z.number() });
 const FinishSchema = z.object({ limit: z.number().int().positive().optional() });
 
-export function createApiRouter({ auth, engine, admin, packs, files, devTools }: ApiDeps): Router {
+export function createApiRouter({
+  auth,
+  engine,
+  admin,
+  packs,
+  files,
+  devTools,
+  preview = new PreviewService(),
+}: ApiDeps): Router {
   const api = express.Router();
 
   api.post('/team/login', async (req, res) => {
@@ -145,7 +156,7 @@ export function createApiRouter({ auth, engine, admin, packs, files, devTools }:
   });
 
   if (admin) addAdminRoutes(staff, admin, mainAdminOnly, files);
-  if (admin && packs) addPackRoutes(staff, packs, admin, mainAdminOnly);
+  if (admin && packs) addPackRoutes(staff, packs, admin, preview, mainAdminOnly);
 
   if (devTools) {
     staff.post(

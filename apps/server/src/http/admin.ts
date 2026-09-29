@@ -56,9 +56,16 @@ export function addAdminRoutes(
       });
     });
 
-  // The client logo. Saved under a random name with all metadata removed; the URL goes into
-  // the branding settings when the admin saves them.
-  staff.post('/uploads/logo', mainAdminOnly, readImage, async (req, res: StaffResponse) => {
+  // Pictures: the client logo and task pictures. Each is saved under a random name with all
+  // metadata removed; the URL goes into the settings or the pack entry when the admin saves.
+  const USES = {
+    logo: { folder: 'logos', maxSide: 512 },
+    puzzle: { folder: 'tasks', maxSide: 1600 },
+    spot: { folder: 'tasks', maxSide: 1600 },
+    face: { folder: 'tasks', maxSide: 800 },
+    clue: { folder: 'tasks', maxSide: 1200 },
+  } as const;
+  const uploadImage = async (req: Request, res: StaffResponse, use: keyof typeof USES) => {
     if (!files) {
       res
         .status(503)
@@ -66,20 +73,33 @@ export function addAdminRoutes(
       return;
     }
     const input = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
-    const image = await cleanImage(input, 512);
+    const image = await cleanImage(input, USES[use].maxSide);
     if (!image.ok) {
       res.status(400).json({ code: 'BAD_IMAGE', message: image.message });
       return;
     }
     try {
-      const url = await files.save('logos', image.data, 'image/webp', 'webp');
+      const url = await files.save(USES[use].folder, image.data, 'image/webp', 'webp');
       res.json({ url, width: image.width, height: image.height });
     } catch (error) {
-      console.error('Logo upload failed:', error instanceof Error ? error.message : 'unknown');
+      console.error('Upload failed:', error instanceof Error ? error.message : 'unknown');
       res
         .status(502)
         .json({ code: 'UPLOAD_FAILED', message: 'The upload did not work. Please try again.' });
     }
+  };
+
+  staff.post('/uploads/logo', mainAdminOnly, readImage, (req, res: StaffResponse) =>
+    uploadImage(req, res, 'logo'),
+  );
+
+  staff.post('/uploads/image', mainAdminOnly, readImage, (req, res: StaffResponse) => {
+    const use = String(req.query['use'] ?? '');
+    if (!(use in USES)) {
+      res.status(400).json({ code: 'INVALID_REQUEST', message: AUTH_ERRORS.INVALID_REQUEST });
+      return;
+    }
+    return uploadImage(req, res, use as keyof typeof USES);
   });
 
   staff.post('/games', mainAdminOnly, async (req, res: StaffResponse) => {

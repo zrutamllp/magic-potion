@@ -15,7 +15,9 @@ import {
 } from '../../prisma/samplePack';
 import { MemoryAdminStore } from '../admin/memoryStore';
 import { AdminService } from '../admin/service';
+import sharp from 'sharp';
 import { createApp } from '../app';
+import type { FileStore } from '../uploads/blob';
 import { FakeClock } from '../engine/clock';
 import { memoryEngine } from '../engine/memoryGame';
 import { MemoryPackStore } from '../packs/memoryStore';
@@ -49,11 +51,19 @@ async function setup() {
     items: samplePackItems(),
   });
   const { engine } = memoryEngine({ teams: 3, clock: new FakeClock(T0) });
+  const saved: string[] = [];
+  const files: FileStore = {
+    save: async (folder, _data, _type, ext) => {
+      saved.push(folder);
+      return `https://blob.example.com/${folder}/random-${saved.length}.${ext}`;
+    },
+  };
   const api = createApiRouter({
     auth: fx.auth,
     engine: async () => engine,
     admin,
     packs,
+    files,
     devTools: false,
   });
   const app = createApp({ clientOrigins: [], api });
@@ -67,7 +77,7 @@ async function setup() {
     const req = request(app)[method](`/api/staff${path}`).set('Authorization', `Bearer ${as}`);
     return body ? req.send(body) : req;
   };
-  return { fx, adminStore, packStore, reloaded, app, call, sampleId };
+  return { fx, adminStore, packStore, reloaded, app, call, sampleId, token, saved };
 }
 
 async function login(app: Parameters<typeof request>[0], who: { email: string; password: string }) {
@@ -347,5 +357,90 @@ describe('archive and delete', () => {
       gameId: null,
       before: expect.objectContaining({ name: 'Dry run' }),
     });
+  });
+});
+
+describe('task pictures', () => {
+  it('saves task pictures under tasks/, and refuses an unknown use', async () => {
+    const g = await setup();
+    const png = await sharp({
+      create: { width: 2400, height: 1200, channels: 3, background: '#123456' },
+    })
+      .png()
+      .toBuffer();
+    const up = (use: string) =>
+      request(g.app)
+        .post(`/api/staff/uploads/image?use=${use}`)
+        .set('Authorization', `Bearer ${g.token}`)
+        .set('Content-Type', 'image/png')
+        .send(png);
+    const spot = await up('spot');
+    expect(spot.status).toBe(200);
+    expect(spot.body).toEqual({
+      url: 'https://blob.example.com/tasks/random-1.webp',
+      width: 1600,
+      height: 800,
+    });
+    expect((await up('face')).body).toMatchObject({ width: 800, height: 400 });
+    expect((await up('selfie')).status).toBe(400);
+  });
+});
+
+describe('spreadsheet import', () => {
+  it('checks an uploaded CSV and saves nothing until confirmed', async () => {
+    const g = await setup();
+    const pack = await copySample(g);
+    const csv = [
+      'Riddle,Accepted answers,Clue (the hint)',
+      'What runs?,water; a river,Wet',
+      'No answer?,,Clue',
+    ].join('\n');
+    const res = await request(g.app)
+      .post(`/api/staff/packs/${pack.id}/import?task=riddle`)
+      .set('Authorization', `Bearer ${g.token}`)
+      .set('Content-Type', 'text/csv')
+      .send(Buffer.from(csv));
+    expect(res.status).toBe(200);
+    expect(res.body.rows.map((r: { errors: string[] }) => r.errors)).toEqual([
+      [],
+      ['Accepted answers: Add at least one accepted answer.'],
+    ]);
+    expect(res.body.items).toHaveLength(1);
+    const after = (await g.call('get', `/packs/${pack.id}`)).body as PackDetail;
+    expect(after.items.filter((i) => i.taskKey === 'riddle')).toHaveLength(12);
+  });
+
+  it('downloads the templates', async () => {
+    const g = await setup();
+    const csv = await g.call('get', '/packs-import-template?task=hangman&format=csv');
+    expect(csv.headers['content-type']).toContain('text/csv');
+    expect(csv.text).toContain('Category,Phrase');
+    const xlsx = await g.call('get', '/packs-import-template?task=riddle');
+    expect(xlsx.headers['content-disposition']).toContain('magic-potion-riddle-template.xlsx');
+  });
+});
+
+describe('preview routes', () => {
+  it('plays draft content and answers like the game, with no answers sent', async () => {
+    const g = await setup();
+    const items = [{ publicData: { category: 'Film' }, secretData: { phrase: 'Jaws' } }];
+    const created = await g.call('post', '/preview', { taskKey: 'hangman', items });
+    expect(created.status).toBe(200);
+    const id = created.body.id as string;
+    const started = await g.call('post', `/preview/${id}/start`);
+    expect(started.body.ack).toEqual({ ok: true, value: { status: 'started' } });
+    expect(started.body.preview.task.running.view).toMatchObject({
+      masked: '____',
+      content: { category: 'Film' },
+    });
+    const guess = await g.call('post', `/preview/${id}/submit`, { submission: { letter: 'j' } });
+    expect(guess.body.ack).toEqual({ ok: true, value: { status: 'correct' } });
+    expect(JSON.stringify(guess.body)).not.toContain('Jaws');
+    const bad = await g.call('post', '/preview', {
+      taskKey: 'hangman',
+      items: [{ publicData: { category: 'Film' }, secretData: { phrase: 'R2-D2' } }],
+    });
+    expect(bad.status).toBe(400);
+    expect(bad.body.errors[0].message).toBe('Use letters, spaces, hyphens and apostrophes only.');
   });
 });
