@@ -2,7 +2,7 @@ import { AlertTriangle, Check, Lock, Play, X } from 'lucide-react';
 import { TASKS_PER_TEAM, type StaffTaskView, type StaffTeamView } from '@magic-potion/shared';
 import { formatMs, money, msLeft } from '../../lib/time';
 import { useLiveView } from './context';
-import { ago } from './format';
+import { ago, duration } from './format';
 
 // One compact row per team, so 20 teams fit a 1366x768 laptop (Phase 6C).
 
@@ -50,11 +50,9 @@ function TaskChip({ task }: { task: StaffTaskView }) {
 function StuckChip({ team }: { team: StaffTeamView }) {
   const { state } = useLiveView();
   if (team.stuck.length === 0) return null;
-  const minutes = Math.round(state.limits.stuckIdleSeconds / 60);
+  const idle = duration(state.limits.stuckIdleSeconds);
   const why = team.stuck
-    .map((r) =>
-      r === 'NEGATIVE_FUNDS' ? 'Task Funds below zero' : `No action for ${minutes}+ min`,
-    )
+    .map((r) => (r === 'NEGATIVE_FUNDS' ? 'Task Funds below zero' : `No action for ${idle}+`))
     .join(' · ');
   return (
     <span

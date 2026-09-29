@@ -167,7 +167,7 @@ describe('team table', () => {
     const foxes = screen.getByRole('row', { name: /Foxes/ });
     expect(within(foxes).getByText('Stuck')).toBeInTheDocument();
     expect(foxes).toHaveTextContent('Task Funds below zero');
-    expect(foxes).toHaveTextContent('No action for 5+ min');
+    expect(foxes).toHaveTextContent('No action for 5 minutes+');
   });
 
   it('opens a team when its row is clicked', () => {
@@ -433,7 +433,7 @@ describe('view as team', () => {
     renderLive(
       <TeamViewer teamName="Team 1" watched={watched()} status="online" onClose={onClose} />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close team view' }));
     expect(onClose).toHaveBeenCalled();
   });
 });

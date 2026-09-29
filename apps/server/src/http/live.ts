@@ -8,6 +8,7 @@ import {
   LiveRenameSchema,
   ReleaseFragmentSchema,
   RemoveTeamSchema,
+  StopTaskSchema,
   TaskActionSchema,
   UNDOABLE_ACTIONS,
   type AdjustReply,
@@ -248,11 +249,7 @@ export function addLiveRoutes(staff: Router, deps: LiveDeps): void {
   });
 
   staff.post(`${base}/teams/:teamId/stop-task`, mainAdminOnly, async (req, res: Res) => {
-    const body = parse(
-      TaskActionSchema.extend({ reason: RemoveTeamSchema.shape.reason.optional() }),
-      req,
-      res,
-    );
+    const body = parse(StopTaskSchema, req, res);
     if (!body) return;
     const teamId = String(req.params.teamId);
     const engine = await teamEngine(req, res, teamId);

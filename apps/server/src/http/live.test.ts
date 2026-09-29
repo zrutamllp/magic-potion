@@ -209,7 +209,8 @@ describe('team actions', () => {
       expect((await g.call('post', path, body, COFAC)).status).toBe(403);
     }
     await g.engine.startTask('team-1', task?.id ?? '');
-    const stop = await g.call('post', '/teams/team-1/stop-task', { taskId: task?.id });
+    // The note is optional: an empty one is fine.
+    const stop = await g.call('post', '/teams/team-1/stop-task', { taskId: task?.id, reason: '' });
     expect(stop.body).toMatchObject({ ok: true });
     const msg = await g.call('post', '/message', { title: 'Hi', body: 'Hello' });
     expect(msg.body).toMatchObject({ ok: true });

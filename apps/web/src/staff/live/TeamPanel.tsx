@@ -11,7 +11,7 @@ import {
   RenameDialog,
   ResetLoginDialog,
 } from './dialogs';
-import { ago } from './format';
+import { ago, duration } from './format';
 import { taskLocked } from './TeamTable';
 
 // Everything about one team, and the actions staff may take on it (GAME_RULES section 11).
@@ -71,7 +71,7 @@ export function TeamPanel({ team, onClose }: { team: StaffTeamView; onClose: () 
               .map((r) =>
                 r === 'NEGATIVE_FUNDS'
                   ? 'Task Funds are below zero, so the team cannot start a task.'
-                  : `No action for ${Math.round(state.limits.stuckIdleSeconds / 60)} minutes or more.`,
+                  : `No action for ${duration(state.limits.stuckIdleSeconds)} or more.`,
               )
               .join(' ')}
           </p>

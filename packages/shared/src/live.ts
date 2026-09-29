@@ -43,6 +43,11 @@ export const RemoveTeamSchema = z.object({ reason });
 
 export const TaskActionSchema = z.object({ taskId: z.string().min(1).max(64) });
 
+// Stopping a try: the note for the audit log is optional.
+export const StopTaskSchema = TaskActionSchema.extend({
+  reason: z.string().trim().max(300).optional(),
+});
+
 export const ReleaseFragmentSchema = z.object({ fragmentId: z.string().min(1).max(64) });
 
 export const StaffWatchSchema = z.object({ teamId: z.string().min(1).max(64).nullable() });

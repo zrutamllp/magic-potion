@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import type { GamePhase, StaffGameSummary, StaffLoginResponse } from '@magic-potion/shared';
 import { apiGet, apiPost, ApiError } from '../lib/api';
 import { feedText } from '../lib/feed';
@@ -8,7 +8,8 @@ import { formatMs, money, msLeft, useTicker } from '../lib/time';
 import type { LiveStatus } from '../lib/live';
 
 // Phase 3 test page for staff: pick a game, start and pause it, watch every team live.
-// The real admin panel and facilitator dashboard come in Phase 6.
+// The live dashboard at /staff (Phase 6C) replaces it. It now opens only while the server runs
+// with ENABLE_DEV_TOOLS (for the test "finish tasks" button), and goes after Phase 6D.
 
 const LOGIN_KEY = 'mp.staff';
 const GAME_KEY = 'mp.staff.game';
@@ -51,15 +52,44 @@ export function StaffDevPage() {
       />
     );
   }
-  if (!gameId) return <GamePicker token={login.token} onPick={pick} onLogOut={logOut} />;
   return (
-    <GameControl
-      key={gameId}
-      token={login.token}
-      gameId={gameId}
-      onBack={() => pick(null)}
-      onLogOut={logOut}
-    />
+    <DevToolsOnly token={login.token}>
+      {gameId ? (
+        <GameControl
+          key={gameId}
+          token={login.token}
+          gameId={gameId}
+          onBack={() => pick(null)}
+          onLogOut={logOut}
+        />
+      ) : (
+        <GamePicker token={login.token} onPick={pick} onLogOut={logOut} />
+      )}
+    </DevToolsOnly>
+  );
+}
+
+// The server says whether dev tools are on (never in production).
+function DevToolsOnly({ token, children }: { token: string; children: ReactNode }) {
+  const [devTools, setDevTools] = useState<boolean | null>(null);
+  useEffect(() => {
+    apiGet<{ devTools: boolean }>('/api/staff/me', token).then(
+      (me) => setDevTools(me.devTools),
+      () => setDevTools(false),
+    );
+  }, [token]);
+  if (devTools === null) return null;
+  if (devTools) return <>{children}</>;
+  return (
+    <main className="mx-auto max-w-xl p-10 text-center">
+      <h1 className="text-2xl font-extrabold">This test page is switched off</h1>
+      <p className="mt-3 text-lg text-ink-muted">
+        Run games from the live dashboard in the staff panel.
+      </p>
+      <a href="/staff" className="mt-5 inline-block font-semibold text-brand-soft underline">
+        Open the staff panel
+      </a>
+    </main>
   );
 }
 

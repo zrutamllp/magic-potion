@@ -191,7 +191,7 @@ Staff log in with their own name, email and password. The main admin creates co-
 
 ## 12. Game settings (all editable per game)
 
-Client name, logo and colours; number of teams; team names and passwords; task content; starting funds for both wallets; hint cost; fail penalty; lockout attempts and lock lengths; task timers; photos per Guess the Celebrity try; round and pause lengths; chat limit and message length; transfer delay; inbox release times, reward and answer attempts; scoring multipliers; collaboration cap; Full Potion Bonus.
+Client name, logo and colours; number of teams; team names and passwords; task content; starting funds for both wallets; hint cost; fail penalty; lockout attempts and lock lengths; task timers; photos per Guess the Celebrity try; round and pause lengths; chat limit and message length; transfer delay; inbox release times, reward and answer attempts; scoring multipliers; collaboration cap; Full Potion Bonus; the co-facilitator fund change limit (default 2,000); the "stuck team" idle time on the facilitator dashboard (default 5 minutes).
 
 Scoring settings lock when Round 1 starts. Team names, funds and phase timing can still change live.
 

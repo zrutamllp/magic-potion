@@ -25,7 +25,8 @@ npm run dev
 ```
 
 - Web: http://localhost:5173 (team login; it also shows "Server OK" when the API answers).
-- Staff test page: http://localhost:5173/dev/staff
+- Staff panel and live dashboard: http://localhost:5173/staff
+- Staff test page (only with `ENABLE_DEV_TOOLS=true`, removed after Phase 6D): http://localhost:5173/dev/staff
 - API: http://localhost:4000/healthz
 
 The server runs without a database until `DATABASE_URL` is set; `/healthz` then reports `"db": "not_configured"`.
@@ -71,7 +72,7 @@ About 15 minutes for a whole game.
 2. From `apps/server`, run `npm run db:seed -- --reset-demo --short`. Copy the 4 team codes and passwords it prints (they are shown only once). `--short` gives 5-minute rounds and a 1-minute pause; leave it out for the real 35/10/35 timings.
 3. From the repo root, run `npm run dev`.
 4. **Team windows:** open http://localhost:5173 in two new windows (or tabs) and log in as `TEAM1` and `TEAM2`. Each tab keeps its own login. Both show the **Lobby** with the rules and the empty potion.
-5. **Staff window:** open http://localhost:5173/dev/staff, log in with `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`, choose "Demo Game" and press **Start**. Both team windows switch to **Home** with a 5:00 countdown.
+5. **Staff window:** open http://localhost:5173/staff, log in with `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`, press **Live** next to "Demo Game", then **Start game**. Both team windows switch to **Home** with a 5:00 countdown.
 6. **Round 1:** try each tab in the sidebar:
    - **Home:** open a task and press **Start Task** (its timer runs), **Exit** (the timer keeps running, and the other cards say another task is open), then **Give up** (Task Funds drop by 3,500).
    - **Chat:** send a message from Team 1. It appears at once for Team 2, and "Messages left" goes to 4 of 5.
@@ -171,6 +172,20 @@ Every change is written to the audit log. Changing a game in the Lobby reloads i
 - **Games list:** **Archive** hides a finished game but keeps all its data (**Show archived** brings it back). **Delete** is offered only for a game that never started, and only after typing its name.
 
 `npm run screenshots:6b` does all of this with a throwaway admin, including a team seeing a different set of 3 riddles on its second try, and saves the screens to `screenshots/phase6/6b/`. It deletes the games, packs and pictures it made.
+
+## Live control and facilitator dashboard (Phase 6C)
+
+Press **Live** next to a game (co-facilitators: **Open dashboard**). The page uses the whole screen and fits a 1366×768 laptop. It updates by itself; there is no need to refresh.
+
+- **Top bar (main admin):** **Start game**, **Pause** / **Resume**, **+1 min**, **+5 min**, **End Round 1** (or End the Pause, End Round 2, End game) and **Message all**. Starting and ending always ask first. A message goes to every team's Inbox; if it uses words the game rules keep out of player text ("help", "together"...), a yellow note says so, but it can still be sent.
+- **Teams table:** one row per team: its 5 tasks (grey not started, blue in progress, yellow locked, green done, red failed; hover for the name and time left), tasks x/5, Task Funds, Support Funds, chat messages left, last action and live score. **Stuck** (red) means Task Funds are below zero, or no action for 5 minutes during a round (a setting under Facilitator dashboard).
+- **Click a team** for its panel: **Change funds** (add or take away, with a reason only staff see), **Rename**, **Reset login** (a new password, shown once; the team's screen logs out), **View as team**, and **Release** for a fragment whose holder team is missing. The main admin also gets **Clear lock** and **Stop try** (no penalty) on a running task, and **Remove from game**.
+- **Co-facilitators** see only their teams. They can change Task Funds by up to 2,000 at once (a setting); a larger change goes to **Approvals** for the main admin. They cannot run the clock, message all teams, unlock tasks or remove teams. The server checks all of this.
+- **Feeds:** **Chat**, **Transfers** (and requests), **Approvals** and the **Audit log** (who, when, what and why). **Undo** reverses a fund change or a rename: the main admin can undo any, a co-facilitator only their own.
+- **View as team** shows exactly the team's own screens, live. Nothing pressed there is sent.
+- Players only ever see "Funds adjusted by the facilitator" and the amount, never who made the change or why.
+
+`npm run screenshots:6c` runs a game this way with a throwaway admin and co-facilitator (fund changes, an approval, undo, rename, View as team, the stuck flag, a login reset) and saves the screens to `screenshots/phase6/6c/`. It deletes everything it made.
 
 ## Screenshots
 

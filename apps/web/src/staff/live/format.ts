@@ -20,6 +20,13 @@ export function ago(at: number | null, serverNow: number): string {
   return m === 0 ? `${h} h ago` : `${h} h ${m} min ago`;
 }
 
+// The idle time setting in words: "30 seconds", "1 minute", "5 minutes".
+export function duration(seconds: number): string {
+  if (seconds < 60) return `${seconds} second${seconds === 1 ? '' : 's'}`;
+  const minutes = Math.round(seconds / 60);
+  return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+}
+
 export function clockTime(at: number): string {
   return new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }

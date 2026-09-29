@@ -129,6 +129,9 @@ function ConnectionState({ status }: { status: LiveStatus }) {
 
 type Confirm = 'start' | 'end' | null;
 
+// Smaller buttons, so the whole control bar fits one line on a 1366px laptop.
+const COMPACT = 'px-3 py-1 text-sm';
+
 export function ControlBar({ status, onBack }: { status: LiveStatus; onBack: () => void }) {
   const { api } = useStaff();
   const { state, receivedAt, now, isAdmin, gameId } = useLiveView();
@@ -184,23 +187,40 @@ export function ControlBar({ status, onBack }: { status: LiveStatus; onBack: () 
       {isAdmin && (
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {game.phase === 'LOBBY' && (
-            <SmallButton tone="success" onClick={() => setConfirm('start')} disabled={action.busy}>
+            <SmallButton
+              className={COMPACT}
+              tone="success"
+              onClick={() => setConfirm('start')}
+              disabled={action.busy}
+            >
               <Play className="h-4 w-4" aria-hidden /> Start game
             </SmallButton>
           )}
           {timed &&
             (game.frozen ? (
-              <SmallButton tone="success" onClick={() => post('resume')} disabled={action.busy}>
+              <SmallButton
+                className={COMPACT}
+                tone="success"
+                onClick={() => post('resume')}
+                disabled={action.busy}
+              >
                 <Play className="h-4 w-4" aria-hidden /> Resume
               </SmallButton>
             ) : (
-              <SmallButton tone="muted" onClick={() => post('freeze')} disabled={action.busy}>
-                <Pause className="h-4 w-4" aria-hidden /> Pause
+              <SmallButton
+                className={COMPACT}
+                tone="muted"
+                onClick={() => post('freeze')}
+                disabled={action.busy}
+              >
+                <Pause className="h-4 w-4" aria-hidden />
+                {game.phase === 'PAUSE' ? 'Freeze' : 'Pause'}
               </SmallButton>
             ))}
           {timed && (
             <>
               <SmallButton
+                className={COMPACT}
                 variant="outline"
                 onClick={() => post('extend', { seconds: 60 })}
                 disabled={action.busy}
@@ -208,6 +228,7 @@ export function ControlBar({ status, onBack }: { status: LiveStatus; onBack: () 
                 <Plus className="h-4 w-4" aria-hidden /> 1 min
               </SmallButton>
               <SmallButton
+                className={COMPACT}
                 variant="outline"
                 onClick={() => post('extend', { seconds: 300 })}
                 disabled={action.busy}
@@ -218,6 +239,7 @@ export function ControlBar({ status, onBack }: { status: LiveStatus; onBack: () 
           )}
           {game.phase !== 'LOBBY' && !game.ended && (
             <SmallButton
+              className={COMPACT}
               variant="outline"
               tone="danger"
               onClick={() => setConfirm('end')}
@@ -232,7 +254,12 @@ export function ControlBar({ status, onBack }: { status: LiveStatus; onBack: () 
             </SmallButton>
           )}
           {!game.ended && (
-            <SmallButton variant="outline" tone="muted" onClick={() => setMessaging(true)}>
+            <SmallButton
+              className={COMPACT}
+              variant="outline"
+              tone="muted"
+              onClick={() => setMessaging(true)}
+            >
               <Megaphone className="h-4 w-4" aria-hidden /> Message all
             </SmallButton>
           )}

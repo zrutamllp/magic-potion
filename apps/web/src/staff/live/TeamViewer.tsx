@@ -90,6 +90,7 @@ export function TeamViewer({
         <button
           type="button"
           onClick={onClose}
+          aria-label="Close team view"
           className="inline-flex items-center gap-1 rounded-full bg-warning px-3 py-1 text-sm font-bold text-page hover:brightness-110"
         >
           <X className="h-4 w-4" aria-hidden /> Close
