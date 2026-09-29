@@ -1,10 +1,11 @@
-import type { TaskKey } from '@magic-potion/shared';
+import { DEFAULT_SETTINGS, type TaskKey } from '@magic-potion/shared';
 import { describe, expect, it } from 'vitest';
 import { FakeClock } from './clock';
 import type { GameEngine } from './engine';
 import { memoryEngine } from './memoryGame';
 import { correctSubmissions, wrongSubmission } from './solver';
 import type { GameState, TeamState } from './state';
+import { teamView } from './views';
 
 const MIN = 60_000;
 const T0 = Date.UTC(2026, 8, 27, 9, 0, 0);
@@ -514,5 +515,29 @@ describe('Ethical Dilemma answer', () => {
     // Other tasks never carry an answer.
     const other = g.engine.teamView(t.id)?.tasks.find((x) => x.key === 'vault');
     expect(other?.savedAnswer).toBeNull();
+  });
+});
+
+describe('question pools (Phase 6B)', () => {
+  it('sends a team only the riddles its try drew, never the rest of the pool', async () => {
+    const clock = new FakeClock(T0);
+    const settings = structuredClone(DEFAULT_SETTINGS);
+    settings.tasks.poolPerTry.riddle = 1;
+    const { engine } = memoryEngine({ teams: 20, clock, settings });
+    await engine.startGame(ADMIN);
+    const { team: t, taskId } = withTask(engine, 'riddle');
+    expect((await engine.startTask(t.id, taskId)).ok).toBe(true);
+
+    const view = teamView(engine.state, engine.gameContent, t.id, clock.now());
+    const running = view!.tasks.find((x) => x.id === taskId)?.running;
+    const shown = (running?.view as { content: { riddles: string[] } }).content.riddles;
+    expect(shown).toHaveLength(1);
+    const attempt = taskOf(engine, t.id, taskId).attempts[0]!;
+    const pool = (engine.gameContent.byId[attempt.contentId]!.publicData as { riddles: string[] })
+      .riddles;
+    const json = JSON.stringify(view);
+    for (const riddle of pool.filter((r) => r !== shown[0])) expect(json).not.toContain(riddle);
+    // The draw is saved with the try, so a reload shows the same riddle.
+    expect((attempt.progress as { order: number[] }).order).toHaveLength(1);
   });
 });

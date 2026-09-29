@@ -1,3 +1,4 @@
+export * from './contentPack';
 export * from './admin';
 export * from './defaultSettings';
 export * from './engineErrors';

@@ -61,6 +61,9 @@ export function checkerContext(
       task.key === 'find_code' ? ((fragment?.secretData ?? null) as FindCodeCipher | null) : null,
     tasks: state.settings.tasks,
     rng,
+    previous: task.attempts
+      .filter((a) => a.id !== attempt.id && a.contentId === attempt.contentId)
+      .map((a) => a.progress),
   } as CheckerContext<TaskKey>;
 }
 

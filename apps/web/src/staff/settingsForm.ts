@@ -244,6 +244,36 @@ export const FIELD_GROUPS: FieldGroup[] = [
         },
         { min: 1, max: 30 },
       ),
+      whole(
+        'tasks.poolRiddle',
+        'Riddles per try',
+        'count',
+        (s) => s.tasks.poolPerTry.riddle,
+        (s, v) => {
+          s.tasks.poolPerTry.riddle = v;
+        },
+        { min: 1, max: 20, help: 'Drawn from the pool. Each new try gets a fresh set.' },
+      ),
+      whole(
+        'tasks.poolDataStory',
+        'Data Story questions per try',
+        'count',
+        (s) => s.tasks.poolPerTry.data_story,
+        (s, v) => {
+          s.tasks.poolPerTry.data_story = v;
+        },
+        { min: 1, max: 20 },
+      ),
+      whole(
+        'tasks.poolPictionary',
+        'Pictionary drawings per try',
+        'count',
+        (s) => s.tasks.poolPerTry.pictionary,
+        (s, v) => {
+          s.tasks.poolPerTry.pictionary = v;
+        },
+        { min: 1, max: 20 },
+      ),
     ],
   },
   {

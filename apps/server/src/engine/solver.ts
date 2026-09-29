@@ -9,6 +9,7 @@ import type {
   SpotProgress,
 } from './checkers/playTasks';
 import type { CelebrityProgress } from './checkers/guessCelebrity';
+import { poolOrder } from './checkers/pool';
 import type { QuestionsProgress } from './checkers/questions';
 import { seededRng } from './rng';
 import { checkerContext } from './rules/tasks';
@@ -65,11 +66,7 @@ export function correctSubmissions(
     }
     case 'hangman': {
       const p = progress as HangmanProgress;
-      const letters = new Set(
-        secret<'hangman'>(ctx)
-          .phrase.toLowerCase()
-          .replace(/[^a-z]/g, ''),
-      );
+      const letters = new Set(hangmanPhrase(ctx, p).replace(/[^a-z]/g, ''));
       return [...letters].filter((l) => !p.guessed.includes(l)).map((letter) => ({ letter }));
     }
     case 'spot_difference': {
@@ -89,17 +86,19 @@ export function correctSubmissions(
     }
     case 'riddle':
     case 'data_story': {
+      // Answers go by position in the drawn set, not in the pool.
       const p = progress as QuestionsProgress;
       const answers = (ctx.secretData as { answers: string[][] }).answers;
-      return answers
-        .map((accepted, index) => ({ index, answer: accepted[0] }))
+      return poolOrder(p, answers.length)
+        .map((poolIndex, index) => ({ index, answer: answers[poolIndex]?.[0] }))
         .filter(({ index }) => p.answers[index] === null);
     }
     case 'pictionary': {
       const p = progress as PictionaryProgress;
-      return secret<'pictionary'>(ctx)
-        .words.slice(p.current)
-        .map((w) => ({ answer: w[0] }));
+      const words = secret<'pictionary'>(ctx).words;
+      return poolOrder(p, words.length)
+        .slice(p.current)
+        .map((i) => ({ answer: words[i]?.[0] }));
     }
     case 'escape_room': {
       const p = progress as EscapeProgress;
@@ -130,7 +129,7 @@ export function wrongSubmission(
       return null;
     case 'hangman': {
       const p = attempt.progress as HangmanProgress;
-      const phrase = secret<'hangman'>(ctx).phrase.toLowerCase();
+      const phrase = hangmanPhrase(ctx, p);
       const letter = [...'zqxjkvbpygfwmucldrhsnioate'].find(
         (l) => !phrase.includes(l) && !p.guessed.includes(l),
       );
@@ -149,4 +148,10 @@ export function wrongSubmission(
     default:
       return { answer: 'not this one' };
   }
+}
+
+// The phrase a Hangman try plays, lower case.
+function hangmanPhrase(ctx: CheckerContext<TaskKey>, progress: HangmanProgress): string {
+  const phrases = secret<'hangman'>(ctx).phrases;
+  return (phrases[poolOrder(progress, 1)[0] ?? 0] ?? '').toLowerCase();
 }

@@ -28,6 +28,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
     spotDifferenceTolerancePercent: 4,
     // Guess the Celebrity: photos played per try, drawn from the content's photos.
     guessCelebrityFaces: 8,
+    // Riddles, Data Story questions and Pictionary drawings per try, drawn from the pool.
+    poolPerTry: { riddle: 3, data_story: 3, pictionary: 5 },
     timerSeconds: {
       vault: minutes(12),
       find_code: minutes(12),

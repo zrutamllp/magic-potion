@@ -152,6 +152,14 @@ model Game {
   playMsBeforePhase Int       @default(0)
   startedAt         DateTime?
   endedAt           DateTime?
+  // Hidden from the games list; every row of the game is kept (Phase 6B).
+  archivedAt        DateTime?
+
+  // The content pack the game uses. While the game is in the Lobby its TaskContent rows follow
+  // the pack; from Round 1 they are a frozen copy (Phase 6B).
+  contentPackId String?
+  // The Ethical Dilemma scenario every team gets: a ContentPackItem id from the pack.
+  dilemmaItemId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -168,6 +176,9 @@ model Game {
   staffAssignments       StaffAssignment[]
   auditLogs              AuditLog[]
   fundAdjustmentRequests FundAdjustmentRequest[]
+  contentPack            ContentPack?            @relation(fields: [contentPackId], references: [id], onDelete: SetNull)
+
+  @@index([contentPackId])
 }
 
 model GameSettings {
@@ -270,6 +281,45 @@ model TaskContent {
   attempts       TaskAttempt[]
 
   @@unique([gameId, taskDefinitionId, variant])
+}
+
+// ---------- Content packs (Phase 6B) ----------
+
+// Reusable task content, shared across games and clients. Copy a pack, edit it, assign it to a game.
+model ContentPack {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  // The built-in Sample pack: it can be copied but not edited.
+  builtIn     Boolean  @default(false)
+  // Per-task options, such as the name players see for Guess the Celebrity.
+  taskOptions Json     @default("{}")
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items ContentPackItem[]
+  games Game[]
+}
+
+// One question (pool tasks) or one whole puzzle (variant tasks). Validated by the item schemas in
+// packages/shared/src/contentPack.ts.
+model ContentPackItem {
+  id         String   @id @default(cuid())
+  packId     String
+  // One of TASK_KEYS in packages/shared.
+  taskKey    String
+  position   Int
+  // Safe to send to players.
+  publicData Json
+  // Answers. Never sent to players.
+  secretData Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  pack ContentPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+
+  @@index([packId, taskKey, position])
 }
 
 model TeamTask {

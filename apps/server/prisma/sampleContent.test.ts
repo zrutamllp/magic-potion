@@ -79,9 +79,10 @@ describe('sample content pack', () => {
   // Each Hangman word is one row of tiles at 1280x720, so no word is longer than 12 letters.
   it('keeps Hangman phrases short enough for one screen', () => {
     for (const c of SAMPLE_TASK_CONTENT.filter((c) => c.key === 'hangman')) {
-      const { phrase } = parseTaskContent('hangman', c).secretData;
-      expect(phrase.length).toBeLessThanOrEqual(28);
-      for (const word of phrase.split(' ')) expect(word.length).toBeLessThanOrEqual(12);
+      for (const phrase of parseTaskContent('hangman', c).secretData.phrases) {
+        expect(phrase.length).toBeLessThanOrEqual(28);
+        for (const word of phrase.split(' ')) expect(word.length).toBeLessThanOrEqual(12);
+      }
     }
   });
 

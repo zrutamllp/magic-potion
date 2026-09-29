@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { matchesAny, matchesWord } from '../normalize';
 import { shuffle } from '../rng';
-import { asJson, defineChecker } from './types';
+import { drawPool, poolOrder } from './pool';
+import { asJson, defineChecker, type CheckerContext } from './types';
 
 // Picture Puzzle: tiles are numbered 0..n-1 in solved order, on a grid set in the game
 // settings. The server scrambles them; the team swaps two tiles at a time and every swap is
@@ -60,7 +61,13 @@ export const picturePuzzleChecker = defineChecker<'picture_puzzle', PuzzleProgre
 });
 
 // Hangman: guess one letter at a time. Too many wrong letters fails the task.
-export type HangmanProgress = { guessed: string[]; wrong: number; hinted: string | null };
+export type HangmanProgress = {
+  // The pool position of the phrase this try plays. Missing in progress saved before pools.
+  order?: number[];
+  guessed: string[];
+  wrong: number;
+  hinted: string | null;
+};
 
 const letterSubmission = z.object({ letter: z.string().regex(/^[a-zA-Z]$/) });
 
@@ -74,15 +81,29 @@ function maskPhrase(phrase: string, guessed: readonly string[]): string {
     .join('');
 }
 
+// The phrase and category this try plays: one entry drawn from the pool (Phase 6B).
+function hangmanEntry(ctx: CheckerContext<'hangman'>, progress: HangmanProgress) {
+  const i = poolOrder(progress, 1)[0] ?? 0;
+  return {
+    phrase: ctx.secretData.phrases[i] ?? ctx.secretData.phrases[0]!,
+    category: ctx.publicData.categories[i] ?? ctx.publicData.categories[0]!,
+  };
+}
+
 export const hangmanChecker = defineChecker<'hangman', HangmanProgress>({
   submission: letterSubmission,
-  init: () => ({ guessed: [], wrong: 0, hinted: null }),
+  init: (ctx) => ({
+    order: drawPool(ctx.rng, ctx.secretData.phrases.length, 1, ctx.previous ?? []),
+    guessed: [],
+    wrong: 0,
+    hinted: null,
+  }),
   submit(ctx, progress, raw) {
     const parsed = letterSubmission.safeParse(raw);
     if (!parsed.success) return { status: 'invalid' };
     const letter = parsed.data.letter.toLowerCase();
     if (progress.guessed.includes(letter)) return { status: 'invalid' };
-    const letters = phraseLetters(ctx.secretData.phrase);
+    const letters = phraseLetters(hangmanEntry(ctx, progress).phrase);
     const guessed = [...progress.guessed, letter];
     if (!letters.has(letter)) {
       const next = { ...progress, guessed, wrong: progress.wrong + 1 };
@@ -97,15 +118,15 @@ export const hangmanChecker = defineChecker<'hangman', HangmanProgress>({
   },
   // Reveals one letter, which does not count as a guess.
   hint(ctx, progress) {
-    const missing = [...phraseLetters(ctx.secretData.phrase)].find(
+    const missing = [...phraseLetters(hangmanEntry(ctx, progress).phrase)].find(
       (l) => !progress.guessed.includes(l),
     );
     if (!missing) return progress;
     return { ...progress, guessed: [...progress.guessed, missing], hinted: missing };
   },
   publicView: (ctx, progress) => ({
-    content: asJson(ctx.publicData),
-    masked: maskPhrase(ctx.secretData.phrase, progress.guessed),
+    content: { category: hangmanEntry(ctx, progress).category },
+    masked: maskPhrase(hangmanEntry(ctx, progress).phrase, progress.guessed),
     guessed: progress.guessed,
     wrong: progress.wrong,
     maxWrong: ctx.tasks.hangmanMaxWrong,
@@ -167,6 +188,8 @@ export const spotDifferenceChecker = defineChecker<'spot_difference', SpotProgre
 // Pictionary: the game draws one picture at a time; the team guesses each word in turn.
 // Guesses ignore case, spaces, punctuation, a/an/the and simple plurals.
 export type PictionaryProgress = {
+  // Pool positions of the drawings this try plays. Missing in progress saved before pools.
+  order?: number[];
   current: number;
   guesses: string[];
   hint: { index: number; letter: string } | null;
@@ -174,13 +197,28 @@ export type PictionaryProgress = {
 
 const answerSubmission = z.object({ answer: z.string().max(200) });
 
+// The words of the drawings this try plays, in play order.
+function pictionaryWords(ctx: CheckerContext<'pictionary'>, progress: PictionaryProgress) {
+  return poolOrder(progress, ctx.secretData.words.length).map((i) => ctx.secretData.words[i]!);
+}
+
 export const pictionaryChecker = defineChecker<'pictionary', PictionaryProgress>({
   submission: answerSubmission,
-  init: () => ({ current: 0, guesses: [], hint: null }),
+  init: (ctx) => ({
+    order: drawPool(
+      ctx.rng,
+      ctx.publicData.drawings.length,
+      ctx.tasks.poolPerTry.pictionary,
+      ctx.previous ?? [],
+    ),
+    current: 0,
+    guesses: [],
+    hint: null,
+  }),
   submit(ctx, progress, raw) {
     const parsed = answerSubmission.safeParse(raw);
     if (!parsed.success || parsed.data.answer.trim() === '') return { status: 'invalid' };
-    const words = ctx.secretData.words;
+    const words = pictionaryWords(ctx, progress);
     const accepted = words[progress.current];
     if (!accepted) return { status: 'invalid' };
     if (!matchesWord(parsed.data.answer, accepted)) return { status: 'wrong', progress };
@@ -194,19 +232,22 @@ export const pictionaryChecker = defineChecker<'pictionary', PictionaryProgress>
       : { status: 'correct', progress: next };
   },
   hint(ctx, progress) {
-    const word = ctx.secretData.words[progress.current]?.[0];
+    const word = pictionaryWords(ctx, progress)[progress.current]?.[0];
     if (!word) return progress;
     return { ...progress, hint: { index: progress.current, letter: word.charAt(0).toUpperCase() } };
   },
   // Only the drawing being guessed is sent (null once all are guessed). The strokes are public;
   // the words never leave the server. The hint shows only while its word is on screen.
-  publicView: (ctx, progress) => ({
-    drawing: asJson(ctx.publicData.drawings[progress.current] ?? null),
-    current: progress.current,
-    total: ctx.publicData.drawings.length,
-    guesses: progress.guesses,
-    hint: progress.hint?.index === progress.current ? progress.hint : null,
-  }),
+  publicView: (ctx, progress) => {
+    const order = poolOrder(progress, ctx.publicData.drawings.length);
+    return {
+      drawing: asJson(ctx.publicData.drawings[order[progress.current] ?? -1] ?? null),
+      current: progress.current,
+      total: order.length,
+      guesses: progress.guesses,
+      hint: progress.hint?.index === progress.current ? progress.hint : null,
+    };
+  },
 });
 
 // Escape Room: 4 linked stages. Each stage is checked before the next one is sent.

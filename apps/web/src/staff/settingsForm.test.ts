@@ -21,7 +21,7 @@ describe('settings form', () => {
     for (const key of TASK_KEYS)
       expect(ALL_FIELDS.some((f) => f.key === `timer.${key}`)).toBe(true);
     // Every number except the lock lengths (their own list) and branding.
-    expect(ALL_FIELDS).toHaveLength(2 + 3 + 9 + 12 + 3 + 5 + 7);
+    expect(ALL_FIELDS).toHaveLength(2 + 3 + 12 + 12 + 3 + 5 + 7);
     expect(FIELD_GROUPS.find((g) => g.scoring)?.title).toBe('Scoring');
   });
 

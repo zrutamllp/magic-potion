@@ -34,9 +34,18 @@ function ctxFor(key: TaskKey, fragment: string | null = null): CheckerContext<Ta
   } as CheckerContext<TaskKey>;
 }
 
+// A pool task's first progress with the pool in its saved order (no random draw), so tests can
+// name the entries by position. Pool draws have their own tests below.
+function inPoolOrder(key: TaskKey, ctx: CheckerContext<TaskKey>): Json {
+  const progress = initProgress(key, ctx) as { order?: number[] };
+  if (!progress.order) return progress as Json;
+  const order = [...progress.order].sort((a, b) => a - b);
+  return { ...progress, order } as Json;
+}
+
 // Plays a list of submissions and returns every result.
 function play(key: TaskKey, ctx: CheckerContext<TaskKey>, submissions: unknown[]) {
-  let progress = initProgress(key, ctx);
+  let progress = inPoolOrder(key, ctx);
   const results: SubmitResult<Json>[] = [];
   for (const s of submissions) {
     const r = checkSubmission(key, ctx, progress, s);
@@ -558,7 +567,7 @@ describe('Pictionary', () => {
   });
 
   it('sends only the drawing being guessed, never the words', () => {
-    const start = view(initProgress('pictionary', ctx));
+    const start = view(inPoolOrder('pictionary', ctx));
     expect(start).toMatchObject({ current: 0, total: 5, guesses: [], hint: null });
     const drawings = (ctx.publicData as { drawings: unknown[] }).drawings;
     expect(start.drawing).toEqual(drawings[0]);
@@ -660,5 +669,126 @@ describe('public views', () => {
     }
     if (key === 'vault') expect(view).not.toContain('836');
     if (key === 'spot_difference') expect(view).not.toContain('"x":120');
+  });
+});
+
+describe('question pools (Phase 6B)', () => {
+  const riddles = Array.from({ length: 12 }, (_, i) => `Riddle ${i}?`);
+  const poolCtx = (previous: Json[] = [], seed = 7): CheckerContext<TaskKey> =>
+    ({
+      publicData: { riddles },
+      secretData: {
+        answers: riddles.map((_, i) => [`answer ${i}`]),
+        clues: riddles.map((_, i) => `Clue ${i}`),
+      },
+      fragment: null,
+      cipher: null,
+      tasks: DEFAULT_SETTINGS.tasks,
+      rng: seededRng(seed),
+      previous,
+    }) as CheckerContext<TaskKey>;
+  type RiddleView = {
+    content: { riddles: string[] };
+    hint: { index: number; text: string } | null;
+  };
+
+  it('draws the set size from the settings and sends only those riddles', () => {
+    const ctx = poolCtx();
+    const progress = initProgress('riddle', ctx) as { order: number[] };
+    expect(progress.order).toHaveLength(DEFAULT_SETTINGS.tasks.poolPerTry.riddle);
+    const view = publicView('riddle', ctx, progress) as RiddleView;
+    expect(view.content.riddles).toEqual(progress.order.map((i) => `Riddle ${i}?`));
+    expect(JSON.stringify(view)).not.toMatch(/answer \d|Clue/);
+  });
+
+  it('checks each answer against the drawn riddle, by position in the set', () => {
+    const ctx = poolCtx();
+    let progress = initProgress('riddle', ctx);
+    const order = (progress as { order: number[] }).order;
+    expect(
+      checkSubmission('riddle', ctx, progress, { index: 0, answer: `answer ${order[1]}` }).status,
+    ).toBe('wrong');
+    const statuses = order.map((poolIndex, index) => {
+      const r = checkSubmission('riddle', ctx, progress, { index, answer: `answer ${poolIndex}` });
+      if (r.status !== 'invalid') progress = r.progress;
+      return r.status;
+    });
+    expect(statuses).toEqual(['correct', 'correct', 'solved']);
+  });
+
+  it('gives the clue of the drawn riddle as the hint', () => {
+    const ctx = poolCtx();
+    const progress = initProgress('riddle', ctx);
+    const order = (progress as { order: number[] }).order;
+    const view = publicView('riddle', ctx, applyHint('riddle', ctx, progress)) as RiddleView;
+    expect(view.hint).toEqual({ index: 0, text: `Clue ${order[0]}` });
+  });
+
+  it('gives a fresh set on each new try until the pool runs out', () => {
+    const first = initProgress('riddle', poolCtx([], 1)) as { order: number[] };
+    const second = initProgress('riddle', poolCtx([first], 2)) as { order: number[] };
+    const third = initProgress('riddle', poolCtx([first, second], 3)) as { order: number[] };
+    const seen = [...first.order, ...second.order, ...third.order];
+    expect(new Set(seen).size).toBe(9);
+    // 3 left unseen, so the 5th try reuses some.
+    const fourth = initProgress('riddle', poolCtx([first, second, third], 4)) as {
+      order: number[];
+    };
+    expect(new Set([...seen, ...fourth.order]).size).toBe(12);
+    const fifth = initProgress('riddle', poolCtx([first, second, third, fourth], 5)) as {
+      order: number[];
+    };
+    expect(fifth.order).toHaveLength(3);
+  });
+
+  it('plays the whole content for a try saved before pools', () => {
+    const ctx = ctxFor('riddle');
+    const old = { answers: [null, null, null], hint: null };
+    const view = publicView('riddle', ctx, old) as RiddleView;
+    expect(view.content.riddles).toEqual((ctx.publicData as { riddles: string[] }).riddles);
+    expect(checkSubmission('riddle', ctx, old, { index: 0, answer: 'keyboard' }).status).toBe(
+      'correct',
+    );
+  });
+
+  it('plays one Hangman phrase per try, drawn from the pool', () => {
+    const ctx = {
+      ...ctxFor('hangman'),
+      publicData: { categories: ['Film', 'Food', 'Sport'] },
+      secretData: { phrases: ['Jaws', 'Pizza', 'Golf'] },
+      rng: seededRng(4),
+    } as CheckerContext<TaskKey>;
+    const progress = initProgress('hangman', ctx) as { order: number[] };
+    expect(progress.order).toHaveLength(1);
+    const i = progress.order[0]!;
+    const view = publicView('hangman', ctx, progress) as {
+      content: { category: string };
+      masked: string;
+    };
+    expect(view.content).toEqual({ category: ['Film', 'Food', 'Sport'][i] });
+    expect(view.masked).toBe('_'.repeat(['Jaws', 'Pizza', 'Golf'][i]!.length));
+  });
+
+  it('still plays a Hangman try saved before pools', () => {
+    const ctx = ctxFor('hangman');
+    const old = { guessed: [], wrong: 0, hinted: null };
+    const phrase = (ctx.secretData as { phrases: string[] }).phrases[0]!;
+    const view = publicView('hangman', ctx, old) as { masked: string };
+    expect(view.masked.length).toBe(phrase.length);
+  });
+
+  it('draws the Pictionary drawings per try from the settings', () => {
+    const base = ctxFor('pictionary');
+    const tasks = {
+      ...DEFAULT_SETTINGS.tasks,
+      poolPerTry: { ...DEFAULT_SETTINGS.tasks.poolPerTry, pictionary: 2 },
+    };
+    const ctx = { ...base, tasks } as CheckerContext<TaskKey>;
+    const progress = initProgress('pictionary', ctx) as { order: number[] };
+    expect(progress.order).toHaveLength(2);
+    const view = publicView('pictionary', ctx, progress) as { total: number; drawing: unknown };
+    expect(view.total).toBe(2);
+    const drawings = (base.publicData as { drawings: unknown[] }).drawings;
+    expect(view.drawing).toEqual(drawings[progress.order[0]!]);
   });
 });

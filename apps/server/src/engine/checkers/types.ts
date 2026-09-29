@@ -23,6 +23,9 @@ export interface CheckerContext<K extends TaskKey> {
   cipher: FindCodeCipher | null;
   tasks: GameSettings['tasks'];
   rng: Rng;
+  // Progress of this team's earlier tries on the same content, so a pool task can draw entries
+  // the team has not seen yet. Empty on the first try.
+  previous?: Json[];
 }
 
 export type SubmitResult<P> =

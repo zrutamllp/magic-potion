@@ -10,7 +10,13 @@ import {
   spotDifferenceChecker,
 } from './playTasks';
 import { questionsChecker } from './questions';
-import type { CheckerContext, Json, SubmitResult, TaskChecker } from './types';
+import {
+  asJson,
+  type CheckerContext,
+  type Json,
+  type SubmitResult,
+  type TaskChecker,
+} from './types';
 
 export type { CheckerContext, Json, SubmitResult } from './types';
 
@@ -27,12 +33,20 @@ const CHECKERS: { [K in TaskKey]: TaskChecker<K, never> } = {
   riddle: questionsChecker<'riddle'>({
     accepted: (ctx) => ctx.secretData.answers,
     hintText: (ctx, i) => ctx.secretData.clues[i] ?? '',
+    perTry: (ctx) => ctx.tasks.poolPerTry.riddle,
+    viewContent: (ctx, order) => ({ riddles: order.map((i) => ctx.publicData.riddles[i] ?? '') }),
     loose: true,
   }),
   ethical_dilemma: ethicalDilemmaChecker,
   data_story: questionsChecker<'data_story'>({
     accepted: (ctx) => ctx.secretData.answers,
     hintText: (ctx, i) => ctx.secretData.hintChartIds[i] ?? '',
+    perTry: (ctx) => ctx.tasks.poolPerTry.data_story,
+    viewContent: (ctx, order) =>
+      asJson({
+        ...ctx.publicData,
+        questions: order.map((i) => ctx.publicData.questions[i] ?? ''),
+      }),
     loose: true,
   }),
 } as unknown as { [K in TaskKey]: TaskChecker<K, never> };

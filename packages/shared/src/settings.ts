@@ -53,6 +53,11 @@ export const GameSettingsSchema = z.object({
     spotDifferenceTolerancePercent: z.number().min(0).max(20).default(4),
     // Guess the Celebrity: photos per try. Games saved before the task existed load with 8.
     guessCelebrityFaces: count.default(8),
+    // Pool tasks: how many entries each try draws from the pool (Phase 6B). Games saved before
+    // pools load with the defaults. Hangman always plays one phrase per try.
+    poolPerTry: z
+      .object({ riddle: count, data_story: count, pictionary: count })
+      .default({ riddle: 3, data_story: 3, pictionary: 5 }),
     // Games saved when Sound Sleuth was in the pool load with its timer dropped and the
     // Guess the Celebrity timer at its default (8 minutes).
     timerSeconds: z.preprocess(replaceSoundSleuthTimer, z.record(TaskKeySchema, seconds)),
