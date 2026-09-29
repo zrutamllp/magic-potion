@@ -1,5 +1,5 @@
 import { useCallback, useState, type FormEvent, type ReactNode } from 'react';
-import { Gamepad2, LogOut, Users, type LucideIcon } from 'lucide-react';
+import { Gamepad2, Library, LogOut, Users, type LucideIcon } from 'lucide-react';
 import type { StaffLoginResponse } from '@magic-potion/shared';
 import { ApiError, apiPost } from '../lib/api';
 import { load, save } from '../lib/session';
@@ -7,6 +7,8 @@ import { Button, fieldClass } from '../player/ui/basics';
 import { PotionBottle } from '../player/ui/PotionBottle';
 import { GamePage } from './pages/GamePage';
 import { GamesPage } from './pages/GamesPage';
+import { PackPage } from './pages/PackPage';
+import { PacksPage } from './pages/PacksPage';
 import { StaffPage } from './pages/StaffPage';
 import { confirmLeave, useStaffRoute, type StaffRoute } from './router';
 import { StaffProvider, useStaffApi, type FreshLogins } from './StaffContext';
@@ -68,6 +70,10 @@ function Panel({
             <GamePage key={route.gameId} gameId={route.gameId} tab={route.tab} />
           )}
           {route.page === 'staff' && <StaffPage />}
+          {route.page === 'packs' && <PacksPage />}
+          {route.page === 'pack' && (
+            <PackPage key={route.packId} packId={route.packId} task={route.task} />
+          )}
         </main>
       </div>
     </StaffProvider>
@@ -100,11 +106,20 @@ function Sidebar({
       <nav className="flex flex-col gap-1 p-3" aria-label="Staff menu">
         <NavLink
           icon={Gamepad2}
-          active={route.page !== 'staff'}
+          active={route.page === 'games' || route.page === 'game'}
           onClick={() => go({ page: 'games' })}
         >
           Games
         </NavLink>
+        {isAdmin && (
+          <NavLink
+            icon={Library}
+            active={route.page === 'packs' || route.page === 'pack'}
+            onClick={() => go({ page: 'packs' })}
+          >
+            Content packs
+          </NavLink>
+        )}
         {isAdmin && (
           <NavLink
             icon={Users}

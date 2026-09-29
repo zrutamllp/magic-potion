@@ -7,6 +7,8 @@ export class ApiError extends Error {
     message: string,
     readonly status: number,
     readonly code?: string,
+    // The whole reply, for routes that say more (for example the problems of each field).
+    readonly body?: unknown,
   ) {
     super(message);
   }
@@ -38,6 +40,7 @@ async function call<T>(method: string, path: string, body?: unknown, token?: str
       data.message ?? 'Something went wrong. Please try again.',
       res.status,
       data.code,
+      data,
     );
   }
   return data as T;
@@ -50,8 +53,29 @@ export const apiPut = <T>(path: string, body: unknown, token?: string) =>
   call<T>('PUT', path, body, token);
 export const apiPatch = <T>(path: string, body: unknown, token?: string) =>
   call<T>('PATCH', path, body, token);
-export const apiDelete = <T>(path: string, token?: string) =>
-  call<T>('DELETE', path, undefined, token);
+export const apiDelete = <T>(path: string, token?: string, body?: unknown) =>
+  call<T>('DELETE', path, body, token);
 // Sends one file (a picture) as the request body.
 export const apiUpload = <T>(path: string, file: Blob, token?: string) =>
   call<T>('POST', path, file, token);
+
+// Downloads a file (a spreadsheet template) and saves it under `filename`.
+export async function apiDownload(path: string, filename: string, token?: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch {
+    throw new ApiError('Cannot reach the server. Check your connection and try again.', 0);
+  }
+  if (!res.ok) throw new ApiError('The download did not work. Please try again.', res.status);
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}

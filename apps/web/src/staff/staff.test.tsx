@@ -44,6 +44,7 @@ function fakeApi(overrides: Partial<StaffApi> = {}): StaffApi {
     patch: never,
     del: never,
     upload: never,
+    download: never,
     ...overrides,
   };
 }

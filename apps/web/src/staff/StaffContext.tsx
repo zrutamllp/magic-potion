@@ -1,6 +1,15 @@
 import { createContext, useContext, useMemo } from 'react';
 import type { StaffLoginResponse, TeamLoginCard } from '@magic-potion/shared';
-import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, apiUpload } from '../lib/api';
+import {
+  ApiError,
+  apiDelete,
+  apiDownload,
+  apiGet,
+  apiPatch,
+  apiPost,
+  apiPut,
+  apiUpload,
+} from '../lib/api';
 import type { StaffRoute } from './router';
 
 // The logged-in staff member and REST helpers that carry their token. A request refused because
@@ -11,8 +20,9 @@ export interface StaffApi {
   post: <T>(path: string, body?: unknown) => Promise<T>;
   put: <T>(path: string, body: unknown) => Promise<T>;
   patch: <T>(path: string, body: unknown) => Promise<T>;
-  del: <T>(path: string) => Promise<T>;
+  del: <T>(path: string, body?: unknown) => Promise<T>;
   upload: <T>(path: string, file: Blob) => Promise<T>;
+  download: (path: string, filename: string) => Promise<void>;
 }
 
 // Team passwords are shown only once, right after they are made. They stay in memory (never in
@@ -56,8 +66,9 @@ export function useStaffApi(token: string, onLoggedOut: (message: string) => voi
       post: (p, body) => guard(apiPost(path(p), body, token)),
       put: (p, body) => guard(apiPut(path(p), body, token)),
       patch: (p, body) => guard(apiPatch(path(p), body, token)),
-      del: (p) => guard(apiDelete(path(p), token)),
+      del: (p, body) => guard(apiDelete(path(p), token, body)),
       upload: (p, file) => guard(apiUpload(path(p), file, token)),
+      download: (p, filename) => guard(apiDownload(path(p), filename, token)),
     };
   }, [token, onLoggedOut]);
 }

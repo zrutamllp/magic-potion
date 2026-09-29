@@ -6,6 +6,8 @@ import { GAME_TABS, type GameTab } from '../router';
 import { errorText, useStaff } from '../StaffContext';
 import { SmallButton, Status, inputBase, useAction } from '../ui';
 import { BrandingTab } from './BrandingTab';
+import { ContentTab } from './ContentTab';
+import { InboxTab } from './InboxTab';
 import { FacilitatorsTab } from './FacilitatorsTab';
 import { SettingsTab } from './SettingsTab';
 import { TeamsTab } from './TeamsTab';
@@ -15,6 +17,8 @@ import { TeamsTab } from './TeamsTab';
 const TAB_LABEL: Record<GameTab, string> = {
   settings: 'Settings',
   branding: 'Branding',
+  content: 'Content',
+  inbox: 'Inbox',
   teams: 'Teams',
   facilitators: 'Co-facilitators',
 };
@@ -72,6 +76,8 @@ export function GamePage({ gameId, tab }: { gameId: string; tab: GameTab }) {
           </nav>
           {tab === 'settings' && <SettingsTab game={game} onChange={setGame} />}
           {tab === 'branding' && <BrandingTab game={game} onChange={setGame} />}
+          {tab === 'content' && <ContentTab game={game} onChange={setGame} />}
+          {tab === 'inbox' && <InboxTab game={game} onChange={setGame} />}
           {tab === 'teams' && <TeamsTab game={game} onChange={setGame} />}
           {tab === 'facilitators' && <FacilitatorsTab game={game} onChange={setGame} />}
         </>

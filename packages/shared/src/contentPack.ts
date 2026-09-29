@@ -177,10 +177,28 @@ function dataStoryErrors(item: PackItemData): ItemError[] {
   return errors;
 }
 
-// Zod's own wording for a missing field or wrong type is technical; say it plainly.
+// Zod's own wording ("Too small: expected array to have >=1 items") is technical; messages
+// written in the schemas above are kept, the rest are said plainly.
 function friendly(issue: z.core.$ZodIssue): string {
-  if (issue.code === 'invalid_type') return 'This is missing.';
-  return issue.message;
+  if (!/^(Too small|Too big|Invalid)/.test(issue.message)) return issue.message;
+  switch (issue.code) {
+    case 'invalid_type':
+      return 'This is missing.';
+    case 'too_small':
+      return issue.origin === 'array'
+        ? `Add at least ${String(issue.minimum)}.`
+        : issue.origin === 'string'
+          ? 'Fill this in.'
+          : `Use ${String(issue.minimum)} or more.`;
+    case 'too_big':
+      return issue.origin === 'array'
+        ? `Use at most ${String(issue.maximum)}.`
+        : issue.origin === 'string'
+          ? `Keep this to ${String(issue.maximum)} characters or fewer.`
+          : `Use ${String(issue.maximum)} or less.`;
+    default:
+      return 'This is not in the right form.';
+  }
 }
 
 // The item as saved, with spaces trimmed. Only call on an item with no errors.
