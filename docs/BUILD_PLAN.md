@@ -60,6 +60,15 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 
 ## Phase 6: Admin, facilitator and projector
 
+Built in 4 batches, each planned, approved, built, tested and pushed on its own:
+
+- **6A Setup ✅:** staff login screen, admin panel, create game, settings editor (locked when Round 1 starts), client name / logo (Vercel Blob) / colours, bulk teams with unique codes and passwords (printable sheet and CSV), co-facilitators and team assignment.
+- **6B Content library:** forms for all 12 tasks with "preview as player"; question pools (each try draws a fresh set, default 3); Ethical Dilemma: one scenario per game for every team; task images on Vercel Blob; reusable content packs (copy, then edit); inbox bonus questions.
+- **6C Live control and facilitator dashboard:** start, pause, resume, extend, end; inbox messages; team progress; chat and transfers; fund adjustments (co-facilitator up to 2,000 with a reason, larger ones to admin approval); rename team, reset login, unlock task; audit log and undo; "stuck team" flag (Task Funds below zero or no activity for 5 minutes).
+- **6D Projector and debrief:** projector view (potion, all teams, halftime vs final at the Reveal); team photo inbox task (upload, staff can reject); all CSV exports from `GAME_RULES.md` section 13.
+
+Original list:
+
 - Admin: create game, edit settings (locked after start), team names and passwords (bulk create), upload task content and inbox items, create co-facilitators and assign teams.
 - Guess the Celebrity upload: photos plus accepted names per photo, and the task name players see. Save photos under random file names (never the person's name) and strip image metadata (EXIF, titles) on upload. Photos must be replaceable before any game without code.
 - Live control: start, pause, resume, extend, end; send inbox messages.
@@ -84,9 +93,13 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 - Hostinger VPS as a self-hosted option for clients who need it.
 - More questions per task, set from the admin panel, not in code (Sunny, after Batch 2). For example, Ethical Dilemma with about 10 scenarios and Riddle with 10 to 12 riddles. Today the content schemas fix the counts (Riddle exactly 3, one dilemma scenario) and the only content is the sample pack in `apps/server/prisma/sampleContent.ts`. To do: make the count per task a game setting or part of the uploaded content, loosen the schemas in `packages/shared/src/taskContent.ts`, and let admins add and edit questions in Phase 6 (content upload). Before building, decide with Sunny: are all questions played in one try, or is a set drawn from a bigger pool? Does the timer or the points change with more questions? For Ethical Dilemma, is each scenario answered in one task, and is every answer saved for the debrief?
 - Languages other than English.
-- Unique team codes across games. Team login finds the team by code among games that have not ended, and refuses a code that two live games share. Phase 6 should generate codes that never clash.
+- ~~Unique team codes across games.~~ Done in 6A: new codes are checked against every team code in every game. Older demo and screenshot games keep their codes.
 - Replace the Phase 3 test screens (`apps/web/src/pages/TeamPage.tsx`, `StaffDevPage.tsx`) with the real player screens (Phase 4) and admin panel (Phase 6), and remove the dev-only "finish all tasks" route (`ENABLE_DEV_TOOLS`) once the task screens exist.
 - Vercel rewrite so deep links such as `/dev/staff` load the app in production (Phase 7).
 - Team photo upload in the Inbox (needs Vercel Blob storage): Phase 6, with content upload. The card shows its status until then.
 - Hint, fail penalty and facilitator adjustment lines in the Funds transaction list (needs ledger rows in the player state): Phase 5 for hints and fails, Phase 6 for adjustments.
 - Facilitator messages in the inbox: Phase 6.
+- From 6A: renaming a team or changing settings after the start needs the live engine to take the change (6C: rename team; settings stay locked). The Lobby reloads the game instead.
+- From 6A: co-facilitators see their games in the list but have no screen yet (6C dashboard).
+- From 6A: deleting a whole game from the admin panel (not asked for; ask Sunny before adding it, because it removes data).
+- From 6A: `npm audit` reports issues inside Prisma's and tsup's own tooling (dev only). The only automatic fix downgrades Prisma to v6; revisit when Prisma ships a fix.

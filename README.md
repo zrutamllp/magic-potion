@@ -142,6 +142,20 @@ Sample pictures (and the placeholder faces) are SVG files in `apps/web/public/sa
 
 `npm run screenshots:batch3` plays all three with mouse clicks and saves the screens to `screenshots/phase5/batch3/`, checking that pictures and buttons fit a 1280×720 window.
 
+## Admin panel (Phase 6A: setup)
+
+Open `http://localhost:5173/staff` and log in with the main admin (`ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD`). Everything is a form; nobody edits JSON or code.
+
+- **Games → New game:** name, client name and number of teams (3 to 25). The game gets the default settings and the sample task content (content packs come in 6B).
+- **Teams:** every team gets a 5-character code (no look-alike letters, never used by any other game) and a password like `plum-river-sun-4`. Passwords are shown only once, right after they are made, in the login sheet: **Print login sheet** (one card per team) or **Download CSV**. Lost one? Tick the team and press **New passwords**; its old login ends. Add, rename or delete teams until the game starts.
+- **Settings:** every rule number from `docs/GAME_RULES.md`, times in minutes. **Reset to defaults** is there if needed. Everything locks when Round 1 starts.
+- **Branding:** client name, logo upload, two colours with a live preview, and the intro video. Logos go to Vercel Blob (`BLOB_READ_WRITE_TOKEN`) as WebP under a random name, with all hidden image details removed. SVG is not accepted.
+- **Staff → Add a co-facilitator** (name, email, starting password), then **Co-facilitators** in a game to tick the teams they look after.
+
+Every change is written to the audit log. Changing a game in the Lobby reloads it for teams that are already logged in.
+
+`npm run screenshots:6a` sets up a whole game this way with a throwaway main admin (including a real logo upload), logs a team in to check the branding, starts the game, checks that settings lock, and saves the screens to `screenshots/phase6/6a/`. It deletes everything it made afterwards.
+
 ## Screenshots
 
 `npm run screenshots` saves a PNG of every player screen to `screenshots/phase4/` (git-ignored), at 1280×720 (a typical Zoom share) plus two at phone width. It uses the real server and database with two throwaway games that it creates and deletes; the Demo Game is not touched. It needs `ENABLE_DEV_TOOLS=true`, and runs `npm run dev` itself if it is not already running. First time only: `npx playwright install chromium`.
