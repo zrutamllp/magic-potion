@@ -12,7 +12,7 @@ import {
   type SettingsForm,
 } from '../settingsForm';
 import { useStaff } from '../StaffContext';
-import { Panel, SmallButton, Status, inputClass, useAction } from '../ui';
+import { Panel, SmallButton, Status, inputBase, useAction } from '../ui';
 import type { GameTabProps } from './GamePage';
 
 // Every rule number as a form field, grouped like GAME_RULES.md. Locked once Round 1 starts.
@@ -122,17 +122,17 @@ function NumberField({
         <label htmlFor={id} className="text-sm font-semibold">
           {field.label}
         </label>
-        <span className="flex items-center gap-1.5">
+        <span className="flex shrink-0 items-center gap-1.5">
           <input
             id={id}
             inputMode="decimal"
-            className={`${inputClass} w-24 text-right ${error ? 'border-danger' : ''}`}
+            className={`${inputBase} w-20 text-right ${error ? 'border-danger' : ''}`}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? `${id}-error` : undefined}
           />
-          <span className="w-11 text-sm text-ink-muted">{unit}</span>
+          <span className="w-10 text-sm text-ink-muted">{unit}</span>
         </span>
       </div>
       {field.help && <p className="text-xs text-ink-muted">{field.help}</p>}
@@ -165,7 +165,7 @@ function LockLengths({
             <input
               aria-label={`Lock ${i + 1} length in seconds`}
               inputMode="numeric"
-              className={`${inputClass} w-16 text-right ${error ? 'border-danger' : ''}`}
+              className={`${inputBase} w-16 text-right ${error ? 'border-danger' : ''}`}
               value={v}
               onChange={(e) => onChange(values.map((x, j) => (j === i ? e.target.value : x)))}
             />

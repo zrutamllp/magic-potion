@@ -8,7 +8,7 @@ import {
 } from '@magic-potion/shared';
 import { downloadLoginCsv, mergeLogins, printLoginSheet } from '../loginSheet';
 import { useStaff } from '../StaffContext';
-import { Panel, SmallButton, Status, inputClass, useAction } from '../ui';
+import { Panel, SmallButton, Status, inputBase, inputClass, useAction } from '../ui';
 import type { GameTabProps } from './GamePage';
 
 // Team names, codes and passwords. Passwords are stored hashed, so they show only right after
@@ -165,7 +165,7 @@ function TeamRow({
           <form onSubmit={save} className="flex items-center gap-2">
             <input
               aria-label="Team name"
-              className={`${inputClass} w-56`}
+              className={`${inputBase} w-56`}
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={40}
@@ -317,23 +317,23 @@ function LoginSheet({
       title="Login sheet"
       className="border-warning/60"
       right={
-        <span className="flex gap-2">
-          <SmallButton onClick={() => setBlocked(!printLoginSheet(game.name, client, logins))}>
-            <Printer className="h-4 w-4" aria-hidden /> Print login sheet
-          </SmallButton>
-          <SmallButton variant="outline" onClick={() => downloadLoginCsv(game.name, logins)}>
-            <Download className="h-4 w-4" aria-hidden /> Download CSV
-          </SmallButton>
-          <SmallButton variant="outline" tone="muted" onClick={onHide}>
-            Hide
-          </SmallButton>
-        </span>
+        <SmallButton variant="outline" tone="muted" onClick={onHide}>
+          Hide
+        </SmallButton>
       }
     >
       <p className="mb-2 text-base text-warning">
         Print or download these now. Passwords are shown only once. If one is lost, make a new
         password for that team.
       </p>
+      <div className="mb-3 flex gap-2">
+        <SmallButton onClick={() => setBlocked(!printLoginSheet(game.name, client, logins))}>
+          <Printer className="h-4 w-4" aria-hidden /> Print login sheet
+        </SmallButton>
+        <SmallButton variant="outline" onClick={() => downloadLoginCsv(game.name, logins)}>
+          <Download className="h-4 w-4" aria-hidden /> Download CSV
+        </SmallButton>
+      </div>
       {blocked && (
         <p role="alert" className="mb-2 text-danger">
           Your browser blocked the print window. Allow pop-ups for this site and try again.

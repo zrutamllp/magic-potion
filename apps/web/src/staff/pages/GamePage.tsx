@@ -4,7 +4,7 @@ import type { AdminGame } from '@magic-potion/shared';
 import { PHASE_LABEL } from '../../player/layout/Shell';
 import { GAME_TABS, type GameTab } from '../router';
 import { errorText, useStaff } from '../StaffContext';
-import { SmallButton, Status, inputClass, useAction } from '../ui';
+import { SmallButton, Status, inputBase, useAction } from '../ui';
 import { BrandingTab } from './BrandingTab';
 import { FacilitatorsTab } from './FacilitatorsTab';
 import { SettingsTab } from './SettingsTab';
@@ -102,7 +102,7 @@ function Header({ game, onChange }: GameTabProps) {
           <form onSubmit={save} className="flex items-center gap-2">
             <input
               aria-label="Game name"
-              className={`${inputClass} w-96 text-xl font-bold`}
+              className={`${inputBase} w-96 text-xl font-bold`}
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={60}

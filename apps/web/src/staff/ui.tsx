@@ -4,8 +4,10 @@ import { errorText } from './StaffContext';
 // Small form pieces for the admin panel, in the same dark card style as the player app but a
 // little denser: staff use it on their own laptop, not on a shared Zoom screen.
 
-export const inputClass =
-  'w-full rounded-lg border border-line bg-page px-3 py-1.5 text-base text-ink placeholder:text-ink-muted/70 focus:border-brand focus:outline-none disabled:opacity-60';
+// Without a width, for boxes with a fixed width (numbers, colour codes).
+export const inputBase =
+  'rounded-lg border border-line bg-page px-3 py-1.5 text-base text-ink placeholder:text-ink-muted/70 focus:border-brand focus:outline-none disabled:opacity-60';
+export const inputClass = `w-full ${inputBase}`;
 
 export function Panel({
   title,
