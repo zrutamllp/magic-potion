@@ -44,6 +44,7 @@ export function lobbyTeam(i: number): TeamState {
     supportFunds: 0,
     finishedAt: null,
     finishPlaySecondsRemaining: null,
+    lastActionAt: null,
     tasks: {},
     inbox: {},
   };
@@ -90,6 +91,7 @@ export function lobbyState(
     fragments: {},
     transfers: {},
     requests: {},
+    adjustments: {},
     inboxItems,
     chat: [],
     ledger: {},

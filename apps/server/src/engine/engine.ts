@@ -1,6 +1,6 @@
 import type { EngineResult } from '@magic-potion/shared';
 import type { Clock } from './clock';
-import { Draft } from './draft';
+import { Draft, ok } from './draft';
 import type { EngineEvent, EngineListener } from './events';
 import { buildLeaderboard, type Leaderboard } from './leaderboard';
 import type { Persistence } from './persistence/types';
@@ -26,6 +26,18 @@ import {
 import { postAlert } from './rules/alerts';
 import { messagesLeft, sendChat } from './rules/chat';
 import { answerInbox, rejectPhoto, submitPhoto } from './rules/inbox';
+import {
+  adjustFunds,
+  clearLockout,
+  decideAdjustment,
+  postMessage,
+  releaseFragment,
+  renameTeam,
+  requestAdjustment,
+  stopTask,
+  undoChange,
+  type UndoTarget,
+} from './rules/staff';
 import { giveUp, startTask, submitAnswer, timeoutTask, useHint } from './rules/tasks';
 import { potionOf } from './rules/timers';
 import { nextDue, type DueEvent } from './scheduler';
@@ -108,54 +120,105 @@ export class GameEngine {
     return this.run((d) => rejectPhoto(d, staffUserId, teamId, itemId, reason));
   }
 
+  // ---------- Facilitator commands (Phase 6C) ----------
+
+  adjustFunds(staffUserId: string, teamId: string, amount: number, reason: string) {
+    return this.run((d) => adjustFunds(d, staffUserId, teamId, amount, reason));
+  }
+
+  requestAdjustment(
+    staff: { id: string; name: string },
+    teamId: string,
+    amount: number,
+    reason: string,
+  ) {
+    return this.run((d) => requestAdjustment(d, staff, teamId, amount, reason));
+  }
+
+  decideAdjustment(adminId: string, requestId: string, approve: boolean, note?: string) {
+    return this.run((d) => decideAdjustment(d, adminId, requestId, approve, note));
+  }
+
+  renameTeam(staffUserId: string, teamId: string, name: string) {
+    return this.run((d) => renameTeam(d, staffUserId, teamId, name));
+  }
+
+  clearLockout(staffUserId: string, teamId: string, taskId: string) {
+    return this.run((d) => clearLockout(d, staffUserId, teamId, taskId));
+  }
+
+  stopTask(staffUserId: string, teamId: string, taskId: string, reason: string) {
+    return this.run((d) => stopTask(d, staffUserId, teamId, taskId, reason));
+  }
+
+  releaseFragment(staffUserId: string, fragmentId: string) {
+    return this.run((d) => releaseFragment(d, staffUserId, fragmentId));
+  }
+
+  postMessage(staffUserId: string, title: string, body: string) {
+    return this.run((d) => postMessage(d, staffUserId, title, body));
+  }
+
+  undo(staffUserId: string, target: UndoTarget, reason: string) {
+    return this.run((d) => undoChange(d, staffUserId, target, reason));
+  }
+
   // ---------- Team commands ----------
+  // Each successful team action also records the team's last activity time.
+
+  // A team logged in. Only the last activity time changes.
+  markSeen(teamId: string) {
+    return this.teamRun(teamId, () => ok(undefined));
+  }
 
   startTask(teamId: string, taskId: string) {
-    return this.run((d) => startTask(d, teamId, taskId));
+    return this.teamRun(teamId, (d) => startTask(d, teamId, taskId));
   }
 
   useHint(teamId: string, taskId: string) {
-    return this.run((d) => useHint(d, teamId, taskId));
+    return this.teamRun(teamId, (d) => useHint(d, teamId, taskId));
   }
 
   submit(teamId: string, taskId: string, submission: unknown) {
-    return this.run((d) => submitAnswer(d, teamId, taskId, submission));
+    return this.teamRun(teamId, (d) => submitAnswer(d, teamId, taskId, submission));
   }
 
   giveUp(teamId: string, taskId: string) {
-    return this.run((d) => giveUp(d, teamId, taskId));
+    return this.teamRun(teamId, (d) => giveUp(d, teamId, taskId));
   }
 
   sendFunds(fromTeamId: string, toTeamId: string, amount: number) {
-    return this.run((d) => sendFunds(d, fromTeamId, toTeamId, amount));
+    return this.teamRun(fromTeamId, (d) => sendFunds(d, fromTeamId, toTeamId, amount));
   }
 
   requestFunds(requesterTeamId: string, payerTeamId: string, amount: number) {
-    return this.run((d) => requestFunds(d, requesterTeamId, payerTeamId, amount));
+    return this.teamRun(requesterTeamId, (d) =>
+      requestFunds(d, requesterTeamId, payerTeamId, amount),
+    );
   }
 
   acceptRequest(payerTeamId: string, requestId: string) {
-    return this.run((d) => acceptRequest(d, payerTeamId, requestId));
+    return this.teamRun(payerTeamId, (d) => acceptRequest(d, payerTeamId, requestId));
   }
 
   declineRequest(payerTeamId: string, requestId: string) {
-    return this.run((d) => declineRequest(d, payerTeamId, requestId));
+    return this.teamRun(payerTeamId, (d) => declineRequest(d, payerTeamId, requestId));
   }
 
   cancelRequest(requesterTeamId: string, requestId: string) {
-    return this.run((d) => cancelRequest(d, requesterTeamId, requestId));
+    return this.teamRun(requesterTeamId, (d) => cancelRequest(d, requesterTeamId, requestId));
   }
 
   answerInbox(teamId: string, itemId: string, answer: string) {
-    return this.run((d) => answerInbox(d, teamId, itemId, answer));
+    return this.teamRun(teamId, (d) => answerInbox(d, teamId, itemId, answer));
   }
 
   submitPhoto(teamId: string, itemId: string, photoUrl: string) {
-    return this.run((d) => submitPhoto(d, teamId, itemId, photoUrl));
+    return this.teamRun(teamId, (d) => submitPhoto(d, teamId, itemId, photoUrl));
   }
 
   sendChat(teamId: string, body: string) {
-    return this.run((d) => sendChat(d, teamId, body));
+    return this.teamRun(teamId, (d) => sendChat(d, teamId, body));
   }
 
   // ---------- Scheduler ----------
@@ -231,6 +294,18 @@ export class GameEngine {
       const d = this.draft(now);
       const result = command(d);
       if (result.ok) await this.commit(d);
+      return result;
+    });
+  }
+
+  private teamRun<T>(teamId: string, command: (d: Draft) => EngineResult<T>) {
+    return this.run((d) => {
+      const result = command(d);
+      const team = d.team(teamId);
+      if (result.ok && team && team.status === 'ACTIVE') {
+        d.updateTeam(team, { lastActionAt: d.now });
+        d.emit({ type: 'teamSeen', teamId });
+      }
       return result;
     });
   }

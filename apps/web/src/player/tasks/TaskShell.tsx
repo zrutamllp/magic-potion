@@ -83,7 +83,11 @@ const RESULT_TEXT: Partial<Record<AttemptResult, string>> = {
   GAVE_UP: 'You gave up.',
   FAILED_WRONG: 'Too many wrong letters.',
   STOPPED_AT_END: 'Play ended before this task was finished.',
+  STOPPED_BY_STAFF: 'The facilitator stopped this try. No funds were taken.',
 };
+
+// Tries that ended with no penalty.
+const NO_PENALTY: readonly (AttemptResult | null)[] = ['STOPPED_AT_END', 'STOPPED_BY_STAFF'];
 
 export function TaskScreen({ taskId }: { taskId: string }) {
   const { state, go } = useGame();
@@ -198,7 +202,7 @@ function Brief({ task }: { task: PlayerTaskView }) {
   const { tasks } = state.settings;
   const blocked = startBlock(state, task);
   const paused = !state.game.timersRunning;
-  const failed = task.status === 'FAILED' || task.lastResult === 'STOPPED_AT_END';
+  const failed = task.status === 'FAILED' || NO_PENALTY.includes(task.lastResult);
   const minutes = Math.round(task.timerSeconds / 60);
 
   return (
@@ -211,7 +215,7 @@ function Brief({ task }: { task: PlayerTaskView }) {
               <p className="text-2xl font-bold text-danger">
                 {RESULT_TEXT[task.lastResult ?? 'FAILED_TIMEOUT'] ?? 'This try failed.'}
               </p>
-              {task.lastResult !== 'STOPPED_AT_END' && (
+              {!NO_PENALTY.includes(task.lastResult) && (
                 <p className="text-lg">−{money(tasks.failPenalty)} Task Funds.</p>
               )}
             </div>

@@ -28,6 +28,10 @@ export type EngineEvent =
   | { type: 'inboxAnswered'; teamId: string; itemId: string; correct: boolean }
   | { type: 'photoReviewed'; teamId: string; itemId: string }
   | { type: 'chatSent'; teamId: string; messageId: string }
-  | { type: 'alertPosted'; itemId: string };
+  | { type: 'alertPosted'; itemId: string }
+  // A facilitator changed something (Phase 6C): funds, a name, a lock, a fragment, a request.
+  | { type: 'staffAction'; action: string; teamId: string | null }
+  // A team acted or logged in. Only the staff dashboard needs to hear about it.
+  | { type: 'teamSeen'; teamId: string };
 
 export type EngineListener = (events: readonly EngineEvent[]) => void;

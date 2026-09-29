@@ -1,4 +1,5 @@
 import type {
+  AdjustmentRequestStatus,
   AttemptResult,
   FragmentKind,
   FundRequestStatus,
@@ -70,6 +71,8 @@ export interface TeamState {
   supportFunds: number;
   finishedAt: number | null;
   finishPlaySecondsRemaining: number | null;
+  // The team's last game action or login (Phase 6C "stuck team" flag).
+  lastActionAt: number | null;
   // Keyed by TeamTask id, in draw order (common tasks first).
   tasks: Record<string, TeamTaskState>;
   // Keyed by InboxItem id.
@@ -108,6 +111,23 @@ export interface FundRequestState {
   status: FundRequestStatus;
   createdAt: number;
   decidedAt: number | null;
+}
+
+// A co-facilitator's fund change above their limit, waiting for the main admin (GAME_RULES
+// section 11). Funds change only when it is approved.
+export interface AdjustmentRequestState {
+  id: string;
+  teamId: string;
+  requestedById: string;
+  // For the dashboard. Not a database column of the request.
+  requestedByName: string;
+  // The change to Task Funds: above zero adds, below zero takes away.
+  amount: number;
+  reason: string;
+  status: AdjustmentRequestStatus;
+  decidedById: string | null;
+  decidedAt: number | null;
+  createdAt: number;
 }
 
 export interface InboxItemState {
@@ -163,6 +183,7 @@ export interface GameState {
   fragments: Record<string, FragmentState>;
   transfers: Record<string, TransferState>;
   requests: Record<string, FundRequestState>;
+  adjustments: Record<string, AdjustmentRequestState>;
   inboxItems: Record<string, InboxItemState>;
   // In the order they were sent.
   chat: ChatMessageState[];

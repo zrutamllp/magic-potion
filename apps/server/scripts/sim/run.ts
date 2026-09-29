@@ -114,6 +114,11 @@ export async function runSimulation(setup: SimSetup, opts: SimOptions): Promise<
         case 'taskChecked':
           if (e.status === 'wrong') bump('wrong answers');
           break;
+        case 'teamSeen':
+          break;
+        case 'staffAction':
+          bump(`staff ${e.action.toLowerCase().replace(/_/g, ' ')}`);
+          break;
         case 'requestDecided': {
           const status = s.requests[e.requestId]?.status.toLowerCase();
           bump(`requests ${status}`);

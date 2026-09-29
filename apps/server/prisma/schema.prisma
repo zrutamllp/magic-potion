@@ -43,6 +43,8 @@ enum AttemptResult {
   // The task failed by its own rule (Hangman: too many wrong letters).
   FAILED_WRONG
   STOPPED_AT_END
+  // A facilitator stopped the try (Phase 6C). No penalty, not done, the team may restart.
+  STOPPED_BY_STAFF
 }
 
 enum FragmentKind {

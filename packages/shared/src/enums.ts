@@ -15,6 +15,7 @@ export const ATTEMPT_RESULTS = [
   'GAVE_UP',
   'FAILED_WRONG',
   'STOPPED_AT_END',
+  'STOPPED_BY_STAFF',
 ] as const;
 export type AttemptResult = (typeof ATTEMPT_RESULTS)[number];
 

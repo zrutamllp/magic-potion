@@ -21,12 +21,14 @@ describe.skipIf(!url)('Prisma persistence', () => {
   let prisma: PrismaClient;
   let gameId: string;
   let adminId: string;
+  let adminName: string;
 
   beforeAll(async () => {
     prisma = createPrisma(url as string);
     const admin = await prisma.staffUser.findFirst({ where: { role: 'MAIN_ADMIN' } });
     if (!admin) throw new Error('No main admin in the test database. Run npm run db:seed.');
     adminId = admin.id;
+    adminName = admin.name;
     gameId = await createSampleGame(prisma, { name: `Integration test ${Date.now()}`, teams: 4 });
   });
 
@@ -78,6 +80,39 @@ describe.skipIf(!url)('Prisma persistence', () => {
     const photo = Object.values(engine.state.inboxItems).find((i) => i.kind === 'PHOTO');
     await ok(engine.submitPhoto(b.id, photo?.id ?? '', 'https://example.com/team.jpg'));
     await ok(engine.rejectPhoto(adminId, b.id, photo?.id ?? '', 'Not the whole team'));
+    // Facilitator actions (Phase 6C): a fund change, an approved request, a rename and its
+    // undo, a message and a released fragment.
+    await ok(engine.adjustFunds(adminId, c.id, -700, 'Integration test'));
+    const adj = await engine.requestAdjustment(
+      { id: adminId, name: adminName },
+      a.id,
+      3_000,
+      'Integration test',
+    );
+    if (!adj.ok) throw new Error(adj.code);
+    await ok(engine.decideAdjustment(adminId, adj.value.requestId, true));
+    await ok(engine.renameTeam(adminId, c.id, `Renamed ${T0}`));
+    const rename = await prisma.auditLog.findFirstOrThrow({
+      where: { gameId, action: 'RENAME_TEAM' },
+    });
+    await ok(
+      engine.undo(
+        adminId,
+        {
+          id: rename.id,
+          action: rename.action,
+          teamId: rename.teamId,
+          before: rename.before as { name: string },
+          after: rename.after as { name: string },
+          undoneAt: null,
+          undoOfId: null,
+        },
+        '',
+      ),
+    );
+    await ok(engine.postMessage(adminId, 'Integration test', 'Hello'));
+    const fragment = Object.values(engine.state.fragments).find((f) => f.neededByTeamId === c.id);
+    await ok(engine.releaseFragment(adminId, fragment?.id ?? ''));
     // An admin pause, resume and extension.
     await ok(engine.freeze(adminId));
     clock.advance(2 * MIN);
@@ -94,6 +129,9 @@ describe.skipIf(!url)('Prisma persistence', () => {
     const rebuilt = await loadGame(prisma, gameId);
     expect(canonicalJson(rebuilt.state)).toBe(canonicalJson(engine.state));
     expect(await checkBalances(prisma, gameId)).toEqual([]);
+    expect(
+      (await prisma.auditLog.findUniqueOrThrow({ where: { id: rename.id } })).undoneAt,
+    ).not.toBeNull();
 
     // The rebuilt engine carries on: Round 2 starts when the Pause ends.
     const restarted = new GameEngine({

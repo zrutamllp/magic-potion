@@ -12,6 +12,7 @@ import type { EngineEvent } from './events';
 import type { Potion } from './potion';
 import type { Rng } from './rng';
 import type {
+  AdjustmentRequestState,
   AttemptState,
   ChatMessageState,
   FragmentState,
@@ -41,7 +42,8 @@ export type ChangeModel =
   | 'inboxResponse'
   | 'potionSnapshot'
   | 'chatMessage'
-  | 'auditLog';
+  | 'auditLog'
+  | 'fundAdjustmentRequest';
 
 // Field values are plain JSON; fields ending in "At" or "Until" hold epoch ms and become dates.
 export type ChangeData = Record<string, Json | undefined>;
@@ -129,7 +131,13 @@ export class Draft {
     patch: Partial<
       Pick<
         TeamState,
-        'status' | 'removedAt' | 'chainPosition' | 'finishedAt' | 'finishPlaySecondsRemaining'
+        | 'name'
+        | 'status'
+        | 'removedAt'
+        | 'chainPosition'
+        | 'finishedAt'
+        | 'finishPlaySecondsRemaining'
+        | 'lastActionAt'
       >
     >,
   ): void {
@@ -230,6 +238,60 @@ export class Draft {
       data: { ...created, gameId: this.state.id },
     });
     return created;
+  }
+
+  updateFragment(
+    fragment: FragmentState,
+    patch: Partial<Pick<FragmentState, 'releasedAt' | 'releasedByStaffId'>>,
+  ): void {
+    Object.assign(fragment, patch);
+    this.changes.push({ kind: 'update', model: 'fragment', id: fragment.id, data: patch });
+  }
+
+  createAdjustmentRequest(
+    request: Omit<
+      AdjustmentRequestState,
+      'id' | 'status' | 'decidedById' | 'decidedAt' | 'createdAt'
+    >,
+  ): AdjustmentRequestState {
+    const created: AdjustmentRequestState = {
+      ...request,
+      id: randomUUID(),
+      status: 'PENDING',
+      decidedById: null,
+      decidedAt: null,
+      createdAt: this.now,
+    };
+    this.state.adjustments[created.id] = created;
+    // The staff name is for the dashboard only; the row links to the staff user.
+    this.changes.push({
+      kind: 'create',
+      model: 'fundAdjustmentRequest',
+      data: {
+        id: created.id,
+        gameId: this.state.id,
+        teamId: created.teamId,
+        requestedById: created.requestedById,
+        amount: created.amount,
+        reason: created.reason,
+        status: created.status,
+        createdAt: created.createdAt,
+      },
+    });
+    return created;
+  }
+
+  updateAdjustmentRequest(
+    request: AdjustmentRequestState,
+    patch: Partial<Pick<AdjustmentRequestState, 'status' | 'decidedById' | 'decidedAt'>>,
+  ): void {
+    Object.assign(request, patch);
+    this.changes.push({
+      kind: 'update',
+      model: 'fundAdjustmentRequest',
+      id: request.id,
+      data: patch,
+    });
   }
 
   createTransfer(transfer: Omit<TransferState, 'id'>): TransferState {
@@ -363,6 +425,8 @@ export class Draft {
     before?: Json;
     after?: Json;
     reason?: string;
+    // Set when this row undoes an earlier one.
+    undoOfId?: string;
   }): string {
     const id = randomUUID();
     this.changes.push({
@@ -377,9 +441,19 @@ export class Draft {
         before: entry.before ?? null,
         after: entry.after ?? null,
         reason: entry.reason ?? null,
+        undoOfId: entry.undoOfId ?? null,
         createdAt: this.now,
       },
     });
     return id;
+  }
+
+  markAuditUndone(auditId: string): void {
+    this.changes.push({
+      kind: 'update',
+      model: 'auditLog',
+      id: auditId,
+      data: { undoneAt: this.now },
+    });
   }
 }

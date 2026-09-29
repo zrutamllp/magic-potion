@@ -174,18 +174,22 @@ function stopRunningTasks(d: Draft): void {
   }
 }
 
+// Ends a try with no penalty. It does not count as done, and the team may start it again.
 export function stopAttempt(
   d: Draft,
   task: Parameters<Draft['updateTeamTask']>[0],
   attempt: Parameters<Draft['updateAttempt']>[0],
+  result: 'STOPPED_AT_END' | 'STOPPED_BY_STAFF' = 'STOPPED_AT_END',
 ): void {
   d.updateAttempt(attempt, {
-    result: 'STOPPED_AT_END',
+    result,
     endedAt: d.now,
     frozenRemainingMs: null,
     frozenLockMs: null,
   });
-  const failedBefore = task.attempts.some((a) => a !== attempt && a.result !== 'STOPPED_AT_END');
+  const failedBefore = task.attempts.some(
+    (a) => a !== attempt && a.result !== 'STOPPED_AT_END' && a.result !== 'STOPPED_BY_STAFF',
+  );
   d.updateTeamTask(task, { status: failedBefore ? 'FAILED' : 'NOT_STARTED' });
 }
 

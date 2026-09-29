@@ -37,6 +37,7 @@ export const ENGINE_ERRORS = {
   // Staff actions (Phase 6C). Shown to staff only.
   INVALID_ADJUSTMENT: 'Enter a whole amount that is not zero.',
   REASON_REQUIRED: 'Type a reason.',
+  INVALID_NAME: 'Enter a team name of 1 to 40 letters.',
   NAME_TAKEN: 'Another team already has that name.',
   NOT_LOCKED: 'This task is not locked.',
   FRAGMENT_NOT_FOUND: 'That fragment was not found.',

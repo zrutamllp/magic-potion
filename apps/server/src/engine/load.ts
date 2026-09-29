@@ -9,6 +9,7 @@ import type { PrismaClient } from '../generated/prisma/client';
 import type { Json } from './checkers';
 import type { Potion } from './potion';
 import type {
+  AdjustmentRequestState,
   ContentState,
   FragmentState,
   FundRequestState,
@@ -43,6 +44,7 @@ export async function loadGame(
       fragments: true,
       transfers: true,
       fundRequests: true,
+      fundAdjustmentRequests: { include: { requestedBy: { select: { name: true } } } },
       inboxItems: true,
       potionSnapshots: true,
       chatMessages: { orderBy: { createdAt: 'asc' } },
@@ -86,6 +88,7 @@ export async function loadGame(
       supportFunds: t.supportFunds,
       finishedAt: ms(t.finishedAt),
       finishPlaySecondsRemaining: t.finishPlaySecondsRemaining,
+      lastActionAt: ms(t.lastActionAt),
       tasks: Object.fromEntries(
         tasks.map((task) => [
           task.id,
@@ -174,6 +177,22 @@ export async function loadGame(
     };
   }
 
+  const adjustments: Record<string, AdjustmentRequestState> = {};
+  for (const a of game.fundAdjustmentRequests) {
+    adjustments[a.id] = {
+      id: a.id,
+      teamId: a.teamId,
+      requestedById: a.requestedById,
+      requestedByName: a.requestedBy.name,
+      amount: a.amount,
+      reason: a.reason,
+      status: a.status,
+      decidedById: a.decidedById,
+      decidedAt: ms(a.decidedAt),
+      createdAt: a.createdAt.getTime(),
+    };
+  }
+
   const inboxItems: Record<string, InboxItemState> = {};
   for (const i of game.inboxItems) {
     inboxItems[i.id] = {
@@ -211,6 +230,7 @@ export async function loadGame(
     fragments,
     transfers,
     requests,
+    adjustments,
     inboxItems,
     ledger: Object.fromEntries(
       game.teams.flatMap((t) =>
