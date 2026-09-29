@@ -37,6 +37,12 @@ export interface StaffGameSummary {
   id: string;
   name: string;
   phase: GamePhase;
+  // Hidden from the list unless "Show archived" is on (Phase 6B).
+  archived?: boolean;
+  // Round 1 has started (a played game can never be deleted).
+  started?: boolean;
+  // The game has reached the Reveal or ended (it can be archived).
+  finished?: boolean;
 }
 
 // The engine enforces the per-game message length; this only stops huge payloads.

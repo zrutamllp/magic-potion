@@ -2,6 +2,14 @@ import { createServer } from 'node:http';
 import { createApp } from './app';
 import { PrismaAdminStore } from './admin/prismaStore';
 import { AdminService } from './admin/service';
+import {
+  SAMPLE_PACK_DESCRIPTION,
+  SAMPLE_PACK_NAME,
+  samplePackItems,
+  samplePackOptions,
+} from '../prisma/samplePack';
+import { PrismaPackStore } from './packs/prismaStore';
+import { PackService, ensureSamplePack } from './packs/service';
 import { PrismaAuthStore } from './auth/prismaStore';
 import { AuthService } from './auth/service';
 import { Tokens } from './auth/tokens';
@@ -29,18 +37,40 @@ if (prisma && engines && env.JWT_SECRET) {
   realtime = new Realtime({ auth, engines, clock: systemClock, clientOrigins, devTools });
 }
 const live = realtime;
-const admin =
-  prisma && live
-    ? new AdminService({
-        store: new PrismaAdminStore(prisma),
-        auth: live.auth,
-        onLobbyChange: (gameId) => {
-          live.reloadGame(gameId).catch((error: unknown) => {
-            console.error(`Could not reload game ${gameId}:`, error);
-          });
-        },
+const reload = (gameId: string) => {
+  live?.reloadGame(gameId).catch((error: unknown) => {
+    console.error(`Could not reload game ${gameId}:`, error);
+  });
+};
+const adminStore = prisma ? new PrismaAdminStore(prisma) : undefined;
+const packStore = prisma ? new PrismaPackStore(prisma) : undefined;
+const packs =
+  adminStore && packStore
+    ? new PackService({
+        store: packStore,
+        audit: (entry) => adminStore.audit(entry),
+        onLobbyChange: reload,
       })
     : undefined;
+const admin =
+  adminStore && live
+    ? new AdminService({
+        store: adminStore,
+        auth: live.auth,
+        onLobbyChange: reload,
+        afterCreate: packs ? (gameId) => packs.assignDefault(gameId) : undefined,
+      })
+    : undefined;
+
+// The built-in Sample pack, made once (read-only; admins copy it).
+if (packStore) {
+  ensureSamplePack(packStore, {
+    name: SAMPLE_PACK_NAME,
+    description: SAMPLE_PACK_DESCRIPTION,
+    options: samplePackOptions(),
+    items: samplePackItems(),
+  }).catch((error: unknown) => console.error('Could not create the Sample pack:', error));
+}
 
 const app = createApp({
   clientOrigins,
@@ -50,6 +80,7 @@ const app = createApp({
         auth: live.auth,
         engine: (id) => live.engine(id),
         admin,
+        packs,
         files: env.BLOB_READ_WRITE_TOKEN ? new BlobFileStore(env.BLOB_READ_WRITE_TOKEN) : undefined,
         devTools,
       })

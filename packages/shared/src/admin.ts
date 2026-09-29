@@ -162,3 +162,30 @@ export function loginSheetCsv(gameName: string, playUrl: string, logins: TeamLog
   ];
   return rows.map((r) => r.map(cell).join(',')).join('\r\n') + '\r\n';
 }
+
+// ---------- Inbox bonus tasks (Phase 6B) ----------
+
+export interface AdminInboxItem {
+  id: string;
+  kind: 'PHOTO' | 'QUESTION';
+  title: string;
+  body: string;
+  // Accepted answers of a question. Staff only; never sent to players.
+  answers: string[];
+  releaseAtPlaySeconds: number | null;
+}
+
+export const SaveInboxSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        title: z.string().trim().min(1, 'Give it a title.').max(60),
+        body: z.string().trim().min(1, 'Write the text players see.').max(300),
+        answers: z.array(z.string().trim().min(1)).max(20).default([]),
+      }),
+    )
+    .max(10),
+});
+
+export const DeleteGameSchema = z.object({ confirmName: z.string() });

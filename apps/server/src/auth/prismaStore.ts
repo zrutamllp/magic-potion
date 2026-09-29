@@ -88,15 +88,30 @@ export class PrismaAuthStore implements AuthStore {
     return rows.map((r) => r.teamId);
   }
 
-  gamesFor(staff: StaffAccount): Promise<StaffGameSummary[]> {
-    return this.prisma.game.findMany({
+  async gamesFor(staff: StaffAccount): Promise<StaffGameSummary[]> {
+    const games = await this.prisma.game.findMany({
       where:
         staff.role === 'MAIN_ADMIN'
           ? {}
           : { staffAssignments: { some: { staffUserId: staff.id } } },
-      select: { id: true, name: true, phase: true },
+      select: {
+        id: true,
+        name: true,
+        phase: true,
+        startedAt: true,
+        endedAt: true,
+        archivedAt: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
+    return games.map((g) => ({
+      id: g.id,
+      name: g.name,
+      phase: g.phase,
+      archived: g.archivedAt !== null,
+      started: g.startedAt !== null,
+      finished: g.phase === 'REVEAL' || g.endedAt !== null,
+    }));
   }
 
   async audit(entry: AuditEntry): Promise<void> {

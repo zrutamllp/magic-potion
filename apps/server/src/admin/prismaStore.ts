@@ -1,4 +1,4 @@
-import type { GameSettings, StaffMember } from '@magic-potion/shared';
+import type { AdminInboxItem, GameSettings, StaffMember } from '@magic-potion/shared';
 import { createSampleGame, type NewTeamRow } from '../engine/dbGame';
 import { Prisma, type PrismaClient } from '../generated/prisma/client';
 import type { AdminAuditEntry, AdminStore, StoredGame } from './store';
@@ -23,6 +23,8 @@ export class PrismaAdminStore implements AdminStore {
         name: true,
         phase: true,
         startedAt: true,
+        endedAt: true,
+        archivedAt: true,
         settings: { select: { data: true } },
         teams: {
           select: { id: true, code: true, name: true, status: true },
@@ -38,6 +40,8 @@ export class PrismaAdminStore implements AdminStore {
       name: g.name,
       phase: g.phase,
       startedAt: g.startedAt,
+      endedAt: g.endedAt,
+      archivedAt: g.archivedAt,
       settings: g.settings?.data ?? null,
       teams: g.teams,
       assignments: g.staffAssignments,
@@ -140,6 +144,48 @@ export class PrismaAdminStore implements AdminStore {
         data: teamIds.map((teamId) => ({ gameId, staffUserId, teamId })),
       }),
     ]);
+  }
+
+  async inboxItems(gameId: string): Promise<AdminInboxItem[]> {
+    const rows = await this.prisma.inboxItem.findMany({
+      where: { gameId, kind: { in: ['PHOTO', 'QUESTION'] } },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      kind: r.kind as AdminInboxItem['kind'],
+      title: r.title,
+      body: r.body,
+      answers: Array.isArray(r.secretAnswer) ? (r.secretAnswer as string[]) : [],
+      releaseAtPlaySeconds: r.releaseAtPlaySeconds,
+    }));
+  }
+
+  async updateInboxItem(
+    itemId: string,
+    patch: { title: string; body: string; answers: string[] | null },
+  ): Promise<void> {
+    await this.prisma.inboxItem.update({
+      where: { id: itemId },
+      data: {
+        title: patch.title,
+        body: patch.body,
+        ...(patch.answers ? { secretAnswer: patch.answers } : {}),
+      },
+    });
+  }
+
+  async setArchived(gameId: string, at: Date | null): Promise<void> {
+    await this.prisma.game.update({ where: { id: gameId }, data: { archivedAt: at } });
+  }
+
+  async deleteGame(gameId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // Checked again inside the transaction: a game that has started is never deleted.
+      const g = await tx.game.findUnique({ where: { id: gameId }, select: { startedAt: true } });
+      if (!g || g.startedAt) throw new Error('Only a game that never started can be deleted.');
+      await tx.game.delete({ where: { id: gameId } });
+    });
   }
 
   async audit(entry: AdminAuditEntry): Promise<void> {

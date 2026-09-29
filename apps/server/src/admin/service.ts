@@ -33,6 +33,11 @@ export const ADMIN_ERRORS = {
   NOT_A_FACILITATOR: 'Teams can only be given to an active co-facilitator.',
   OWN_ACCOUNT: 'You cannot switch off your own account.',
   MAIN_ADMIN: 'The main admin account cannot be changed here.',
+  NOT_FINISHED: 'Only a finished game can be archived.',
+  PLAYED: 'This game has been played, so it cannot be deleted. Archive it instead.',
+  NAME_MISMATCH: 'Type the game name exactly as shown to delete it.',
+  INBOX_ITEM_NOT_FOUND: 'That bonus task was not found in this game.',
+  NO_ANSWERS: 'A question needs at least one accepted answer.',
 } as const;
 export type AdminErrorCode = keyof typeof ADMIN_ERRORS;
 
@@ -58,6 +63,8 @@ export interface AdminServiceOptions {
   // are made in batches of up to 25 and logins are rate-limited, so a lower cost keeps
   // "create game" quick. Tests pass a low number.
   bcryptRounds?: { staff: number; team: number };
+  // Runs after a game is created, to give it the default content pack.
+  afterCreate?: (gameId: string) => Promise<void>;
   random?: (max: number) => number;
 }
 
@@ -79,6 +86,7 @@ export class AdminService {
     settings.branding.clientName = input.clientName;
     const { rows, logins } = await this.newTeams(input.teamCount, [], 0);
     const gameId = await this.store.createGame(input.name, settings, rows);
+    await this.opts.afterCreate?.(gameId);
     await this.store.audit({
       gameId,
       staffUserId: staff.id,
@@ -321,6 +329,90 @@ export class AdminService {
     return this.getGame(gameId);
   }
 
+  // ---------- Inbox bonus tasks ----------
+
+  async inbox(gameId: string) {
+    const g = await this.store.game(gameId);
+    if (!g) return fail(404, 'GAME_NOT_FOUND');
+    return ok({ locked: g.startedAt !== null, items: await this.store.inboxItems(gameId) });
+  }
+
+  // The photo task text and the bonus questions. Release times and the reward are settings.
+  async saveInbox(
+    staff: StaffAccount,
+    gameId: string,
+    items: { id: string; title: string; body: string; answers: string[] }[],
+  ) {
+    const g = await this.store.game(gameId);
+    if (!g) return fail(404, 'GAME_NOT_FOUND');
+    if (g.startedAt) return fail(409, 'GAME_STARTED');
+    const current = await this.store.inboxItems(gameId);
+    for (const item of items) {
+      const was = current.find((c) => c.id === item.id);
+      if (!was) return fail(404, 'INBOX_ITEM_NOT_FOUND');
+      if (was.kind === 'QUESTION' && item.answers.length === 0) return fail(400, 'NO_ANSWERS');
+    }
+    for (const item of items) {
+      const was = current.find((c) => c.id === item.id)!;
+      const answers = was.kind === 'QUESTION' ? item.answers : null;
+      if (
+        was.title === item.title &&
+        was.body === item.body &&
+        (!answers || same(was.answers, answers))
+      ) {
+        continue;
+      }
+      await this.store.updateInboxItem(item.id, { title: item.title, body: item.body, answers });
+      await this.store.audit({
+        gameId,
+        staffUserId: staff.id,
+        action: 'UPDATE_INBOX_ITEM',
+        before: { id: was.id, title: was.title, body: was.body, answers: was.answers },
+        after: { id: item.id, title: item.title, body: item.body, answers: answers ?? [] },
+      });
+    }
+    this.lobbyChanged(g);
+    return this.inbox(gameId);
+  }
+
+  // ---------- Archive and delete ----------
+
+  // Hides a finished game from the list. Every row is kept.
+  async setArchived(staff: StaffAccount, gameId: string, archived: boolean) {
+    const g = await this.store.game(gameId);
+    if (!g) return fail(404, 'GAME_NOT_FOUND');
+    if (archived && g.phase !== 'REVEAL' && !g.endedAt) return fail(400, 'NOT_FINISHED');
+    await this.store.setArchived(gameId, archived ? new Date() : null);
+    await this.store.audit({
+      gameId,
+      staffUserId: staff.id,
+      action: archived ? 'ARCHIVE_GAME' : 'UNARCHIVE_GAME',
+    });
+    return ok(null);
+  }
+
+  // Only a game that never started, and only when its name is typed exactly.
+  async deleteGame(staff: StaffAccount, gameId: string, confirmName: string) {
+    const g = await this.store.game(gameId);
+    if (!g) return fail(404, 'GAME_NOT_FOUND');
+    if (g.startedAt) return fail(409, 'PLAYED');
+    if (confirmName.trim() !== g.name) return fail(400, 'NAME_MISMATCH');
+    await this.store.deleteGame(gameId);
+    // The game's own audit lines go with it, so this line belongs to no game.
+    await this.store.audit({
+      gameId: null,
+      staffUserId: staff.id,
+      action: 'DELETE_GAME',
+      before: {
+        id: g.id,
+        name: g.name,
+        teams: g.teams.map((t) => ({ code: t.code, name: t.name })),
+      },
+    });
+    this.opts.onLobbyChange?.(gameId);
+    return ok(null);
+  }
+
   // ---------- Helpers ----------
 
   private view(g: StoredGame): AdminGame {
@@ -391,4 +483,8 @@ function pick(settings: GameSettings, paths: string[]): Record<string, unknown> 
     out[path] = v ?? null;
   }
   return out;
+}
+
+function same(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((x, i) => x === b[i]);
 }

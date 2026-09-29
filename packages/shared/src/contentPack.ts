@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { forbiddenPhrases } from './playerText';
 import type { GameSettings } from './settings';
 import { TaskContentSchemas } from './taskContent';
 import { TASK_DEFINITIONS, TASK_KEYS, UNIQUE_TASKS_PER_TEAM, type TaskKey } from './taskKeys';
@@ -383,5 +384,114 @@ export function packReadiness(
       );
     }
   }
+  // Player text states facts only and never tells teams to cooperate (GAME_RULES section 16).
+  for (const i of items) {
+    const found = forbiddenPhrases(playerText(i.publicData).join(' '));
+    if (found.length > 0) {
+      const name = TASK_DEFINITIONS.find((d) => d.key === i.taskKey)?.name ?? i.taskKey;
+      warnings.push(
+        `${name}: an entry uses words players should not see (${found.join(', ')}). Player text states facts only and never tells teams to work with each other.`,
+      );
+    }
+  }
   return { ready: problems.length === 0, problems, warnings, tasks: perTask };
+}
+
+// Every piece of text players can read in an item (web addresses left out).
+function playerText(value: unknown): string[] {
+  if (typeof value === 'string') return /^(https?:)?\/|^\/sample\//.test(value) ? [] : [value];
+  if (Array.isArray(value)) return value.flatMap(playerText);
+  if (typeof value === 'object' && value !== null) return Object.values(value).flatMap(playerText);
+  return [];
+}
+
+// ---------- Admin panel requests and replies ----------
+
+export const PackNameSchema = z.string().trim().min(1, 'Give the pack a name.').max(60);
+
+export const CreatePackSchema = z.object({
+  name: PackNameSchema,
+  description: z.string().trim().max(300).default(''),
+});
+
+export const UpdatePackSchema = z.object({
+  name: PackNameSchema.optional(),
+  description: z.string().trim().max(300).optional(),
+  options: PackOptionsSchema.optional(),
+});
+
+export const PackItemBodySchema = z.object({
+  taskKey: z.enum(TASK_KEYS),
+  publicData: z.unknown(),
+  secretData: z.unknown(),
+});
+
+export const UpdatePackItemSchema = z.object({ publicData: z.unknown(), secretData: z.unknown() });
+
+export const ReorderItemsSchema = z.object({
+  taskKey: z.enum(TASK_KEYS),
+  itemIds: z.array(z.string()).max(500),
+});
+
+export const BulkItemsSchema = z.object({
+  taskKey: z.enum(TASK_KEYS),
+  // Add to the pool, or replace every entry of this task.
+  mode: z.enum(['add', 'replace']),
+  items: z
+    .array(z.object({ publicData: z.unknown(), secretData: z.unknown() }))
+    .min(1)
+    .max(500),
+});
+
+export const SetGameContentSchema = z.object({
+  packId: z.string().min(1),
+  dilemmaItemId: z.string().min(1).nullable(),
+});
+
+export interface PackSummary {
+  id: string;
+  name: string;
+  description: string;
+  builtIn: boolean;
+  itemCount: number;
+  // Games that use the pack (archived ones included).
+  gameCount: number;
+  ready: boolean;
+  updatedAt: string;
+}
+
+export interface PackGameLink {
+  id: string;
+  name: string;
+  // True once Round 1 has started: the game keeps its own copy and no longer follows the pack.
+  locked: boolean;
+}
+
+export interface PackDetail {
+  id: string;
+  name: string;
+  description: string;
+  builtIn: boolean;
+  options: PackOptions;
+  items: PackItem[];
+  readiness: PackReadiness;
+  games: PackGameLink[];
+}
+
+export interface GameContentInfo {
+  packId: string | null;
+  packName: string | null;
+  dilemmaItemId: string | null;
+  // The scenarios the admin can pick from (the pack's Ethical Dilemma entries).
+  dilemmas: { id: string; scenario: string }[];
+  // Checked against this game's settings (per-try counts).
+  readiness: PackReadiness | null;
+  locked: boolean;
+}
+
+// The same message the server gives when an item has problems, with each problem.
+export interface ItemRejected {
+  code: 'ITEM_INVALID';
+  message: string;
+  errors: ItemError[];
 }

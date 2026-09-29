@@ -12,7 +12,9 @@ import type { StaffAccount } from '../auth/store';
 import { finishAllTasks } from '../engine/devTools';
 import type { GameEngine } from '../engine/engine';
 import type { FileStore } from '../uploads/blob';
+import type { PackService } from '../packs/service';
 import { addAdminRoutes } from './admin';
+import { addPackRoutes } from './packs';
 
 // REST routes under /api: logins, and the staff game controls that Phase 6 will build on.
 // Everything live (chat, funds, state) goes over Socket.IO instead.
@@ -23,6 +25,8 @@ export interface ApiDeps {
   engine: (gameId: string) => Promise<GameEngine>;
   // The admin panel's setup routes (Phase 6A). Left out by tests that do not need them.
   admin?: AdminService;
+  // Content packs (Phase 6B). Needs admin.
+  packs?: PackService;
   // Where uploaded pictures are saved. Uploads answer "not set up" without it.
   files?: FileStore;
   // Registers the dev-only routes. Never true in production.
@@ -53,7 +57,7 @@ function bearer(req: Request): string | undefined {
 const ExtendSchema = z.object({ seconds: z.number() });
 const FinishSchema = z.object({ limit: z.number().int().positive().optional() });
 
-export function createApiRouter({ auth, engine, admin, files, devTools }: ApiDeps): Router {
+export function createApiRouter({ auth, engine, admin, packs, files, devTools }: ApiDeps): Router {
   const api = express.Router();
 
   api.post('/team/login', async (req, res) => {
@@ -141,6 +145,7 @@ export function createApiRouter({ auth, engine, admin, files, devTools }: ApiDep
   });
 
   if (admin) addAdminRoutes(staff, admin, mainAdminOnly, files);
+  if (admin && packs) addPackRoutes(staff, packs, admin, mainAdminOnly);
 
   if (devTools) {
     staff.post(

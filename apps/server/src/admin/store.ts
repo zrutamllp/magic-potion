@@ -1,4 +1,10 @@
-import type { AdminTeam, GamePhase, GameSettings, StaffMember } from '@magic-potion/shared';
+import type {
+  AdminInboxItem,
+  AdminTeam,
+  GamePhase,
+  GameSettings,
+  StaffMember,
+} from '@magic-potion/shared';
 import type { NewTeamRow } from '../engine/dbGame';
 
 // Everything the admin panel needs from the database, behind an interface so the route tests
@@ -9,6 +15,8 @@ export interface StoredGame {
   name: string;
   phase: GamePhase;
   startedAt: Date | null;
+  endedAt: Date | null;
+  archivedAt: Date | null;
   // Raw JSON as saved; the service parses it with GameSettingsSchema.
   settings: unknown;
   teams: AdminTeam[];
@@ -49,6 +57,16 @@ export interface AdminStore {
   setStaffPassword(id: string, passwordHash: string): Promise<void>;
   // Replaces the teams this person looks after in this game.
   setAssignments(gameId: string, staffUserId: string, teamIds: string[]): Promise<void>;
+
+  // The photo task and bonus questions (not alerts), in release order.
+  inboxItems(gameId: string): Promise<AdminInboxItem[]>;
+  updateInboxItem(
+    itemId: string,
+    patch: { title: string; body: string; answers: string[] | null },
+  ): Promise<void>;
+  setArchived(gameId: string, at: Date | null): Promise<void>;
+  // Deletes the game and every row that belongs to it. Only for games that never started.
+  deleteGame(gameId: string): Promise<void>;
 
   audit(entry: AdminAuditEntry): Promise<void>;
 }

@@ -1,4 +1,4 @@
-import type { GameSettings, StaffMember } from '@magic-potion/shared';
+import type { AdminInboxItem, GameSettings, StaffMember } from '@magic-potion/shared';
 import type { MemoryAuthStore } from '../auth/memoryStore';
 import type { NewTeamRow } from '../engine/dbGame';
 import type { AdminAuditEntry, AdminStore, StoredGame } from './store';
@@ -11,6 +11,10 @@ interface MemoryGame {
   name: string;
   phase: StoredGame['phase'];
   startedAt: Date | null;
+  endedAt: Date | null;
+  archivedAt: Date | null;
+  contentPackId: string | null;
+  dilemmaItemId: string | null;
   settings: unknown;
 }
 
@@ -18,6 +22,7 @@ export class MemoryAdminStore implements AdminStore {
   games: MemoryGame[] = [];
   statuses = new Map<string, 'ACTIVE' | 'REMOVED'>();
   audits: AdminAuditEntry[] = [];
+  inbox = new Map<string, AdminInboxItem[]>();
   private nextId = 1;
 
   constructor(private readonly auth: MemoryAuthStore) {}
@@ -28,7 +33,44 @@ export class MemoryAdminStore implements AdminStore {
 
   async createGame(name: string, settings: GameSettings, teams: NewTeamRow[]): Promise<string> {
     const id = this.id('game');
-    this.games.push({ id, name, phase: 'LOBBY', startedAt: null, settings });
+    this.games.push({
+      id,
+      name,
+      phase: 'LOBBY',
+      startedAt: null,
+      endedAt: null,
+      archivedAt: null,
+      contentPackId: null,
+      dilemmaItemId: null,
+      settings,
+    });
+    // The sample inbox: the photo task and 2 questions.
+    this.inbox.set(id, [
+      {
+        id: `${id}-photo`,
+        kind: 'PHOTO',
+        title: 'Team photo',
+        body: 'Upload a photo.',
+        answers: [],
+        releaseAtPlaySeconds: 600,
+      },
+      {
+        id: `${id}-q1`,
+        kind: 'QUESTION',
+        title: 'Quick maths',
+        body: 'What is 7 x 8?',
+        answers: ['56'],
+        releaseAtPlaySeconds: 1800,
+      },
+      {
+        id: `${id}-q2`,
+        kind: 'QUESTION',
+        title: 'Finish the saying',
+        body: 'Many hands make light ____.',
+        answers: ['work'],
+        releaseAtPlaySeconds: 3300,
+      },
+    ]);
     this.auth.games.push({ id, name, phase: 'LOBBY' });
     await this.addTeams(id, teams);
     return id;
@@ -126,6 +168,37 @@ export class MemoryAdminStore implements AdminStore {
       ...this.auth.assignments.filter((a) => a.gameId !== gameId || a.staffUserId !== staffUserId),
       ...teamIds.map((teamId) => ({ gameId, staffUserId, teamId })),
     ];
+  }
+
+  async inboxItems(gameId: string): Promise<AdminInboxItem[]> {
+    return structuredClone(this.inbox.get(gameId) ?? []);
+  }
+
+  async updateInboxItem(
+    itemId: string,
+    patch: { title: string; body: string; answers: string[] | null },
+  ): Promise<void> {
+    for (const items of this.inbox.values()) {
+      const item = items.find((i) => i.id === itemId);
+      if (item) {
+        item.title = patch.title;
+        item.body = patch.body;
+        if (patch.answers) item.answers = patch.answers;
+      }
+    }
+  }
+
+  async setArchived(gameId: string, at: Date | null): Promise<void> {
+    this.games.find((g) => g.id === gameId)!.archivedAt = at;
+  }
+
+  async deleteGame(gameId: string): Promise<void> {
+    const g = this.games.find((x) => x.id === gameId);
+    if (!g || g.startedAt) throw new Error('Only a game that never started can be deleted.');
+    this.games = this.games.filter((x) => x.id !== gameId);
+    this.auth.games = this.auth.games.filter((x) => x.id !== gameId);
+    this.auth.teams = this.auth.teams.filter((t) => t.gameId !== gameId);
+    this.inbox.delete(gameId);
   }
 
   async audit(entry: AdminAuditEntry): Promise<void> {
