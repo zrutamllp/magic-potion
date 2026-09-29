@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { Plus, RotateCcw, X } from 'lucide-react';
 import { DEFAULT_SETTINGS, type AdminGame } from '@magic-potion/shared';
 import {
@@ -11,6 +11,7 @@ import {
   type FormErrors,
   type SettingsForm,
 } from '../settingsForm';
+import { useUnsavedChanges } from '../router';
 import { useStaff } from '../StaffContext';
 import { Panel, SmallButton, Status, inputBase, useAction } from '../ui';
 import type { GameTabProps } from './GamePage';
@@ -23,6 +24,9 @@ export function SettingsTab({ game, onChange }: GameTabProps) {
   const [errors, setErrors] = useState<FormErrors>({});
   const action = useAction();
   const locked = game.locked;
+  const saved = useMemo(() => JSON.stringify(toForm(game.settings)), [game.settings]);
+  const dirty = !locked && JSON.stringify(form) !== saved;
+  useUnsavedChanges(dirty);
 
   function setValue(key: string, value: string) {
     setForm((f) => ({ ...f, values: { ...f.values, [key]: value } }));
@@ -62,22 +66,29 @@ export function SettingsTab({ game, onChange }: GameTabProps) {
 
   return (
     <form onSubmit={save}>
-      <div className="sticky top-0 z-10 -mx-2 mb-3 flex items-center gap-3 bg-page/95 px-2 py-2 backdrop-blur">
+      {/* Stays at the top of the window while the fields scroll under it. */}
+      <div className="sticky top-0 z-10 -mx-6 mb-4 flex items-center gap-3 border-b border-line bg-page px-6 py-3 shadow-lg shadow-page">
         <SmallButton type="submit" disabled={locked || action.busy}>
           {action.busy ? 'Saving…' : 'Save settings'}
         </SmallButton>
         <SmallButton variant="outline" tone="muted" onClick={resetToDefaults} disabled={locked}>
           <RotateCcw className="h-4 w-4" aria-hidden /> Reset to defaults
         </SmallButton>
-        <Status ok={action.done} error={action.error} />
+        {dirty && !action.error && (
+          <p role="status" className="font-semibold text-warning">
+            You have unsaved changes
+          </p>
+        )}
+        <Status ok={dirty ? null : action.done} error={action.error} />
       </div>
-      <fieldset disabled={locked} className="grid grid-cols-3 items-start gap-4">
+      {/* Panels flow down and across the full width, like newspaper columns, so there are no
+          empty gaps and less scrolling. */}
+      <fieldset
+        disabled={locked}
+        className="columns-1 gap-4 md:columns-2 xl:columns-3 2xl:columns-4"
+      >
         {FIELD_GROUPS.map((group) => (
-          <Panel
-            key={group.title}
-            title={group.title}
-            className={group.title === 'Task timers' ? 'row-span-2' : ''}
-          >
+          <Panel key={group.title} title={group.title} className="mb-4 break-inside-avoid">
             <div className="flex flex-col gap-2">
               {group.fields.map((f) => (
                 <NumberField

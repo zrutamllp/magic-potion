@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_SETTINGS,
@@ -10,7 +10,7 @@ import {
 import { loginSheetHtml, mergeLogins } from './loginSheet';
 import { SettingsTab } from './pages/SettingsTab';
 import { TeamsTab } from './pages/TeamsTab';
-import { parseStaffHash, staffHash } from './router';
+import { UNSAVED_MESSAGE, confirmLeave, parseStaffHash, staffHash } from './router';
 import { StaffLogin } from './StaffApp';
 import { StaffProvider, type StaffApi, type StaffContextValue } from './StaffContext';
 
@@ -104,9 +104,20 @@ describe('settings tab', () => {
       return game({ settings });
     });
     const onChange = vi.fn();
-    withStaff(<SettingsTab game={game()} onChange={onChange} />, {
-      api: fakeApi({ put: put as StaffApi['put'] }),
-    });
+    // Holds the game like GamePage does, so the saved settings come back in.
+    function Holder() {
+      const [g, setG] = useState(game());
+      return (
+        <SettingsTab
+          game={g}
+          onChange={(next) => {
+            onChange(next);
+            setG(next);
+          }}
+        />
+      );
+    }
+    withStaff(<Holder />, { api: fakeApi({ put: put as StaffApi['put'] }) });
     fireEvent.change(screen.getByLabelText('Round 1'), { target: { value: '2' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
     await screen.findByText('Settings saved.');
@@ -114,6 +125,7 @@ describe('settings tab', () => {
     const saved = (put.mock.calls[0]![1] as { settings: AdminGame['settings'] }).settings;
     expect(saved.phases.round1Seconds).toBe(120);
     expect(onChange).toHaveBeenCalled();
+    expect(screen.queryByText('You have unsaved changes')).not.toBeInTheDocument();
   });
 
   it('marks a wrong field and does not save', async () => {
@@ -124,6 +136,26 @@ describe('settings tab', () => {
     expect(await screen.findByText('Enter a number.')).toBeInTheDocument();
     expect(screen.getByLabelText('Hint cost')).toHaveAttribute('aria-invalid', 'true');
     expect(put).not.toHaveBeenCalled();
+  });
+
+  it('warns about unsaved changes until they are saved or undone', () => {
+    const { unmount } = withStaff(<SettingsTab game={game()} onChange={vi.fn()} />);
+    expect(screen.queryByText('You have unsaved changes')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Round 1'), { target: { value: '20' } });
+    expect(screen.getByText('You have unsaved changes')).toBeInTheDocument();
+
+    // Leaving asks first; "Cancel" keeps the person on the page.
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal('confirm', confirm);
+    expect(confirmLeave()).toBe(false);
+    expect(confirm).toHaveBeenCalledWith(UNSAVED_MESSAGE);
+
+    fireEvent.change(screen.getByLabelText('Round 1'), { target: { value: '35' } });
+    expect(screen.queryByText('You have unsaved changes')).not.toBeInTheDocument();
+    confirm.mockClear();
+    expect(confirmLeave()).toBe(true);
+    expect(confirm).not.toHaveBeenCalled();
+    unmount();
   });
 
   it('is read-only once the game has started', () => {

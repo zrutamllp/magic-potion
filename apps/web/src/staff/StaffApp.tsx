@@ -8,7 +8,7 @@ import { PotionBottle } from '../player/ui/PotionBottle';
 import { GamePage } from './pages/GamePage';
 import { GamesPage } from './pages/GamesPage';
 import { StaffPage } from './pages/StaffPage';
-import { useStaffRoute, type StaffRoute } from './router';
+import { confirmLeave, useStaffRoute, type StaffRoute } from './router';
 import { StaffProvider, useStaffApi, type FreshLogins } from './StaffContext';
 
 // The staff side: login, then the admin panel (Phase 6A: games, settings, teams, staff).
@@ -56,7 +56,12 @@ function Panel({
   return (
     <StaffProvider value={{ login, api, go, freshLogins, setFreshLogins }}>
       <div className="min-h-screen">
-        <Sidebar route={route} go={go} login={login} onLogOut={() => onLogOut(null)} />
+        <Sidebar
+          route={route}
+          go={go}
+          login={login}
+          onLogOut={() => confirmLeave() && onLogOut(null)}
+        />
         <main className="ml-60 p-6">
           {route.page === 'games' && <GamesPage />}
           {route.page === 'game' && (

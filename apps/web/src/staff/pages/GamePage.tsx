@@ -41,7 +41,7 @@ export function GamePage({ gameId, tab }: { gameId: string; tab: GameTab }) {
   }, [freshLogins, gameId, setFreshLogins]);
 
   return (
-    <div className="max-w-6xl">
+    <div>
       <button
         type="button"
         onClick={() => go({ page: 'games' })}

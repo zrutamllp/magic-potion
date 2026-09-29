@@ -125,6 +125,21 @@ test('the main admin sets up a game from forms only', async ({ page, browser }) 
   await expect(page.getByText('Enter a number.')).toBeVisible();
   await shot(page, '07-settings-error');
   await page.getByLabel('Round 1').fill('30');
+  await expect(page.getByText('You have unsaved changes')).toBeVisible();
+  // Leaving with unsaved changes asks first; "Cancel" stays on the page.
+  page.once('dialog', async (dialog) => {
+    expect(dialog.message()).toBe('You have unsaved changes. Leave without saving?');
+    await dialog.dismiss();
+  });
+  await page.getByRole('button', { name: 'Branding', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Save settings' })).toBeVisible();
+  // The Save bar stays on screen when scrolled to the bottom.
+  await page.getByLabel('Full Potion Bonus').scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  const bar = await page.getByRole('button', { name: 'Save settings' }).boundingBox();
+  expect(bar!.y).toBeGreaterThanOrEqual(0);
+  expect(bar!.y + bar!.height).toBeLessThanOrEqual(720);
+  await shot(page, '07b-settings-scrolled-unsaved');
   await page.getByLabel('Hint cost').fill('2,000');
   await page.getByRole('button', { name: 'Save settings' }).click();
   await expect(page.getByText('Settings saved.')).toBeVisible();
