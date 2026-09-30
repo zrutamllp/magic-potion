@@ -70,6 +70,19 @@ export class EngineRegistry {
     return true;
   }
 
+  // Drops a game that is finished or never started, before a live-site test game is deleted
+  // (Phase 7C). A game being played is never dropped.
+  async forget(gameId: string): Promise<boolean> {
+    const pending = this.engines.get(gameId);
+    if (!pending) return true;
+    const engine = await pending.catch(() => null);
+    const phase = engine?.state.phase;
+    if (phase && phase !== 'LOBBY' && phase !== 'REVEAL') return false;
+    if (this.engines.get(gameId) === pending) this.engines.delete(gameId);
+    await engine?.stop();
+    return true;
+  }
+
   private async load(gameId: string): Promise<GameEngine> {
     const { state, content } = await loadGame(this.prisma, gameId);
     const engine = new GameEngine({

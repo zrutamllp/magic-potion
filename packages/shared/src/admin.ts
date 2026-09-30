@@ -189,3 +189,8 @@ export const SaveInboxSchema = z.object({
 });
 
 export const DeleteGameSchema = z.object({ confirmName: z.string() });
+
+// Live-site tests (Phase 7C) run in their own game and with their own staff, so they can be
+// deleted afterwards without touching anything real. Only names and emails like these can be.
+export const TEST_GAME_PREFIX = 'LOADTEST – ';
+export const TEST_STAFF_EMAIL = /^loadtest-\d{1,3}@zrutam\.invalid$/;

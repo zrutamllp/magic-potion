@@ -16,6 +16,7 @@
     "db:mark-production": "node --env-file-if-exists=.env --import tsx scripts/markProduction.ts",
     "db:check": "node --env-file-if-exists=.env --import tsx prisma/check.ts",
     "simulate": "node --env-file-if-exists=.env --import tsx scripts/simulate.ts",
+    "live-test": "node --env-file-if-exists=.env --import tsx scripts/live/run.ts",
     "postinstall": "prisma generate",
     "pretypecheck": "prisma generate"
   },

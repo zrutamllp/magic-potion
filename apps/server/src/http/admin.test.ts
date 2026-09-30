@@ -1,7 +1,12 @@
 import sharp from 'sharp';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, TEAM_CODE_ALPHABET, type AdminGame } from '@magic-potion/shared';
+import {
+  DEFAULT_SETTINGS,
+  TEAM_CODE_ALPHABET,
+  TEST_GAME_PREFIX,
+  type AdminGame,
+} from '@magic-potion/shared';
 import { MemoryAdminStore } from '../admin/memoryStore';
 import { AdminService } from '../admin/service';
 import { createApp } from '../app';
@@ -13,17 +18,24 @@ import { createApiRouter } from './api';
 
 const T0 = Date.UTC(2026, 8, 28, 9, 0, 0);
 
-function setup(opts: { uploads?: boolean } = {}) {
+function setup(opts: { uploads?: boolean; engineStillPlaying?: boolean } = {}) {
   const fx = authFixture();
   const store = new MemoryAdminStore(fx.store);
   const reloaded: string[] = [];
   const ended: string[][] = [];
   fx.auth.onSessionsEnded((tokenIds) => ended.push(tokenIds));
+  const forgotten: string[] = [];
   const admin = new AdminService({
     store,
     auth: fx.auth,
     onLobbyChange: (id) => reloaded.push(id),
     bcryptRounds: { staff: 4, team: 4 },
+    forgetGame: async (id) => {
+      if (opts.engineStillPlaying) return false;
+      forgotten.push(id);
+      return true;
+    },
+    removeGamePhotos: async () => 2,
   });
   const saved: { folder: string; contentType: string; bytes: number }[] = [];
   // Stands in for Vercel Blob: tests never use the real store or its token.
@@ -43,7 +55,7 @@ function setup(opts: { uploads?: boolean } = {}) {
     devTools: false,
   });
   const app = createApp({ clientOrigins: [], api });
-  return { ...fx, store, app, reloaded, ended, saved };
+  return { ...fx, authStore: fx.store, store, app, reloaded, ended, saved, forgotten };
 }
 
 type Setup = ReturnType<typeof setup>;
@@ -350,6 +362,150 @@ describe('staff and assignments', () => {
       teamIds: ['team-1'],
     });
     expect(otherGame.status).toBe(404);
+  });
+});
+
+describe('live-site test clean-up (Phase 7C)', () => {
+  const TEST_NAME = `${TEST_GAME_PREFIX}2026-10-01 10:00`;
+
+  async function testGame(g: Setup, name = TEST_NAME) {
+    const res = await call(g, 'post', '/games', { name, clientName: 'Test', teamCount: 3 });
+    expect(res.status).toBe(200);
+    return (res.body as { game: AdminGame }).game;
+  }
+
+  const play = (g: Setup, gameId: string, phase: AdminGame['phase'], ended = false) => {
+    const stored = g.store.games.find((x) => x.id === gameId)!;
+    stored.phase = phase;
+    stored.startedAt = new Date(T0);
+    stored.endedAt = ended ? new Date(T0 + 60_000) : null;
+  };
+
+  it('deletes a finished test game with its teams, photos and audit lines', async () => {
+    const g = setup();
+    const game = await testGame(g);
+    play(g, game.id, 'REVEAL', true);
+    const res = await call(g, 'post', `/games/${game.id}/delete-test-game`, {
+      confirmName: TEST_NAME,
+    });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ teams: 3, photos: 2 });
+    expect(g.forgotten).toEqual([game.id]);
+    expect(g.store.games.some((x) => x.id === game.id)).toBe(false);
+    expect(g.authStore.teams.some((t) => t.gameId === game.id)).toBe(false);
+    expect(g.store.audits.some((a) => a.gameId === game.id)).toBe(false);
+    expect(g.store.audits.at(-1)).toMatchObject({ gameId: null, action: 'DELETE_TEST_GAME' });
+  });
+
+  it('deletes a test game that never started', async () => {
+    const g = setup();
+    const game = await testGame(g);
+    const res = await call(g, 'post', `/games/${game.id}/delete-test-game`, {
+      confirmName: TEST_NAME,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('never deletes a real game, even a finished one', async () => {
+    const g = setup();
+    const { game } = await newGame(g);
+    play(g, game.id, 'REVEAL', true);
+    const res = await call(g, 'post', `/games/${game.id}/delete-test-game`, {
+      confirmName: 'Acme offsite',
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('NOT_A_TEST_GAME');
+    expect(g.store.games.some((x) => x.id === game.id)).toBe(true);
+    expect(g.forgotten).toEqual([]);
+  });
+
+  it('refuses a similar name and a name typed wrongly', async () => {
+    const g = setup();
+    const lookalike = await testGame(g, 'LOADTEST 2026-10-01');
+    const a = await call(g, 'post', `/games/${lookalike.id}/delete-test-game`, {
+      confirmName: 'LOADTEST 2026-10-01',
+    });
+    expect(a.body.code).toBe('NOT_A_TEST_GAME');
+    const game = await testGame(g);
+    const b = await call(g, 'post', `/games/${game.id}/delete-test-game`, {
+      confirmName: `${TEST_NAME}x`,
+    });
+    expect(b.body.code).toBe('NAME_MISMATCH');
+    expect(g.store.games).toHaveLength(2);
+  });
+
+  it('refuses a test game that is still being played', async () => {
+    const g = setup();
+    const game = await testGame(g);
+    play(g, game.id, 'ROUND1');
+    const res = await call(g, 'post', `/games/${game.id}/delete-test-game`, {
+      confirmName: TEST_NAME,
+    });
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('TEST_GAME_RUNNING');
+    expect(g.store.games.some((x) => x.id === game.id)).toBe(true);
+  });
+
+  it('refuses when the running server still plays the game', async () => {
+    const g = setup({ engineStillPlaying: true });
+    const game = await testGame(g);
+    play(g, game.id, 'REVEAL', true);
+    const res = await call(g, 'post', `/games/${game.id}/delete-test-game`, {
+      confirmName: TEST_NAME,
+    });
+    expect(res.body.code).toBe('TEST_GAME_RUNNING');
+    expect(g.store.games.some((x) => x.id === game.id)).toBe(true);
+  });
+
+  it('is for the main admin only', async () => {
+    const g = setup();
+    const game = await testGame(g);
+    const res = await call(
+      g,
+      'post',
+      `/games/${game.id}/delete-test-game`,
+      { confirmName: TEST_NAME },
+      COFAC,
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('deletes a test co-facilitator once their test game is gone', async () => {
+    const g = setup();
+    const game = await testGame(g);
+    const made = await call(g, 'post', '/users', {
+      name: 'Load test 1',
+      email: 'loadtest-1@zrutam.invalid',
+      password: 'random-pass-1',
+    });
+    await call(g, 'put', `/games/${game.id}/assignments`, {
+      staffUserId: made.body.id,
+      teamIds: [game.teams[0]!.id],
+    });
+    const early = await call(g, 'delete', `/users/${made.body.id}`);
+    expect(early.body.code).toBe('TEST_STAFF_IN_GAME');
+
+    await call(g, 'post', `/games/${game.id}/delete-test-game`, { confirmName: TEST_NAME });
+    const res = await call(g, 'delete', `/users/${made.body.id}`);
+    expect(res.status).toBe(200);
+    expect(g.authStore.staff.some((s) => s.id === made.body.id)).toBe(false);
+    expect(g.store.audits.at(-1)).toMatchObject({ gameId: null, action: 'DELETE_TEST_STAFF' });
+  });
+
+  it('never deletes a real co-facilitator or the main admin', async () => {
+    const g = setup();
+    const real = await call(g, 'delete', `/users/${COFAC.id}`);
+    expect(real.body.code).toBe('NOT_TEST_STAFF');
+    const me = await call(g, 'delete', `/users/${ADMIN.id}`);
+    expect(me.body.code).toBe('NOT_TEST_STAFF');
+    const lookalike = await call(g, 'post', '/users', {
+      name: 'Almost',
+      email: 'loadtest-1@zrutam.com',
+      password: 'random-pass-1',
+    });
+    const res = await call(g, 'delete', `/users/${lookalike.body.id}`);
+    expect(res.body.code).toBe('NOT_TEST_STAFF');
+    expect(g.authStore.staff).toHaveLength(3);
   });
 });
 

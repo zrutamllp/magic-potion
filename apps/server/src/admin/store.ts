@@ -67,6 +67,12 @@ export interface AdminStore {
   setArchived(gameId: string, at: Date | null): Promise<void>;
   // Deletes the game and every row that belongs to it. Only for games that never started.
   deleteGame(gameId: string): Promise<void>;
+  // Deletes a live-site test game (Phase 7C), played or not. Checks the name again.
+  deleteTestGame(gameId: string): Promise<void>;
+  // How many games this staff member has teams in.
+  staffGameCount(staffUserId: string): Promise<number>;
+  // Deletes a test staff account and its own audit lines. Checks the email again.
+  deleteTestStaff(staffUserId: string): Promise<void>;
 
   audit(entry: AdminAuditEntry): Promise<void>;
 }

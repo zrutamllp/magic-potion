@@ -4,6 +4,8 @@ import {
   DEFAULT_SETTINGS,
   GameSettingsSchema,
   MAX_TEAMS,
+  TEST_GAME_PREFIX,
+  TEST_STAFF_EMAIL,
   generateTeamCodes,
   generateTeamPassword,
   type AddTeams,
@@ -38,6 +40,10 @@ export const ADMIN_ERRORS = {
   NAME_MISMATCH: 'Type the game name exactly as shown to delete it.',
   INBOX_ITEM_NOT_FOUND: 'That bonus task was not found in this game.',
   NO_ANSWERS: 'A question needs at least one accepted answer.',
+  NOT_A_TEST_GAME: 'Only a test game (named "LOADTEST – …") can be deleted this way.',
+  TEST_GAME_RUNNING: 'The test game is still running. End it first.',
+  NOT_TEST_STAFF: 'Only a test co-facilitator (loadtest-N@zrutam.invalid) can be deleted.',
+  TEST_STAFF_IN_GAME: 'This test co-facilitator still has teams in a game. Delete that game first.',
 } as const;
 export type AdminErrorCode = keyof typeof ADMIN_ERRORS;
 
@@ -66,6 +72,10 @@ export interface AdminServiceOptions {
   // Runs after a game is created, to give it the default content pack.
   afterCreate?: (gameId: string) => Promise<void>;
   random?: (max: number) => number;
+  // Live-site test clean-up (Phase 7C): drops a finished or Lobby game from the running server
+  // (false while it is still being played), and deletes its team photos (returns how many).
+  forgetGame?: (gameId: string) => Promise<boolean>;
+  removeGamePhotos?: (gameId: string) => Promise<number>;
 }
 
 export class AdminService {
@@ -410,6 +420,55 @@ export class AdminService {
       },
     });
     this.opts.onLobbyChange?.(gameId);
+    return ok(null);
+  }
+
+  // ---------- Live-site tests (Phase 7C) ----------
+
+  // Deletes a test game, played or not, so the live-site tests leave nothing behind. Only a
+  // game named "LOADTEST – …", typed exactly, that is finished or never started.
+  async deleteTestGame(staff: StaffAccount, gameId: string, confirmName: string) {
+    const g = await this.store.game(gameId);
+    if (!g) return fail(404, 'GAME_NOT_FOUND');
+    if (!g.name.startsWith(TEST_GAME_PREFIX)) return fail(400, 'NOT_A_TEST_GAME');
+    if (confirmName.trim() !== g.name) return fail(400, 'NAME_MISMATCH');
+    const finished = g.phase === 'REVEAL' || g.endedAt !== null;
+    if (g.startedAt && !finished) return fail(409, 'TEST_GAME_RUNNING');
+    if (this.opts.forgetGame && !(await this.opts.forgetGame(gameId))) {
+      return fail(409, 'TEST_GAME_RUNNING');
+    }
+    const photos = (await this.opts.removeGamePhotos?.(gameId)) ?? 0;
+    await this.store.deleteTestGame(gameId);
+    await this.store.audit({
+      gameId: null,
+      staffUserId: staff.id,
+      action: 'DELETE_TEST_GAME',
+      before: {
+        id: g.id,
+        name: g.name,
+        played: g.startedAt !== null,
+        teams: g.teams.length,
+        photos,
+      },
+    });
+    return ok({ teams: g.teams.length, photos });
+  }
+
+  // Deletes a test co-facilitator once their test game is gone.
+  async deleteTestStaff(staff: StaffAccount, id: string) {
+    const member = await this.store.staffById(id);
+    if (!member) return fail(404, 'STAFF_NOT_FOUND');
+    if (member.role !== 'CO_FACILITATOR' || !TEST_STAFF_EMAIL.test(member.email)) {
+      return fail(400, 'NOT_TEST_STAFF');
+    }
+    if ((await this.store.staffGameCount(id)) > 0) return fail(409, 'TEST_STAFF_IN_GAME');
+    await this.store.deleteTestStaff(id);
+    await this.store.audit({
+      gameId: null,
+      staffUserId: staff.id,
+      action: 'DELETE_TEST_STAFF',
+      before: { id, name: member.name, email: member.email },
+    });
     return ok(null);
   }
 

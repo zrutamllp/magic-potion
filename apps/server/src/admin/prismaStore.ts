@@ -1,4 +1,10 @@
-import type { AdminInboxItem, GameSettings, StaffMember } from '@magic-potion/shared';
+import {
+  TEST_GAME_PREFIX,
+  TEST_STAFF_EMAIL,
+  type AdminInboxItem,
+  type GameSettings,
+  type StaffMember,
+} from '@magic-potion/shared';
 import { createSampleGame, type NewTeamRow } from '../engine/dbGame';
 import { Prisma, type PrismaClient } from '../generated/prisma/client';
 import type { AdminAuditEntry, AdminStore, StoredGame } from './store';
@@ -185,6 +191,31 @@ export class PrismaAdminStore implements AdminStore {
       const g = await tx.game.findUnique({ where: { id: gameId }, select: { startedAt: true } });
       if (!g || g.startedAt) throw new Error('Only a game that never started can be deleted.');
       await tx.game.delete({ where: { id: gameId } });
+    });
+  }
+
+  async deleteTestGame(gameId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // Checked again inside the transaction: only a live-site test game is ever deleted here.
+      const g = await tx.game.findUnique({ where: { id: gameId }, select: { name: true } });
+      if (!g?.name.startsWith(TEST_GAME_PREFIX))
+        throw new Error('Only a test game can be deleted.');
+      await tx.game.delete({ where: { id: gameId } });
+    });
+  }
+
+  staffGameCount(staffUserId: string): Promise<number> {
+    return this.prisma.game.count({ where: { staffAssignments: { some: { staffUserId } } } });
+  }
+
+  async deleteTestStaff(staffUserId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const s = await tx.staffUser.findUnique({ where: { id: staffUserId } });
+      if (!s || !TEST_STAFF_EMAIL.test(s.email)) throw new Error('Only test staff can be deleted.');
+      // Their own lines outside any game (logins, for example); their game lines went with the
+      // test game.
+      await tx.auditLog.deleteMany({ where: { staffUserId } });
+      await tx.staffUser.delete({ where: { id: staffUserId } });
     });
   }
 

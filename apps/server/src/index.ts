@@ -24,7 +24,7 @@ import { PrismaLiveStore } from './live/prismaStore';
 import { Realtime } from './realtime/server';
 import { BlobFileStore } from './uploads/blob';
 import { PhotoCleanup } from './uploads/photoCleanup';
-import { BlobPhotoStore, PhotoLinks } from './uploads/photos';
+import { BlobPhotoStore, PhotoLinks, isPhotoKey } from './uploads/photos';
 import { PrismaPhotoCleanupStore } from './uploads/photoCleanupStore';
 
 const env = loadEnv();
@@ -67,6 +67,17 @@ const reload = (gameId: string) => {
     console.error(`Could not reload game ${gameId}:`, error);
   });
 };
+const files = env.BLOB_READ_WRITE_TOKEN ? new BlobFileStore(env.BLOB_READ_WRITE_TOKEN) : undefined;
+// Team photos: a private store and short-lived signed staff links (Phase 7A). Off unless both
+// the private store token and the link secret are set.
+const photos =
+  env.BLOB_PRIVATE_READ_WRITE_TOKEN && env.PHOTO_LINK_SECRET
+    ? {
+        store: new BlobPhotoStore(env.BLOB_PRIVATE_READ_WRITE_TOKEN),
+        links: new PhotoLinks(env.PHOTO_LINK_SECRET),
+      }
+    : undefined;
+
 const adminStore = prisma ? new PrismaAdminStore(prisma) : undefined;
 const packStore = prisma ? new PrismaPackStore(prisma) : undefined;
 const packs =
@@ -84,6 +95,17 @@ const admin =
         auth: live.auth,
         onLobbyChange: reload,
         afterCreate: packs ? (gameId) => packs.assignDefault(gameId) : undefined,
+        forgetGame: (gameId) => live.forgetGame(gameId),
+        removeGamePhotos:
+          prisma && photos
+            ? async (gameId) => {
+                const keys = (await new PrismaPhotoCleanupStore(prisma).photoUrls(gameId)).filter(
+                  isPhotoKey,
+                );
+                await photos.store.remove(keys);
+                return keys.length;
+              }
+            : undefined,
       })
     : undefined;
 
@@ -96,17 +118,6 @@ if (packStore) {
     items: samplePackItems(),
   }).catch((error: unknown) => console.error('Could not create the Sample pack:', error));
 }
-
-const files = env.BLOB_READ_WRITE_TOKEN ? new BlobFileStore(env.BLOB_READ_WRITE_TOKEN) : undefined;
-// Team photos: a private store and short-lived signed staff links (Phase 7A). Off unless both
-// the private store token and the link secret are set.
-const photos =
-  env.BLOB_PRIVATE_READ_WRITE_TOKEN && env.PHOTO_LINK_SECRET
-    ? {
-        store: new BlobPhotoStore(env.BLOB_PRIVATE_READ_WRITE_TOKEN),
-        links: new PhotoLinks(env.PHOTO_LINK_SECRET),
-      }
-    : undefined;
 
 // Deletes team photos after their keep time (hourly, and once at start).
 const photoCleanup =

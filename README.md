@@ -276,6 +276,19 @@ Checked live in 7B: `/healthz` answers `ok` with the database; http redirects to
 - **Web:** Vercel → `magic-potion-web` → Deployments → an earlier production deployment → **Instant Rollback**.
 - **Database:** only if a migration went wrong. Restore `production` from the backup branch in Neon. Everything written after the backup is lost, so decide this together first.
 
+## Testing the live site (Phase 7C)
+
+`npm run live-test -w @magic-potion/server -- --mode game` or `-- --mode load` tests the live site from your own terminal. It asks for the main admin password with hidden typing and keeps it only in memory.
+
+- Everything happens in one new game named `LOADTEST – <date time> <mode>` and, for the load test, 5 test co-facilitators (`loadtest-1..5@zrutam.invalid`). The script's guard refuses any call for another game or person.
+- **Game mode:** 3 bot teams and 1 team for you, 4-minute rounds and a 1-minute pause run by the server's own timers, then the Debrief and every export are checked.
+- **Load mode:** 25 teams (5 of them on long-polling only), 5 staff and a projector for 10 minutes (`--minutes`, `--teams`), with a login storm, a start storm, a pause and resume, a message to all and a reconnect storm.
+- At the end, and on Ctrl+C or any error, the test game and test staff are deleted through two main-admin routes that only accept `LOADTEST – …` games (finished or never started) and `loadtest-N@zrutam.invalid` accounts. The script then checks from the API that nothing is left and every other game is unchanged.
+- Results (no secrets) go to `live-results/` (git-ignored): a `.md` table of pass/fail targets and a `.json` with every number.
+- Rehearse on your local server first: `-- --api http://localhost:4000` (uses `ADMIN_SEED_EMAIL` and `ADMIN_SEED_PASSWORD` from `apps/server/.env`, and `--round 1` for 1-minute rounds). Timings there are slow because every database call travels to Neon in Singapore; only the live numbers count.
+
+The corporate laptop and phone hotspot checks are in `docs/NETWORK_CHECKLIST.md`.
+
 ## Environment variables
 
 Every variable is documented in `apps/server/.env.example` and `apps/web/.env.example`. `.env` files are ignored by git; never commit secrets.

@@ -1,4 +1,10 @@
-import type { AdminInboxItem, GameSettings, StaffMember } from '@magic-potion/shared';
+import {
+  TEST_GAME_PREFIX,
+  TEST_STAFF_EMAIL,
+  type AdminInboxItem,
+  type GameSettings,
+  type StaffMember,
+} from '@magic-potion/shared';
 import type { MemoryAuthStore } from '../auth/memoryStore';
 import type { NewTeamRow } from '../engine/dbGame';
 import type { AdminAuditEntry, AdminStore, StoredGame } from './store';
@@ -199,6 +205,31 @@ export class MemoryAdminStore implements AdminStore {
     this.auth.games = this.auth.games.filter((x) => x.id !== gameId);
     this.auth.teams = this.auth.teams.filter((t) => t.gameId !== gameId);
     this.inbox.delete(gameId);
+  }
+
+  async deleteTestGame(gameId: string): Promise<void> {
+    const g = this.games.find((x) => x.id === gameId);
+    if (!g?.name.startsWith(TEST_GAME_PREFIX)) throw new Error('Only a test game can be deleted.');
+    this.games = this.games.filter((x) => x.id !== gameId);
+    this.auth.games = this.auth.games.filter((x) => x.id !== gameId);
+    const teamIds = new Set(this.auth.teams.filter((t) => t.gameId === gameId).map((t) => t.id));
+    this.auth.teams = this.auth.teams.filter((t) => t.gameId !== gameId);
+    this.auth.assignments = this.auth.assignments.filter((a) => a.gameId !== gameId);
+    this.auth.sessions = this.auth.sessions.filter((s) => !teamIds.has(s.teamId));
+    this.audits = this.audits.filter((a) => a.gameId !== gameId);
+    this.inbox.delete(gameId);
+  }
+
+  async staffGameCount(staffUserId: string): Promise<number> {
+    const games = this.auth.assignments.filter((a) => a.staffUserId === staffUserId);
+    return new Set(games.map((a) => a.gameId)).size;
+  }
+
+  async deleteTestStaff(staffUserId: string): Promise<void> {
+    const s = this.auth.staff.find((x) => x.id === staffUserId);
+    if (!s || !TEST_STAFF_EMAIL.test(s.email)) throw new Error('Only test staff can be deleted.');
+    this.auth.staff = this.auth.staff.filter((x) => x.id !== staffUserId);
+    this.audits = this.audits.filter((a) => a.staffUserId !== staffUserId);
   }
 
   async audit(entry: AdminAuditEntry): Promise<void> {

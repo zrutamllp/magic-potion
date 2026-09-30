@@ -5,6 +5,7 @@ import {
   AddTeamsSchema,
   CreateGameSchema,
   CreateStaffSchema,
+  DeleteGameSchema,
   RenameGameSchema,
   RenameTeamSchema,
   ResetPasswordsSchema,
@@ -162,6 +163,18 @@ export function addAdminRoutes(
   staff.patch('/users/:userId', mainAdminOnly, async (req, res: StaffResponse) => {
     const b = body(UpdateStaffSchema, req, res);
     if (b) send(res, await admin.updateStaff(res.locals.staff, id(req.params.userId), b));
+  });
+
+  // Live-site test clean-up (Phase 7C): only "LOADTEST – …" games and loadtest-N staff.
+  staff.post('/games/:gameId/delete-test-game', mainAdminOnly, async (req, res: StaffResponse) => {
+    const b = body(DeleteGameSchema, req, res);
+    if (b) {
+      send(res, await admin.deleteTestGame(res.locals.staff, id(req.params.gameId), b.confirmName));
+    }
+  });
+
+  staff.delete('/users/:userId', mainAdminOnly, async (req, res: StaffResponse) => {
+    send(res, await admin.deleteTestStaff(res.locals.staff, id(req.params.userId)));
   });
 
   staff.post('/users/:userId/password', mainAdminOnly, async (req, res: StaffResponse) => {
