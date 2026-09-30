@@ -231,6 +231,47 @@ The database tests (the save-and-reload test and the mid-game restart test) run 
 
 All three are set never to auto-delete. The seed, the test and screenshot scripts and the database tests refuse the production database, and a local server refuses to start on it.
 
+## Deploy safely
+
+Live addresses: web `https://play.zrutam.com` (Vercel), API `https://api.zrutam.com` (Render). Secrets live only in the Render and Vercel dashboards.
+
+### Production setup (reference)
+
+| Where              | Setting                                                                                                                                                                                                                                              |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Render web service | Singapore, Starter (paid, never sleeps), exactly 1 instance, health check `/healthz`, **Auto-Deploy off**                                                                                                                                            |
+| Render build       | `npm ci --include=dev && npm run build -w @magic-potion/server` (dev tools like Prisma and tsx are needed to build and to run the scripts)                                                                                                           |
+| Render start       | `npm run start -w @magic-potion/server`                                                                                                                                                                                                              |
+| Render pre-deploy  | `cd apps/server && npx prisma migrate deploy`                                                                                                                                                                                                        |
+| Render environment | `NODE_ENV=production`, `NODE_VERSION=22`, `CLIENT_ORIGIN=https://play.zrutam.com`, `DATABASE_URL`, `DIRECT_URL` (Neon `production`), `JWT_SECRET`, `PHOTO_LINK_SECRET`, `BLOB_READ_WRITE_TOKEN`, `BLOB_PRIVATE_READ_WRITE_TOKEN`, `ADMIN_SEED_EMAIL` |
+| Vercel project     | `magic-potion-web`, root `apps/web`, install `cd ../.. && npm ci`, build `npm run build`, output `dist`; `VITE_API_URL` and `VITE_SOCKET_URL` = `https://api.zrutam.com` (Production only)                                                           |
+| Blob stores        | Production has its own: `magic-potion-prod-public` (public) and `magic-potion-prod-photos` (private). Local `.env` files use the dev stores.                                                                                                         |
+| Neon               | Branch `production`, scale-to-zero off                                                                                                                                                                                                               |
+| DNS (Hostinger)    | `CNAME api` → the Render service host, `CNAME play` → the value Vercel shows                                                                                                                                                                         |
+
+The server refuses to start in production unless every variable above is set and safe (`apps/server/src/productionCheck.ts`) and the database is marked as production (`apps/server/src/safety.ts`).
+
+One-time database setup (done in 7B, from the Render shell, while a placeholder start command kept the instance up): check that the schema matches (`npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code`), mark every existing migration as applied (`npx prisma migrate resolve --applied <name>`), `npx prisma migrate deploy`, `npm run db:mark-production -- --yes`, then `npm run db:seed` (on production it adds only the main admin and the task definitions). `ADMIN_SEED_PASSWORD` was removed from Render afterwards.
+
+### When
+
+- Only when no game is running or paused (check the games list in the admin panel). Ideally the day before an event. **Never during an event**: a deploy restarts the server and drops every connection.
+- Vercel rebuilds the web app on every push to `main`, so do not push to `main` during an event either.
+
+### How
+
+1. CI is green on `main`.
+2. If the deploy includes a database migration: in Neon, create a backup branch from `production` (for example `backup-2026-10-01`). Migrations must only add; anything that deletes or rewrites data needs a separate, agreed plan.
+3. Render → the service → **Manual Deploy → Deploy latest commit**. The pre-deploy step runs the migrations first; if it fails, the old server keeps running.
+4. Watch the logs for `Server listening` and `Loaded N live game(s)`, and no `Refusing to start`.
+5. Open `https://api.zrutam.com/healthz` (`"status":"ok","db":"ok"`), then log in at `https://play.zrutam.com/staff`.
+
+### Roll back
+
+- **Server:** Render → the service → Events → an earlier successful deploy → **Rollback**. This rolls back code only, not the database, which is why migrations must only add.
+- **Web:** Vercel → `magic-potion-web` → Deployments → an earlier production deployment → **Instant Rollback**.
+- **Database:** only if a migration went wrong. Restore `production` from the backup branch in Neon. Everything written after the backup is lost, so decide this together first.
+
 ## Environment variables
 
 Every variable is documented in `apps/server/.env.example` and `apps/web/.env.example`. `.env` files are ignored by git; never commit secrets.

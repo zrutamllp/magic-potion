@@ -68,5 +68,6 @@ Web (`apps/web/.env`):
 
 - Run exactly one Render instance. Game state and timers live in that process. Scaling out would need a Redis adapter, which is out of scope.
 - Render restarts the instance on every deploy, which drops live connections. **Never deploy during a live event.**
+- Render Auto-Deploy is **OFF**. Server deploys are manual only (Render → Manual Deploy), and never while a game is running or paused, so a push to GitHub can never restart the server during an event. See "Deploy safely" in `README.md`.
 - Socket.IO must keep its long-polling fallback switched on, because some corporate networks block WebSockets.
 - The client must reconnect automatically and reload full state after any disconnect.

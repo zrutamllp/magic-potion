@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 // only on Vercel, so the live site is checked in Phase 7B; this keeps the file correct.
 
 interface VercelConfig {
+  rewrites: { source: string; destination: string }[];
   headers: { source: string; headers: { key: string; value: string }[] }[];
 }
 
@@ -50,5 +51,10 @@ describe('web security headers', () => {
       'https://www.youtube-nocookie.com',
       'https://player.vimeo.com',
     ]);
+  });
+
+  it('sends every page address to the app, so links such as /staff load in production', () => {
+    // Vercel serves real files (such as /assets/*) first; only other addresses are rewritten.
+    expect(config.rewrites).toContainEqual({ source: '/(.*)', destination: '/index.html' });
   });
 });

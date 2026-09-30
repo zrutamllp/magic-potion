@@ -108,7 +108,7 @@ Original list:
 - From 6C: a co-facilitator's team list is read when their dashboard connects; if the admin changes their teams mid-game, they reload the page to see the change.
 - From 6C: the stuck flag's idle clock counts from the round start or the team's last action; time spent paused by the admin can count toward it right after Resume.
 - Replace the Phase 3 test screens (`apps/web/src/pages/TeamPage.tsx`, `StaffDevPage.tsx`) with the real player screens (Phase 4) and admin panel (Phase 6), and remove the dev-only "finish all tasks" route (`ENABLE_DEV_TOOLS`) once the task screens exist.
-- Vercel rewrite so deep links such as `/staff` load the app in production (Phase 7).
+- ~~Vercel rewrite so deep links such as `/staff` load the app in production (Phase 7).~~ Done in 7B (`apps/web/vercel.json`).
 - ~~Team photo upload in the Inbox.~~ Done in 6D (upload, staff reject, auto-delete after the keep time). Private storage is a Phase 7 must-do (see above).
 - ~~Hint, fail penalty and facilitator adjustment lines in the Funds transaction list.~~ Done (hints and fails in Phase 5, adjustments in 6C).
 - ~~Facilitator messages in the inbox: Phase 6.~~ Done in 6C (Message all).
