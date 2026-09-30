@@ -233,7 +233,7 @@ All three are set never to auto-delete. The seed, the test and screenshot script
 
 ## Deploy safely
 
-Live addresses: web `https://play.zrutam.com` (Vercel), API `https://api.zrutam.com` (Render). Secrets live only in the Render and Vercel dashboards.
+Live addresses: web `https://play.zrutam.com` (Vercel), API `https://potion-api.zrutam.com` (Render). Secrets live only in the Render and Vercel dashboards.
 
 ### Production setup (reference)
 
@@ -244,7 +244,7 @@ Live addresses: web `https://play.zrutam.com` (Vercel), API `https://api.zrutam.
 | Render start       | `npm run start -w @magic-potion/server`                                                                                                                                                                                                              |
 | Render pre-deploy  | `cd apps/server && npx prisma migrate deploy`                                                                                                                                                                                                        |
 | Render environment | `NODE_ENV=production`, `NODE_VERSION=22`, `CLIENT_ORIGIN=https://play.zrutam.com`, `DATABASE_URL`, `DIRECT_URL` (Neon `production`), `JWT_SECRET`, `PHOTO_LINK_SECRET`, `BLOB_READ_WRITE_TOKEN`, `BLOB_PRIVATE_READ_WRITE_TOKEN`, `ADMIN_SEED_EMAIL` |
-| Vercel project     | `magic-potion-web`, root `apps/web`, install `cd ../.. && npm ci`, build `npm run build`, output `dist`; `VITE_API_URL` and `VITE_SOCKET_URL` = `https://api.zrutam.com` (Production only)                                                           |
+| Vercel project     | `magic-potion-web`, root `apps/web`, install `cd ../.. && npm ci`, build `npm run build`, output `dist`; `VITE_API_URL` and `VITE_SOCKET_URL` = `https://potion-api.zrutam.com` (Production only)                                                    |
 | Blob stores        | Production has its own: `magic-potion-prod-public` (public) and `magic-potion-prod-photos` (private). Local `.env` files use the dev stores.                                                                                                         |
 | Neon               | Branch `production`, scale-to-zero off                                                                                                                                                                                                               |
 | DNS (Hostinger)    | `CNAME api` → the Render service host, `CNAME play` → the value Vercel shows                                                                                                                                                                         |
@@ -264,7 +264,7 @@ One-time database setup (done in 7B, from the Render shell, while a placeholder 
 2. If the deploy includes a database migration: in Neon, create a backup branch from `production` (for example `backup-2026-10-01`). Migrations must only add; anything that deletes or rewrites data needs a separate, agreed plan.
 3. Render → the service → **Manual Deploy → Deploy latest commit**. The pre-deploy step runs the migrations first; if it fails, the old server keeps running.
 4. Watch the logs for `Server listening` and `Loaded N live game(s)`, and no `Refusing to start`.
-5. Open `https://api.zrutam.com/healthz` (`"status":"ok","db":"ok"`), then log in at `https://play.zrutam.com/staff`.
+5. Open `https://potion-api.zrutam.com/healthz` (`"status":"ok","db":"ok"`), then log in at `https://play.zrutam.com/staff`.
 
 ### Roll back
 

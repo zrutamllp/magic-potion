@@ -34,8 +34,8 @@ describe('web security headers', () => {
   it('allows the API and its live connection, and nothing else to connect', () => {
     expect(directive('connect-src')).toEqual([
       "'self'",
-      'https://api.zrutam.com',
-      'wss://api.zrutam.com',
+      'https://potion-api.zrutam.com',
+      'wss://potion-api.zrutam.com',
     ]);
   });
 
@@ -43,7 +43,7 @@ describe('web security headers', () => {
     const img = directive('img-src');
     // Logos and task pictures (public Blob), and team photos through the API's signed links.
     expect(img).toContain('https://*.public.blob.vercel-storage.com');
-    expect(img).toContain('https://api.zrutam.com');
+    expect(img).toContain('https://potion-api.zrutam.com');
     expect(directive('font-src')).toContain('https://fonts.gstatic.com');
     expect(directive('style-src')).toContain('https://fonts.googleapis.com');
     // The Lobby's intro video: YouTube (privacy mode) and Vimeo embeds.
