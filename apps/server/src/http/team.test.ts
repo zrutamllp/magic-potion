@@ -165,7 +165,12 @@ describe('rejecting a team photo', () => {
     expect(res.body).toMatchObject({ ok: true });
     expect(g.engine.state.teams['team-1']?.inbox[PHOTO]?.photoStatus).toBe('REJECTED');
     expect((await g.upload(await picture())).status).toBe(200);
-    expect(g.engine.state.teams['team-1']?.inbox[PHOTO]?.photoStatus).toBe('ACCEPTED');
+    expect(g.engine.state.teams['team-1']?.inbox[PHOTO]).toMatchObject({
+      photoStatus: 'ACCEPTED',
+      photoUrl: g.saved[1]?.url,
+    });
+    // The rejected photo's file is deleted, never left behind.
+    expect(g.removed).toEqual([g.saved[0]?.url]);
   });
 
   it('needs a reason, and a co-facilitator may reject only for their teams', async () => {

@@ -56,11 +56,23 @@ export function addTeamRoutes(api: Router, { auth, engine, files }: TeamRouteDep
       console.error('Photo upload failed:', error instanceof Error ? error.message : 'unknown');
       return refuse(res, 502, 'UPLOAD_FAILED', 'The upload did not work. Please try again.');
     }
+    // A photo that staff rejected is replaced now; its file is deleted once the new one is in.
+    const replaced = game.state.teams[teamId]?.inbox[itemId]?.photoUrl ?? null;
     const result = await game.submitPhoto(teamId, itemId, url);
     if (!result.ok) {
       // Play changed while uploading (for example the admin paused): do not keep the file.
       await files.remove([url]).catch(() => {});
       return refuse(res, 400, result.code, result.message);
+    }
+    if (replaced && replaced !== url) {
+      // Photos show real people: never leave an old one behind. A failure is only logged; the
+      // photo is no longer linked to the game.
+      await files.remove([replaced]).catch((error: unknown) => {
+        console.error(
+          'Could not delete a replaced photo:',
+          error instanceof Error ? error.message : 'unknown',
+        );
+      });
     }
     res.json({ ok: true, value: null });
   });
