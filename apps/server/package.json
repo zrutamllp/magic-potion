@@ -13,6 +13,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "db:seed": "node --env-file-if-exists=.env --import tsx prisma/seed.ts",
+    "db:mark-production": "node --env-file-if-exists=.env --import tsx scripts/markProduction.ts",
     "db:check": "node --env-file-if-exists=.env --import tsx prisma/check.ts",
     "simulate": "node --env-file-if-exists=.env --import tsx scripts/simulate.ts",
     "postinstall": "prisma generate",

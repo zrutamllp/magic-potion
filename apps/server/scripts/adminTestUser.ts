@@ -13,6 +13,7 @@ import { del } from '@vercel/blob';
 import bcrypt from 'bcryptjs';
 import { createPrisma } from '../src/db';
 import { loadEnv } from '../src/env';
+import { assertNotProduction } from '../src/safety';
 
 const env = loadEnv();
 if (!env.DATABASE_URL) throw new Error('DATABASE_URL is needed in apps/server/.env');
@@ -20,6 +21,7 @@ const prisma = createPrisma(env.DATABASE_URL);
 const [command, ...args] = process.argv.slice(2);
 
 try {
+  await assertNotProduction(prisma, 'Making or deleting test admins');
   if (command === 'create') {
     const tag = randomBytes(4).toString('hex');
     const email = `e2e-admin-${tag}@example.com`;

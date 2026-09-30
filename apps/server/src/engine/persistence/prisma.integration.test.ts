@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createPrisma } from '../../db';
 import type { PrismaClient } from '../../generated/prisma/client';
 import { checkBalances } from '../../ledger/ledger';
+import { connectTestDatabase, testDatabaseUrl } from '../../testDatabase';
 import { FakeClock } from '../clock';
 import { createSampleGame } from '../dbGame';
 import { GameEngine } from '../engine';
@@ -14,7 +14,7 @@ import { PrismaPersistence } from './prisma';
 // Runs only when TEST_DATABASE_URL is set (use a Neon branch, not the live database).
 // The test game is deleted afterwards.
 
-const url = process.env['TEST_DATABASE_URL'];
+const url = testDatabaseUrl();
 const MIN = 60_000;
 
 describe.skipIf(!url)('Prisma persistence', () => {
@@ -24,7 +24,7 @@ describe.skipIf(!url)('Prisma persistence', () => {
   let adminName: string;
 
   beforeAll(async () => {
-    prisma = createPrisma(url as string);
+    prisma = await connectTestDatabase(url as string);
     const admin = await prisma.staffUser.findFirst({ where: { role: 'MAIN_ADMIN' } });
     if (!admin) throw new Error('No main admin in the test database. Run npm run db:seed.');
     adminId = admin.id;

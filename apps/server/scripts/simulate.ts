@@ -11,6 +11,7 @@ import { PrismaPersistence } from '../src/engine/persistence/prisma';
 import { seededRng } from '../src/engine/rng';
 import { checkBalances } from '../src/ledger/ledger';
 import { loadEnv } from '../src/env';
+import { assertNotProduction } from '../src/safety';
 import { formatReport, toCsv } from './sim/report';
 import { runSimulation, type LedgerRow, type SimSetup } from './sim/run';
 
@@ -86,6 +87,7 @@ async function inDatabase() {
   const prisma = createPrisma(env.DATABASE_URL);
   let gameId: string | undefined;
   try {
+    await assertNotProduction(prisma, 'A simulated game');
     const admin = await prisma.staffUser.findFirst({ where: { role: 'MAIN_ADMIN' } });
     if (!admin) throw new Error('No main admin found. Run npm run db:seed first.');
     gameId = await createSampleGame(prisma, {

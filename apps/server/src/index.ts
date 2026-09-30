@@ -14,6 +14,7 @@ import { PrismaAuthStore } from './auth/prismaStore';
 import { AuthService } from './auth/service';
 import { Tokens } from './auth/tokens';
 import { createPrisma } from './db';
+import { databaseRoleProblem, isProductionDatabase } from './safety';
 import { systemClock } from './engine/clock';
 import { EngineRegistry } from './engine/registry';
 import { devToolsEnabled, loadEnv, parseOrigins } from './env';
@@ -31,6 +32,14 @@ if (env.DATABASE_URL && !env.JWT_SECRET) {
   throw new Error('JWT_SECRET is required when DATABASE_URL is set. See apps/server/.env.example.');
 }
 const prisma = env.DATABASE_URL ? createPrisma(env.DATABASE_URL) : undefined;
+// The live database and every other database are kept apart (Phase 7A, see src/safety.ts).
+if (prisma) {
+  const problem = databaseRoleProblem(await isProductionDatabase(prisma), env.NODE_ENV);
+  if (problem) {
+    console.error(`Refusing to start: ${problem}`);
+    process.exit(1);
+  }
+}
 // Rebuilds live games, their timers and scheduled events from the database.
 const engines = prisma ? new EngineRegistry(prisma, systemClock) : undefined;
 

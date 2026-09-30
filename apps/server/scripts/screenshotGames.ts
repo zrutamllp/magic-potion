@@ -12,6 +12,7 @@ import { Tokens } from '../src/auth/tokens';
 import { createPrisma } from '../src/db';
 import { createSampleGame } from '../src/engine/dbGame';
 import { loadEnv } from '../src/env';
+import { assertNotProduction } from '../src/safety';
 import { parseTasksArg } from '../prisma/sampleContent';
 
 export const SCREENSHOT_PASSWORD = 'screenshot-pass';
@@ -46,6 +47,7 @@ async function makeGame(name: string, prefix: string, teams: number) {
 }
 
 try {
+  await assertNotProduction(prisma, 'Making or deleting screenshot games');
   if (command === 'create') {
     const admin = await prisma.staffUser.findUnique({ where: { email: env.ADMIN_SEED_EMAIL } });
     if (!admin) throw new Error('The main admin does not exist yet. Run npm run db:seed first.');

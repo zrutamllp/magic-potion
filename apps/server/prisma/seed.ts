@@ -2,11 +2,13 @@ import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { TASK_DEFINITIONS, TaskKeySchema, parseTaskContent } from '@magic-potion/shared';
 import { createPrisma } from '../src/db';
+import { assertNotProduction, isProductionDatabase } from '../src/safety';
 import { loadEnv } from '../src/env';
 import { demoSettings, describeTiming } from './demoSettings';
 import { SAMPLE_INBOX_ITEMS, parseTasksArg, sampleContentFor } from './sampleContent';
 
-// Safe to run more than once: existing rows are left alone.
+// Safe to run more than once: existing rows are left alone. On the production database it only
+// adds the first admin and the task definitions, and refuses --reset-demo.
 // Pass --reset-demo to delete and recreate the demo game (prints new team passwords).
 // Add --short for quick hand testing: 5-minute rounds and a 1-minute pause.
 // Add --tasks riddle,hangman,ethical_dilemma to load only those unique tasks, so every team
@@ -135,9 +137,14 @@ async function seedDemoGame() {
 }
 
 try {
+  // The production database only ever gets the first admin and the task definitions: never a
+  // demo game, and never a reset (Phase 7A).
+  if (resetDemo) await assertNotProduction(prisma, 'Resetting the demo game');
+  const production = await isProductionDatabase(prisma);
   await seedAdmin(env.ADMIN_SEED_EMAIL, env.ADMIN_SEED_PASSWORD);
   await seedTaskDefinitions();
-  await seedDemoGame();
+  if (production) console.log('Production database: no demo game is created here.');
+  else await seedDemoGame();
 } finally {
   await prisma.$disconnect();
 }
