@@ -125,6 +125,7 @@ Task content (images, photos, words, riddles, dashboards, answers) is uploaded p
 - 3 bonus tasks per game, each worth +1,000 points, released at play times set by the admin (default: 10, 30 and 55 minutes).
 - Inbox tasks stay open until the game ends.
 - One is always the team photo: upload a screenshot or phone photo of the whole team. It is accepted automatically; staff can reject it. A rejected photo can be re-uploaded, and its 1,000 is removed until a photo is accepted.
+- Team photos show real people. Only staff see them, and they are deleted automatically a number of days after the game (a setting, default 30), counted from End game, or from the start of the Reveal if nobody pressed End game, or from the game start if it never reached the Reveal. The photo's points still count after the file is deleted. A rejected photo's file is deleted when the team sends a new one.
 - The other two are short questions with an answer checked by the server. 3 attempts per question.
 - The inbox also shows game alerts: round start, pause, 5 minutes left, and facilitator messages.
 
@@ -192,7 +193,7 @@ Staff log in with their own name, email and password. The main admin creates co-
 
 ## 12. Game settings (all editable per game)
 
-Client name, logo and colours; number of teams; team names and passwords; task content; starting funds for both wallets; hint cost; fail penalty; lockout attempts and lock lengths; task timers; photos per Guess the Celebrity try; round and pause lengths; chat limit and message length; transfer delay; inbox release times, reward and answer attempts; scoring multipliers; collaboration cap; Full Potion Bonus; the co-facilitator fund change limit (default 2,000); the "stuck team" idle time on the facilitator dashboard (default 5 minutes).
+Client name, logo and colours; number of teams; team names and passwords; task content; starting funds for both wallets; hint cost; fail penalty; lockout attempts and lock lengths; task timers; photos per Guess the Celebrity try; round and pause lengths; chat limit and message length; transfer delay; inbox release times, reward and answer attempts; scoring multipliers; collaboration cap; Full Potion Bonus; the co-facilitator fund change limit (default 2,000); the "stuck team" idle time on the facilitator dashboard (default 5 minutes); how many days team photos are kept after the game (default 30).
 
 Scoring settings lock when Round 1 starts. Team names, funds and phase timing can still change live.
 

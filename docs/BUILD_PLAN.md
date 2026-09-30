@@ -58,14 +58,14 @@ Work one phase at a time. Start each phase in plan mode, get approval, build, ru
 - Every answer checked on the server by the Phase 2 checkers (see `GAME_RULES.md` "Server-side checking").
 - **Done when:** all 12 tasks play end to end with the sample content pack.
 
-## Phase 6: Admin, facilitator and projector
+## Phase 6: Admin, facilitator and projector ✅
 
 Built in 4 batches, each planned, approved, built, tested and pushed on its own:
 
 - **6A Setup ✅:** staff login screen, admin panel, create game, settings editor (locked when Round 1 starts), client name / logo (Vercel Blob) / colours, bulk teams with unique codes and passwords (printable sheet and CSV), co-facilitators and team assignment.
 - **6B Content library ✅:** forms for all 12 tasks with "preview as player"; question pools (each try draws a fresh set, default 3); Ethical Dilemma: one scenario per game for every team; task images on Vercel Blob; reusable content packs (copy, then edit); inbox bonus questions.
 - **6C Live control and facilitator dashboard ✅:** start, pause, resume, extend, end; inbox messages; team progress; chat and transfers; fund adjustments (co-facilitator up to 2,000 with a reason, larger ones to admin approval); rename team, reset login, unlock task; audit log and undo; "stuck team" flag (Task Funds below zero or no activity for 5 minutes).
-- **6D Projector and debrief:** projector view (potion, all teams, halftime vs final at the Reveal); team photo inbox task (upload, staff can reject); all CSV exports from `GAME_RULES.md` section 13.
+- **6D Projector and debrief ✅:** projector view (potion, all teams, halftime vs final at the Reveal); team photo inbox task (upload, staff can reject); all CSV exports from `GAME_RULES.md` section 13.
 
 Original list:
 
@@ -84,6 +84,7 @@ Original list:
 - Deploy: server to Render (Singapore, one instance, health check `/healthz`), web to Vercel, database on Neon Singapore. Set CORS and env vars.
 - Custom domains, for example `play.zrutam.com` (web) and `api.zrutam.com` (server).
 - Test from a corporate laptop network and a phone hotspot.
+- **Must do before the first client event:** move team photos to a private Blob store, served to staff only through short-lived signed links. They are photos of real employees. 6D keeps them in the public store under random names, sent only to staff and deleted after the keep time (default 30 days).
 - Internal dry run with real people before any client event.
 - **Done when:** a dry run with at least 4 teams completes with no manual fixes.
 
@@ -99,7 +100,7 @@ Original list:
 - From 6C: the stuck flag's idle clock counts from the round start or the team's last action; time spent paused by the admin can count toward it right after Resume.
 - Replace the Phase 3 test screens (`apps/web/src/pages/TeamPage.tsx`, `StaffDevPage.tsx`) with the real player screens (Phase 4) and admin panel (Phase 6), and remove the dev-only "finish all tasks" route (`ENABLE_DEV_TOOLS`) once the task screens exist.
 - Vercel rewrite so deep links such as `/staff` load the app in production (Phase 7).
-- Team photo upload in the Inbox (needs Vercel Blob storage): Phase 6, with content upload. The card shows its status until then.
+- ~~Team photo upload in the Inbox.~~ Done in 6D (upload, staff reject, auto-delete after the keep time). Private storage is a Phase 7 must-do (see above).
 - ~~Hint, fail penalty and facilitator adjustment lines in the Funds transaction list.~~ Done (hints and fails in Phase 5, adjustments in 6C).
 - ~~Facilitator messages in the inbox: Phase 6.~~ Done in 6C (Message all).
 - ~~From 6A: renaming a team or changing settings after the start needs the live engine to take the change.~~ Done in 6C: live rename from the dashboard; settings stay locked.

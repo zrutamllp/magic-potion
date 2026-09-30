@@ -186,6 +186,21 @@ Press **Live** next to a game (co-facilitators: **Open dashboard**). The page us
 
 `npm run screenshots:6c` runs a game this way with a throwaway admin and co-facilitator (fund changes, an approval, undo, rename, View as team, the stuck flag, a login reset) and saves the screens to `screenshots/phase6/6c/`. It deletes everything it made.
 
+## Projector, team photo, debrief and exports (Phase 6D)
+
+- **Projector:** press **Projector** on the Live page. It opens in a new window for the room's screen or the main Zoom share; press **Full screen**. Co-facilitators can open it too. It always shows every team:
+  - **Lobby:** the empty potion, "Starting soon".
+  - **Round 1:** the round timer, the potion and each team's tasks x/5, by name. No scores or ranks.
+  - **Pause:** the halftime potion, very large, and "Round 2 starts in …".
+  - **Round 2:** the timer, the potion and the ranked teams with scores.
+  - **Reveal:** one step per click, Space, → or presenter remote (← goes back): halftime vs final potion, then the verdict ("The potion is full!" or "The potion is not full. Nobody wins."), then the teams from last place to first.
+- **Team photo:** the photo bonus task in the Inbox has an **Upload photo** button (PNG, JPG, WebP or GIF, up to 5 MB). It is accepted at once. Staff see it in the team panel and on the dashboard's **Photos** tab and can **Reject** it with a reason; the team can then upload a new one. Photos are stored under random names with all hidden image details removed, only staff see them, and they are deleted automatically after 30 days (a setting under Inbox bonus tasks).
+- **Debrief** (main admin, from the Reveal): the game's **Debrief** tab, or **Debrief** on the Live page. Halftime vs final potion, each team's first chat message, who sent funds to whom, and the Ethical Dilemma answers grouped by option.
+- **Exports:** on the Debrief tab, one button per CSV (final scores with the full breakdown, every transfer, every chat message, Ethical Dilemma answers, the audit log, first message per team) and **Download all (zip)**. Times are in your computer's time zone.
+- **Dev tools:** with `ENABLE_DEV_TOOLS=true`, the main admin sees a Dev tools box in each team panel (fragment values, Finish all 5 tasks). Never in production.
+
+`npm run screenshots:6d` runs all of this with a throwaway admin, including the projector at 1280×720 and 1920×1080 in every phase and a 20-team game, and saves the screens to `screenshots/phase6/6d/`. It deletes everything it made, photos included.
+
 ## Screenshots
 
 `npm run screenshots` saves a PNG of every player screen to `screenshots/phase4/` (git-ignored), at 1280×720 (a typical Zoom share) plus two at phone width. It uses the real server and database with two throwaway games that it creates and deletes; the Demo Game is not touched. It needs `ENABLE_DEV_TOOLS=true`, and runs `npm run dev` itself if it is not already running. First time only: `npx playwright install chromium`.

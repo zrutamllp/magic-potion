@@ -229,7 +229,8 @@ function TeamGrid({ teams }: { teams: ProjectorTeamView[] }) {
 // Round 2: ranked, with scores.
 function RankedList({ rows }: { rows: ProjectorRowView[] }) {
   const twoCols = rows.length > 12;
-  const size = scaleFor(twoCols ? Math.ceil(rows.length / 2) * 1.4 : rows.length);
+  // Two columns sit beside the clock, so each row is narrow: smaller text keeps names whole.
+  const size = twoCols ? 1.25 : scaleFor(rows.length);
   return (
     <ol
       className={`grid h-full auto-rows-fr gap-x-[1.5vw] gap-y-[0.6vw] ${twoCols ? 'grid-cols-2 grid-flow-col' : ''}`}
@@ -262,7 +263,10 @@ function Row({
         winner ? 'border-accent bg-accent/15' : 'border-line bg-card'
       }`}
     >
-      <span className="nums w-[3.5vw] font-extrabold text-warning" style={vw(size)}>
+      <span
+        className="nums shrink-0 font-extrabold text-warning"
+        style={{ ...vw(size), width: '2.2em' }}
+      >
         {row.rank}
       </span>
       <span
@@ -273,7 +277,10 @@ function Row({
         <span className="truncate">{row.name}</span>
       </span>
       <Dots done={row.tasksDone} size={size * 0.45} />
-      <span className="nums w-[10vw] text-right font-extrabold" style={vw(size)}>
+      <span
+        className="nums shrink-0 text-right font-extrabold"
+        style={{ ...vw(size), width: '4.6em' }}
+      >
         {money(row.score)}
       </span>
     </li>
@@ -413,7 +420,7 @@ function PotionPair({ state }: { state: ProjectorState }) {
   );
   const fullNow = final.totalTeams > 0 && final.completedTeams === final.totalTeams;
   return (
-    <div className="flex h-full items-stretch gap-[3vw] px-[6vw] py-[2.5vw]">
+    <div className="flex h-full items-stretch gap-[3vw] px-[6vw] pt-[2vw] pb-[4.5vw]">
       {card('At halftime', half, false)}
       {card('At the end', final, fullNow)}
     </div>

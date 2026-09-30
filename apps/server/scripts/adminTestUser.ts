@@ -4,8 +4,8 @@
 //   node --env-file-if-exists=.env --import tsx scripts/adminTestUser.ts create
 //     prints JSON: { email, password }
 //   node --env-file-if-exists=.env --import tsx scripts/adminTestUser.ts delete <email> [blobUrl...]
-//     deletes that admin, the games, content packs and co-facilitators it made, their audit lines, and the
-//     uploaded pictures given as blob URLs
+//     deletes that admin, the games, content packs and co-facilitators it made, their audit lines,
+//     the team photos uploaded in those games, and the uploaded pictures given as blob URLs
 //
 // Local use only. Existing games, packs and staff are never touched.
 import { randomBytes } from 'node:crypto';
@@ -54,6 +54,12 @@ try {
         .filter((m) => m.action === 'CREATE_PACK' || m.action === 'COPY_PACK')
         .map((m) => (m.after as { id: string }).id);
       const staff = [admin.id, ...staffIds];
+      // Team photos uploaded in those games go too (they are files in Blob, not rows).
+      const photos = await prisma.inboxResponse.findMany({
+        where: { inboxItem: { gameId: { in: gameIds } }, photoUrl: { not: null } },
+        select: { photoUrl: true },
+      });
+      for (const p of photos) if (p.photoUrl) blobUrls.push(p.photoUrl);
       await prisma.$transaction([
         prisma.game.deleteMany({ where: { id: { in: gameIds } } }),
         // Only packs this admin made, never the Sample pack.

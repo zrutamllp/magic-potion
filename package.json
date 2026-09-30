@@ -24,7 +24,8 @@
     "screenshots:batch4": "playwright test e2e/tasks-batch4.spec.ts",
     "screenshots:6a": "playwright test e2e/admin-6a.spec.ts",
     "screenshots:6b": "playwright test e2e/admin-6b.spec.ts",
-    "screenshots:6c": "playwright test e2e/admin-6c.spec.ts"
+    "screenshots:6c": "playwright test e2e/admin-6c.spec.ts",
+    "screenshots:6d": "playwright test e2e/admin-6d.spec.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
