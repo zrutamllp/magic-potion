@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { defineConfig } from 'prisma/config';
+import { withVerifyFullSsl } from './src/sslUrl';
 
 if (existsSync('.env')) process.loadEnvFile('.env');
 
@@ -11,7 +12,8 @@ export default defineConfig({
     path: 'prisma/migrations',
     seed: 'node --import tsx prisma/seed.ts',
   },
+  // Migrations use sslmode=verify-full too (Phase 7A).
   datasource: {
-    url: process.env['DIRECT_URL'],
+    url: process.env['DIRECT_URL'] ? withVerifyFullSsl(process.env['DIRECT_URL']) : undefined,
   },
 });
