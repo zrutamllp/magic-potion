@@ -14,6 +14,7 @@ import { PrismaAuthStore } from './auth/prismaStore';
 import { AuthService, DEFAULT_LOGIN_LIMITS } from './auth/service';
 import { Tokens } from './auth/tokens';
 import { createPrisma } from './db';
+import { productionProblems } from './productionCheck';
 import { databaseRoleProblem, isProductionDatabase } from './safety';
 import { systemClock } from './engine/clock';
 import { EngineRegistry } from './engine/registry';
@@ -27,6 +28,14 @@ import { BlobPhotoStore, PhotoLinks } from './uploads/photos';
 import { PrismaPhotoCleanupStore } from './uploads/photoCleanupStore';
 
 const env = loadEnv();
+// A live server refuses to start unless it is set up safely (Phase 7A).
+const problems = productionProblems(env);
+if (problems.length > 0) {
+  console.error(
+    ['Refusing to start in production:', ...problems.map((p) => `  - ${p}`)].join('\n'),
+  );
+  process.exit(1);
+}
 const clientOrigins = parseOrigins(env.CLIENT_ORIGIN);
 const devTools = devToolsEnabled(env);
 if (env.DATABASE_URL && !env.JWT_SECRET) {
