@@ -74,6 +74,12 @@ describe('the production start check', () => {
     expect(problems({ CLIENT_ORIGIN: undefined })).toHaveLength(1);
   });
 
+  it('needs the direct connection for migrations, not the pooled one', () => {
+    expect(problems({ DIRECT_URL: DB })).toEqual([
+      'DIRECT_URL is a pooled connection (-pooler). Use the direct one (Neon: Connection pooling off).',
+    ]);
+  });
+
   it('refuses an unencrypted database connection', () => {
     expect(problems({ DATABASE_URL: DB.replace('sslmode=require', 'sslmode=disable') })).toEqual([
       'DATABASE_URL has sslmode=disable. Use sslmode=require.',

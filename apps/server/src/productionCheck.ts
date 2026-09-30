@@ -16,6 +16,16 @@ function sslDisabled(url: string | undefined): boolean {
   }
 }
 
+// Neon's pooled hosts end in "-pooler". Migrations need the direct connection.
+function pooledHost(url: string | undefined): boolean {
+  if (!url) return false;
+  try {
+    return new URL(url).hostname.split('.')[0]?.endsWith('-pooler') ?? false;
+  } catch {
+    return false;
+  }
+}
+
 function localOrigin(origin: string): boolean {
   try {
     const { hostname } = new URL(origin);
@@ -59,6 +69,11 @@ export function productionProblems(env: Env): string[] {
   }
   for (const name of ['DATABASE_URL', 'DIRECT_URL'] as const) {
     if (sslDisabled(env[name])) problems.push(`${name} has sslmode=disable. Use sslmode=require.`);
+  }
+  if (pooledHost(env.DIRECT_URL)) {
+    problems.push(
+      'DIRECT_URL is a pooled connection (-pooler). Use the direct one (Neon: Connection pooling off).',
+    );
   }
   return problems;
 }
