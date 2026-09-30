@@ -23,6 +23,7 @@ import { PrismaLiveStore } from './live/prismaStore';
 import { Realtime } from './realtime/server';
 import { BlobFileStore } from './uploads/blob';
 import { PhotoCleanup } from './uploads/photoCleanup';
+import { BlobPhotoStore, PhotoLinks } from './uploads/photos';
 import { PrismaPhotoCleanupStore } from './uploads/photoCleanupStore';
 
 const env = loadEnv();
@@ -85,13 +86,22 @@ if (packStore) {
 }
 
 const files = env.BLOB_READ_WRITE_TOKEN ? new BlobFileStore(env.BLOB_READ_WRITE_TOKEN) : undefined;
+// Team photos: a private store and short-lived signed staff links (Phase 7A). Off unless both
+// the private store token and the link secret are set.
+const photos =
+  env.BLOB_PRIVATE_READ_WRITE_TOKEN && env.PHOTO_LINK_SECRET
+    ? {
+        store: new BlobPhotoStore(env.BLOB_PRIVATE_READ_WRITE_TOKEN),
+        links: new PhotoLinks(env.PHOTO_LINK_SECRET),
+      }
+    : undefined;
 
 // Deletes team photos after their keep time (hourly, and once at start).
 const photoCleanup =
-  prisma && files && engines
+  prisma && photos && engines
     ? new PhotoCleanup({
         store: new PrismaPhotoCleanupStore(prisma),
-        files,
+        photos: photos.store,
         now: () => systemClock.now(),
         loadedEngine: (gameId) => engines.loaded(gameId),
       })
@@ -108,6 +118,8 @@ const app = createApp({
         admin,
         packs,
         files,
+        photos: photos?.store,
+        photoLinks: photos?.links,
         live: prisma ? new PrismaLiveStore(prisma) : undefined,
         onAudit: (gameId) => live.auditChanged(gameId),
         devTools,

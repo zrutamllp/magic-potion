@@ -20,6 +20,7 @@ import { potionPercent } from '../engine/potion';
 import { messagesLeft } from '../engine/rules/chat';
 import type { GameContent, GameState, TeamState, TransferState } from '../engine/state';
 import { taskName } from '../engine/views';
+import { isPhotoKey } from '../uploads/photos';
 
 // Turns engine state into what one browser may see. Built only from public fields:
 // never task answers, never another team's fragments, never inbox answers.
@@ -273,7 +274,7 @@ export function buildStaffState(
 function teamPhoto(s: GameState, t: TeamState): StaffTeamView['photo'] {
   for (const r of Object.values(t.inbox)) {
     if (s.inboxItems[r.inboxItemId]?.kind !== 'PHOTO' || r.photoStatus === null) continue;
-    return { itemId: r.inboxItemId, status: r.photoStatus, url: r.photoUrl };
+    return { itemId: r.inboxItemId, status: r.photoStatus, hasFile: isPhotoKey(r.photoUrl) };
   }
   return null;
 }

@@ -15,6 +15,7 @@ import {
   type AdjustReply,
   type AuditRowView,
   type EngineResult,
+  type PhotoLinkReply,
   type ResetLoginReply,
 } from '@magic-potion/shared';
 import type { AdminService } from '../admin/service';
@@ -23,6 +24,7 @@ import type { StaffAccount } from '../auth/store';
 import type { Json } from '../engine/checkers';
 import type { GameEngine } from '../engine/engine';
 import type { LiveStore, StoredAuditRow } from '../live/store';
+import { isPhotoKey, type PhotoLinks } from '../uploads/photos';
 
 // Live control and the facilitator dashboard (Phase 6C), under /api/staff/games/:gameId/live.
 // Who may do what follows GAME_RULES section 11 and is checked here, on the server:
@@ -42,6 +44,9 @@ export interface LiveDeps {
   admin?: AdminService;
   // Tells open dashboards the audit log changed, for changes made outside the engine.
   onAudit?: (gameId: string) => void;
+  // Signs short-lived links to team photos (Phase 7A).
+  photoLinks?: PhotoLinks;
+  now?: () => number;
 }
 
 const AUDIT_LIMIT = 300;
@@ -170,6 +175,23 @@ export function addLiveRoutes(staff: Router, deps: LiveDeps): void {
       return notAllowed(res);
     }
     send(res, await engine.releaseFragment(res.locals.staff.id, body.fragmentId));
+  });
+
+  // A link to the team's photo for this staff member, valid for a few minutes. Admin: any team;
+  // co-facilitator: assigned teams only. Players never get one.
+  staff.get(`${base}/teams/:teamId/photo-link`, async (req, res: Res) => {
+    const teamId = String(req.params.teamId);
+    const engine = await teamEngine(req, res, teamId);
+    if (!engine) return;
+    if (!deps.photoLinks) return refuse(res, 503, 'NO_UPLOADS', 'Team photos are not set up.');
+    const key = Object.values(engine.state.teams[teamId]?.inbox ?? {})
+      .filter((r) => engine.state.inboxItems[r.inboxItemId]?.kind === 'PHOTO')
+      .map((r) => r.photoUrl)
+      .find(isPhotoKey);
+    if (!key) return refuse(res, 404, 'NO_PHOTO', 'This team has no photo.');
+    const link = deps.photoLinks.sign(key, (deps.now ?? Date.now)());
+    const value: PhotoLinkReply = { url: `/api/photo/${link.token}`, expiresAt: link.expiresAt };
+    res.json(value);
   });
 
   // Rejecting a team photo removes its 1,000 until the team sends an accepted one. The team

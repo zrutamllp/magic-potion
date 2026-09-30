@@ -1,6 +1,6 @@
 import type { GamePhase } from '@magic-potion/shared';
 import type { GameEngine } from '../engine/engine';
-import type { FileStore } from './blob';
+import { isPhotoKey, type PhotoStore } from './photos';
 
 // Team photos show real people, so they are deleted a number of days after the game
 // (settings.inbox.photoRetentionDays, default 30). The days count from End game; if nobody
@@ -41,7 +41,8 @@ export interface PhotoCleanupStore {
 
 export interface PhotoCleanupOptions {
   store: PhotoCleanupStore;
-  files: FileStore;
+  // The private store the team photos are in.
+  photos: PhotoStore;
   now: () => number;
   // The game's engine if it is in memory, so its state forgets the addresses too.
   loadedEngine: (gameId: string) => Promise<GameEngine> | undefined;
@@ -79,13 +80,14 @@ export class PhotoCleanup {
   }
 
   private async clean(): Promise<number> {
-    const { store, files, now } = this.opts;
+    const { store, photos, now } = this.opts;
     let deleted = 0;
     for (const game of dueGames(await store.gamesWithPhotos(), now())) {
       const urls = await store.photoUrls(game.id);
       if (urls.length === 0) continue;
-      // Files first: if that fails, nothing is marked and the next run tries again.
-      await files.remove(urls);
+      // Files first: if that fails, nothing is marked and the next run tries again. An address
+      // from before photos were private (none in use) cannot be deleted here; it is forgotten.
+      await photos.remove(urls.filter(isPhotoKey));
       const engine = await this.opts.loadedEngine(game.id)?.catch(() => undefined);
       if (engine) await engine.forgetPhotos(urls);
       else await store.markDeleted(game.id, urls, now());

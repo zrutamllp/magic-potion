@@ -12,6 +12,7 @@ import type { StaffAccount } from '../auth/store';
 import { finishAllTasks } from '../engine/devTools';
 import type { GameEngine } from '../engine/engine';
 import type { FileStore } from '../uploads/blob';
+import type { PhotoLinks, PhotoStore } from '../uploads/photos';
 import { PreviewService } from '../packs/preview';
 import type { PackService } from '../packs/service';
 import type { LiveStore } from '../live/store';
@@ -36,6 +37,11 @@ export interface ApiDeps {
   preview?: PreviewService;
   // Where uploaded pictures are saved. Uploads answer "not set up" without it.
   files?: FileStore;
+  // Team photos: the private store and the link signer (Phase 7A). Photos are off without them.
+  photos?: PhotoStore;
+  photoLinks?: PhotoLinks;
+  // The clock for photo link times. Tests pass a fake one.
+  now?: () => number;
   // The audit log for the facilitator dashboard (Phase 6C). Its routes need it.
   live?: LiveStore;
   // Tells open dashboards the audit log changed outside the engine.
@@ -74,6 +80,9 @@ export function createApiRouter({
   admin,
   packs,
   files,
+  photos,
+  photoLinks,
+  now,
   live,
   onAudit,
   devTools,
@@ -93,7 +102,7 @@ export function createApiRouter({
     sendAuth(res, await auth.loginStaff(body.data, req.ip ?? ''));
   });
 
-  addTeamRoutes(api, { auth, engine, files });
+  addTeamRoutes(api, { auth, engine, photos, photoLinks, now });
 
   // Every route below needs a staff login.
   const staff = express.Router();
@@ -169,7 +178,18 @@ export function createApiRouter({
 
   if (admin) addAdminRoutes(staff, admin, mainAdminOnly, files);
   if (live) addDebriefRoutes(staff, { gameEngine, mainAdminOnly, store: live });
-  if (live) addLiveRoutes(staff, { auth, gameEngine, mainAdminOnly, store: live, admin, onAudit });
+  if (live) {
+    addLiveRoutes(staff, {
+      auth,
+      gameEngine,
+      mainAdminOnly,
+      store: live,
+      admin,
+      onAudit,
+      photoLinks,
+      now,
+    });
+  }
   if (admin && packs) addPackRoutes(staff, packs, admin, preview, mainAdminOnly);
 
   if (devTools) {

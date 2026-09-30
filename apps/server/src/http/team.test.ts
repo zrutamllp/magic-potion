@@ -7,11 +7,12 @@ import { memoryEngine } from '../engine/memoryGame';
 import { MemoryLiveStore } from '../live/memoryStore';
 import { buildPlayerState, buildStaffState } from '../realtime/views';
 import { ADMIN, COFAC, authFixture, teamPassword } from '../testSupport';
-import type { FileStore } from '../uploads/blob';
+import { PhotoLinks, type PhotoStore } from '../uploads/photos';
 import { createApiRouter } from './api';
 
 // The team photo (GAME_RULES section 7): uploaded by the team, accepted at once, staff can
-// reject it, and the team may upload again.
+// reject it, and the team may upload again. Photos are private; staff see them only through
+// short-lived signed links (Phase 7A).
 
 const T0 = Date.UTC(2026, 8, 29, 9, 0, 0);
 const MIN = 60_000;
@@ -37,13 +38,15 @@ async function setup(opts: { files?: boolean; releasePhoto?: boolean } = {}) {
   }
   const saved: { folder: string; bytes: Buffer; url: string }[] = [];
   const removed: string[] = [];
-  // Stands in for Vercel Blob: tests never use the real store or its token.
-  const files: FileStore = {
-    save: async (folder, data) => {
-      const url = `https://blob.example.com/${folder}/random-${saved.length + 1}.webp`;
-      saved.push({ folder, bytes: data, url });
+  // Stands in for the private Vercel Blob store: tests never use the real store or its token.
+  const files: PhotoStore = {
+    save: async (data) => {
+      const url = `team-photos/random-${saved.length + 1}.webp`;
+      saved.push({ folder: 'team-photos', bytes: data, url });
       return url;
     },
+    read: async (key) =>
+      removed.includes(key) ? null : (saved.find((x) => x.url === key)?.bytes ?? null),
     remove: async (urls) => {
       removed.push(...urls);
     },
@@ -51,7 +54,9 @@ async function setup(opts: { files?: boolean; releasePhoto?: boolean } = {}) {
   const api = createApiRouter({
     auth: fx.auth,
     engine: async () => engine,
-    files: opts.files === false ? undefined : files,
+    photos: opts.files === false ? undefined : files,
+    photoLinks: new PhotoLinks('test-photo-link-secret-that-is-long-enough'),
+    now: () => clock.now(),
     live: new MemoryLiveStore(() => persistence.log, { staff: (id) => id, team: (id) => id }),
     devTools: false,
   });
@@ -100,8 +105,10 @@ describe('team photo upload', () => {
     expect(state.teams.find((t) => t.id === 'team-1')?.photo).toEqual({
       itemId: PHOTO,
       status: 'ACCEPTED',
-      url,
+      hasFile: true,
     });
+    // Not even staff get the private path in their state: only a signed link, on request.
+    expect(JSON.stringify(state)).not.toContain(url);
   });
 
   it('needs a team login', async () => {
@@ -185,5 +192,78 @@ describe('rejecting a team photo', () => {
     expect((await reject('team-1', { reason: '' })).status).toBe(400);
     expect((await reject('team-2', { reason: 'x' })).status).toBe(403);
     expect((await reject('team-1', { reason: 'Blurry' })).body).toMatchObject({ ok: true });
+  });
+});
+
+describe('staff photo links', () => {
+  async function withPhoto() {
+    const g = await setup();
+    await g.upload(await picture());
+    const linkFor = async (team: string, who = ADMIN) =>
+      request(g.app)
+        .get(`/api/staff/games/game-1/live/teams/${team}/photo-link`)
+        .set('Authorization', `Bearer ${await g.staffToken(who)}`);
+    const open = (url: string) =>
+      request(g.app)
+        .get(url)
+        .buffer(true)
+        .parse((res, done) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (c: Buffer) => chunks.push(c));
+          res.on('end', () => done(null, Buffer.concat(chunks)));
+        });
+    return { ...g, linkFor, open };
+  }
+
+  it('gives staff a link that shows the photo, not cached, for 5 minutes', async () => {
+    const g = await withPhoto();
+    const link = await g.linkFor('team-1');
+    expect(link.status).toBe(200);
+    expect(link.body.url).toMatch(/^\/api\/photo\/[\w-]+\.[\w-]+$/);
+    expect(link.body.expiresAt).toBe(g.clock.now() + 5 * MIN);
+    const photo = await g.open(link.body.url as string);
+    expect(photo.status).toBe(200);
+    expect(photo.headers['content-type']).toBe('image/webp');
+    expect(photo.headers['cache-control']).toBe('private, no-store');
+    expect((photo.body as Buffer).equals(g.saved[0]!.bytes)).toBe(true);
+
+    g.clock.set(g.clock.now() + 5 * MIN);
+    expect((await g.open(link.body.url as string)).status).toBe(403);
+  });
+
+  it('refuses a changed link, and links to other photos', async () => {
+    const g = await withPhoto();
+    const url = (await g.linkFor('team-1')).body.url as string;
+    const [payload, sig] = url.slice('/api/photo/'.length).split('.');
+    const forged = Buffer.from(
+      JSON.stringify({ k: 'team-photos/other.webp', e: Date.now() * 2 }),
+    ).toString('base64url');
+    expect((await g.open(`/api/photo/${forged}.${sig}`)).status).toBe(403);
+    expect((await g.open(`/api/photo/${payload}.${sig}x`)).status).toBe(403);
+    // A link signed with another secret is refused too.
+    const other = new PhotoLinks('another-secret-that-is-also-long-enough').sign(
+      'team-photos/random-1.webp',
+      g.clock.now(),
+    );
+    expect((await g.open(`/api/photo/${other.token}`)).status).toBe(403);
+  });
+
+  it('gives a co-facilitator links for assigned teams only', async () => {
+    const g = await withPhoto();
+    expect((await g.linkFor('team-1', COFAC)).status).toBe(200);
+    expect((await g.linkFor('team-2', COFAC)).status).toBe(403);
+  });
+
+  it('has nothing to link once the photo is deleted', async () => {
+    const g = await withPhoto();
+    await g.engine.forgetPhotos([g.saved[0]!.url]);
+    expect((await g.linkFor('team-1')).status).toBe(404);
+  });
+
+  it('never gives players a link or the private path', async () => {
+    const g = await withPhoto();
+    const state = JSON.stringify(buildPlayerState(g.engine, 'team-1', g.clock.now()));
+    expect(state).not.toContain('team-photos/');
+    expect(state).not.toContain('/api/photo/');
   });
 });

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../engine/clock';
 import type { GameEngine } from '../engine/engine';
 import { memoryEngine } from '../engine/memoryGame';
-import type { FileStore } from './blob';
+import type { PhotoStore } from './photos';
 import {
   PhotoCleanup,
   dueGames,
@@ -58,7 +58,7 @@ async function gameWithPhoto() {
   await engine.startGame('admin-1');
   clock.set(T0 + 10 * MIN);
   await engine.tick();
-  const url = 'https://blob.example.com/team-photos/a.webp';
+  const url = 'team-photos/a.webp';
   expect((await engine.submitPhoto('team-1', 'inbox-1', url)).ok).toBe(true);
   return { clock, engine, url };
 }
@@ -66,8 +66,9 @@ async function gameWithPhoto() {
 function fakes(engine: GameEngine, g: PhotoGame, opts: { failRemove?: boolean } = {}) {
   const removed: string[] = [];
   const marked: string[] = [];
-  const files: FileStore = {
+  const files: PhotoStore = {
     save: async () => '',
+    read: async () => null,
     remove: async (urls) => {
       if (opts.failRemove) throw new Error('blob down');
       removed.push(...urls);
@@ -93,7 +94,7 @@ describe('the photo clean-up job', () => {
     const f = fakes(engine, game());
     const job = new PhotoCleanup({
       store: f.store,
-      files: f.files,
+      photos: f.files,
       now: () => T0 + 31 * DAY,
       loadedEngine: () => Promise.resolve(engine),
     });
@@ -114,7 +115,7 @@ describe('the photo clean-up job', () => {
     const f = fakes(engine, game());
     const job = new PhotoCleanup({
       store: f.store,
-      files: f.files,
+      photos: f.files,
       now: () => T0 + 31 * DAY,
       loadedEngine: () => undefined,
     });
@@ -127,7 +128,7 @@ describe('the photo clean-up job', () => {
     const f = fakes(engine, game());
     const job = new PhotoCleanup({
       store: f.store,
-      files: f.files,
+      photos: f.files,
       now: () => T0 + 29 * DAY,
       loadedEngine: () => Promise.resolve(engine),
     });
@@ -140,7 +141,7 @@ describe('the photo clean-up job', () => {
     const f = fakes(engine, game(), { failRemove: true });
     const job = new PhotoCleanup({
       store: f.store,
-      files: f.files,
+      photos: f.files,
       now: () => T0 + 31 * DAY,
       loadedEngine: () => Promise.resolve(engine),
     });

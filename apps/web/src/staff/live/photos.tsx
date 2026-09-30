@@ -1,26 +1,64 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ExternalLink, ImageOff } from 'lucide-react';
-import type { StaffTeamView } from '@magic-potion/shared';
+import type { PhotoLinkReply, StaffTeamView } from '@magic-potion/shared';
+import { API_URL } from '../../config';
 import { useStaff } from '../StaffContext';
 import { Dialog, SmallButton, inputClass, useAction } from '../ui';
 import { useLiveView } from './context';
 
 // Team photos (GAME_RULES section 7): accepted at once; staff check them here and can reject
 // one, which takes its 1,000 away until the team sends a new photo. Staff only.
+//
+// Photos are private (Phase 7A): each one is shown through a link the server signs for this
+// staff member, valid for 5 minutes. A fresh link is fetched when the photo is shown and
+// again before the old one runs out.
+
+const RENEW_MS = 4 * 60 * 1000;
+
+function usePhotoLink(team: StaffTeamView): string | null {
+  const { api } = useStaff();
+  const { gameId } = useLiveView();
+  const [url, setUrl] = useState<string | null>(null);
+  const hasFile = team.photo?.hasFile ?? false;
+  // A new upload after a reject changes the status, so the link is fetched again.
+  const status = team.photo?.status;
+  useEffect(() => {
+    if (!hasFile) return;
+    let cancelled = false;
+    const fetchLink = () =>
+      api.get<PhotoLinkReply>(`/games/${gameId}/live/teams/${team.id}/photo-link`).then(
+        (link) => !cancelled && setUrl(`${API_URL}${link.url}`),
+        () => !cancelled && setUrl(null),
+      );
+    void fetchLink();
+    const timer = setInterval(() => void fetchLink(), RENEW_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [api, gameId, team.id, hasFile, status]);
+  // A deleted photo has no link, whatever was fetched before.
+  return hasFile ? url : null;
+}
 
 export function TeamPhoto({ team, size = 'lg' }: { team: StaffTeamView; size?: 'sm' | 'lg' }) {
   const [rejecting, setRejecting] = useState(false);
   const photo = team.photo;
+  const url = usePhotoLink(team);
   if (!photo) {
     return <p className="text-sm text-ink-muted">No photo yet.</p>;
   }
   const rejected = photo.status === 'REJECTED';
   return (
     <figure className="space-y-2">
-      {photo.url ? (
-        <a href={photo.url} target="_blank" rel="noreferrer" title="Open full size">
+      {!photo.hasFile ? (
+        <div className="flex aspect-video items-center justify-center gap-2 rounded-xl border border-line text-sm text-ink-muted">
+          <ImageOff className="h-4 w-4" aria-hidden /> Photo deleted (the keep time passed)
+        </div>
+      ) : url ? (
+        <a href={url} target="_blank" rel="noreferrer" title="Open full size">
           <img
-            src={photo.url}
+            src={url}
             alt={`Team photo of ${team.name}`}
             className={`w-full rounded-xl border object-cover ${
               rejected ? 'border-danger/60 opacity-50' : 'border-line'
@@ -28,8 +66,8 @@ export function TeamPhoto({ team, size = 'lg' }: { team: StaffTeamView; size?: '
           />
         </a>
       ) : (
-        <div className="flex aspect-video items-center justify-center gap-2 rounded-xl border border-line text-sm text-ink-muted">
-          <ImageOff className="h-4 w-4" aria-hidden /> Photo deleted (the keep time passed)
+        <div className="flex aspect-video items-center justify-center rounded-xl border border-line text-sm text-ink-muted">
+          Loading the photo…
         </div>
       )}
       <figcaption className="flex items-center justify-between gap-2 text-sm">
@@ -40,9 +78,9 @@ export function TeamPhoto({ team, size = 'lg' }: { team: StaffTeamView; size?: '
           </span>
         </span>
         <span className="flex gap-1">
-          {photo.url && size === 'lg' && (
+          {url && size === 'lg' && (
             <a
-              href={photo.url}
+              href={url}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-0.5 text-xs font-semibold hover:bg-card-raised"
@@ -50,7 +88,7 @@ export function TeamPhoto({ team, size = 'lg' }: { team: StaffTeamView; size?: '
               <ExternalLink className="h-3 w-3" aria-hidden /> Full size
             </a>
           )}
-          {!rejected && photo.url && (
+          {!rejected && photo.hasFile && (
             <SmallButton
               variant="outline"
               tone="danger"

@@ -379,25 +379,29 @@ describe('feeds', () => {
 });
 
 describe('team photos', () => {
-  const withPhoto = (
-    status: 'ACCEPTED' | 'REJECTED',
-    url: string | null = 'https://blob.example.com/team-photos/a.webp',
-  ) =>
+  const withPhoto = (status: 'ACCEPTED' | 'REJECTED', hasFile = true) =>
     staffState({
       teams: [
-        team({ photo: { itemId: 'p1', status, url } }),
+        team({ photo: { itemId: 'p1', status, hasFile } }),
         team({ id: 'team-2', name: 'Foxes', photo: null }),
       ],
     });
 
-  it('lists every team photo and rejects one with a reason', async () => {
+  // Photos are private: each is shown through a short-lived signed link fetched on demand.
+  const linkApi = () =>
+    vi.fn(async () => ({ url: '/api/photo/abc.def', expiresAt: 0 })) as unknown as StaffApi['get'];
+
+  it('shows each photo through a signed link and rejects one with a reason', async () => {
     const post = vi.fn(async () => ({ ok: true, value: null }));
+    const get = linkApi();
     renderLive(<Feeds feed={[]} />, {
       state: withPhoto('ACCEPTED'),
-      api: fakeApi({ post: post as unknown as StaffApi['post'] }),
+      api: fakeApi({ post: post as unknown as StaffApi['post'], get }),
     });
     fireEvent.click(screen.getByRole('button', { name: 'Photos' }));
-    expect(screen.getByRole('img', { name: 'Team photo of Owls' })).toBeInTheDocument();
+    const img = await screen.findByRole('img', { name: 'Team photo of Owls' });
+    expect(img.getAttribute('src')).toMatch(/\/api\/photo\/abc\.def$/);
+    expect(get).toHaveBeenCalledWith('/games/game-1/live/teams/team-1/photo-link');
     expect(screen.queryByRole('img', { name: /Foxes/ })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
     const dialog = screen.getByRole('dialog', { name: 'Reject the photo of Owls?' });
@@ -420,7 +424,7 @@ describe('team photos', () => {
     expect(screen.getByText('Rejected: waiting for a new photo')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
     unmount();
-    renderLive(<TeamPanel team={withPhoto('ACCEPTED', null).teams[0]!} onClose={vi.fn()} />);
+    renderLive(<TeamPanel team={withPhoto('ACCEPTED', false).teams[0]!} onClose={vi.fn()} />);
     expect(screen.getByText(/Photo deleted/)).toBeInTheDocument();
   });
 });

@@ -2,20 +2,22 @@ import type { Request, Response, Router } from 'express';
 import { AUTH_ERRORS } from '@magic-potion/shared';
 import type { AuthService } from '../auth/service';
 import type { GameEngine } from '../engine/engine';
-import type { FileStore } from '../uploads/blob';
 import { cleanImage } from '../uploads/image';
+import { isPhotoKey, type PhotoLinks, type PhotoStore } from '../uploads/photos';
 import { readImage } from './rawImage';
 
 // Team REST routes. Everything else a team does goes over Socket.IO; a photo is too big for it.
+// Also the photo link route: staff get short-lived signed links to team photos (Phase 7A).
 
 export interface TeamRouteDeps {
   auth: AuthService;
   engine: (gameId: string) => Promise<GameEngine>;
-  files?: FileStore;
+  // The private store for team photos, and the link signer. Photos are off without them.
+  photos?: PhotoStore;
+  photoLinks?: PhotoLinks;
+  now?: () => number;
 }
 
-// Team photos are saved under random names in their own folder, with all metadata removed.
-export const TEAM_PHOTO_FOLDER = 'team-photos';
 const PHOTO_MAX_SIDE = 1600;
 
 function bearer(req: Request): string | undefined {
@@ -27,13 +29,18 @@ function refuse(res: Response, status: number, code: string, message: string): v
   res.status(status).json({ ok: false, code, message });
 }
 
-export function addTeamRoutes(api: Router, { auth, engine, files }: TeamRouteDeps): void {
+export function addTeamRoutes(
+  api: Router,
+  { auth, engine, photos, photoLinks, now = Date.now }: TeamRouteDeps,
+): void {
   api.post('/team/inbox/:itemId/photo', readImage, async (req, res) => {
     const login = await auth.verifyTeam(bearer(req));
     if (!login.ok) return refuse(res, login.status, login.code, login.message);
     const { teamId, gameId } = login.value;
     const itemId = String(req.params.itemId);
-    if (!files) return refuse(res, 503, 'NO_UPLOADS', 'Photo upload is not set up yet.');
+    if (!photos || !photoLinks) {
+      return refuse(res, 503, 'NO_UPLOADS', 'Photo upload is not set up yet.');
+    }
 
     let game: GameEngine;
     try {
@@ -49,25 +56,25 @@ export function addTeamRoutes(api: Router, { auth, engine, files }: TeamRouteDep
     const image = await cleanImage(input, PHOTO_MAX_SIDE);
     if (!image.ok) return refuse(res, 400, 'BAD_IMAGE', image.message);
 
-    let url: string;
+    let key: string;
     try {
-      url = await files.save(TEAM_PHOTO_FOLDER, image.data, 'image/webp', 'webp');
+      key = await photos.save(image.data);
     } catch (error) {
       console.error('Photo upload failed:', error instanceof Error ? error.message : 'unknown');
       return refuse(res, 502, 'UPLOAD_FAILED', 'The upload did not work. Please try again.');
     }
     // A photo that staff rejected is replaced now; its file is deleted once the new one is in.
     const replaced = game.state.teams[teamId]?.inbox[itemId]?.photoUrl ?? null;
-    const result = await game.submitPhoto(teamId, itemId, url);
+    const result = await game.submitPhoto(teamId, itemId, key);
     if (!result.ok) {
       // Play changed while uploading (for example the admin paused): do not keep the file.
-      await files.remove([url]).catch(() => {});
+      await photos.remove([key]).catch(() => {});
       return refuse(res, 400, result.code, result.message);
     }
-    if (replaced && replaced !== url) {
+    if (isPhotoKey(replaced) && replaced !== key) {
       // Photos show real people: never leave an old one behind. A failure is only logged; the
       // photo is no longer linked to the game.
-      await files.remove([replaced]).catch((error: unknown) => {
+      await photos.remove([replaced]).catch((error: unknown) => {
         console.error(
           'Could not delete a replaced photo:',
           error instanceof Error ? error.message : 'unknown',
@@ -75,5 +82,28 @@ export function addTeamRoutes(api: Router, { auth, engine, files }: TeamRouteDep
       });
     }
     res.json({ ok: true, value: null });
+  });
+
+  // A photo link, signed for staff by /api/staff/games/:id/live/teams/:teamId/photo-link.
+  // The signature and the time are the only check: the link itself is the permission, and it
+  // runs out after 5 minutes.
+  api.get('/photo/:token', async (req, res) => {
+    const key = photoLinks?.verify(String(req.params.token), now());
+    if (!photos || !key) {
+      return refuse(res, 403, 'LINK_EXPIRED', 'This photo link has run out. Open the photo again.');
+    }
+    let data: Buffer | null;
+    try {
+      data = await photos.read(key);
+    } catch (error) {
+      console.error('Photo read failed:', error instanceof Error ? error.message : 'unknown');
+      return refuse(res, 502, 'PHOTO_FAILED', 'The photo could not be loaded. Please try again.');
+    }
+    if (!data) return refuse(res, 404, 'PHOTO_GONE', 'This photo has been deleted.');
+    res.setHeader('Content-Type', 'image/webp');
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', 'inline');
+    res.send(data);
   });
 }

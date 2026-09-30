@@ -78,8 +78,15 @@ export interface StaffNeededFragmentView {
 export interface StaffPhotoView {
   itemId: string;
   status: 'ACCEPTED' | 'REJECTED';
-  // Null once the photo was deleted after the retention time.
-  url: string | null;
+  // False once the file was deleted after the keep time. The picture itself is only reachable
+  // through a short-lived signed link (GET .../photo-link), never sent in the state.
+  hasFile: boolean;
+}
+
+export interface PhotoLinkReply {
+  // A path on the API server, valid for a few minutes.
+  url: string;
+  expiresAt: number;
 }
 
 export type StuckReason = 'NEGATIVE_FUNDS' | 'IDLE';

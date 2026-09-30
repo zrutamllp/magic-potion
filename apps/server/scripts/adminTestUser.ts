@@ -37,6 +37,8 @@ try {
     console.log(JSON.stringify({ email, password }));
   } else if (command === 'delete') {
     const [email, ...blobUrls] = args;
+    // Team photos are in the private store (Phase 7A); other pictures in the public one.
+    const photoKeys: string[] = [];
     if (!email?.startsWith('e2e-admin-'))
       throw new Error('Only e2e-admin-... users can be deleted.');
     const admin = await prisma.staffUser.findUnique({ where: { email } });
@@ -61,7 +63,7 @@ try {
         where: { inboxItem: { gameId: { in: gameIds } }, photoUrl: { not: null } },
         select: { photoUrl: true },
       });
-      for (const p of photos) if (p.photoUrl) blobUrls.push(p.photoUrl);
+      for (const p of photos) if (p.photoUrl) photoKeys.push(p.photoUrl);
       await prisma.$transaction([
         prisma.game.deleteMany({ where: { id: { in: gameIds } } }),
         // Only packs this admin made, never the Sample pack.
@@ -72,6 +74,9 @@ try {
       console.log(
         JSON.stringify({ games: gameIds.length, packs: packIds.length, staff: staff.length }),
       );
+    }
+    if (photoKeys.length > 0 && env.BLOB_PRIVATE_READ_WRITE_TOKEN) {
+      await del(photoKeys, { token: env.BLOB_PRIVATE_READ_WRITE_TOKEN });
     }
     if (blobUrls.length > 0 && env.BLOB_READ_WRITE_TOKEN) {
       await del(blobUrls, { token: env.BLOB_READ_WRITE_TOKEN });
