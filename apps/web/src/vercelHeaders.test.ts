@@ -1,0 +1,54 @@
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+
+// The web app's security headers (Phase 7A), served by Vercel from vercel.json. They take effect
+// only on Vercel, so the live site is checked in Phase 7B; this keeps the file correct.
+
+interface VercelConfig {
+  headers: { source: string; headers: { key: string; value: string }[] }[];
+}
+
+const config = JSON.parse(readFileSync('vercel.json', 'utf8')) as VercelConfig;
+const all = config.headers.find((h) => h.source === '/(.*)')?.headers ?? [];
+const header = (key: string) => all.find((h) => h.key === key)?.value ?? '';
+
+function directive(name: string): string[] {
+  const part = header('Content-Security-Policy')
+    .split(';')
+    .map((p) => p.trim())
+    .find((p) => p.startsWith(`${name} `));
+  return part ? part.split(/\s+/).slice(1) : [];
+}
+
+describe('web security headers', () => {
+  it('only runs the app’s own scripts and cannot be framed', () => {
+    expect(directive('script-src')).toEqual(["'self'"]);
+    expect(directive('object-src')).toEqual(["'none'"]);
+    expect(directive('frame-ancestors')).toEqual(["'none'"]);
+    expect(header('X-Frame-Options')).toBe('DENY');
+    expect(header('X-Content-Type-Options')).toBe('nosniff');
+    expect(header('Strict-Transport-Security')).toContain('max-age=');
+  });
+
+  it('allows the API and its live connection, and nothing else to connect', () => {
+    expect(directive('connect-src')).toEqual([
+      "'self'",
+      'https://api.zrutam.com',
+      'wss://api.zrutam.com',
+    ]);
+  });
+
+  it('allows the pictures, team photos, fonts and intro videos the app shows', () => {
+    const img = directive('img-src');
+    // Logos and task pictures (public Blob), and team photos through the API's signed links.
+    expect(img).toContain('https://*.public.blob.vercel-storage.com');
+    expect(img).toContain('https://api.zrutam.com');
+    expect(directive('font-src')).toContain('https://fonts.gstatic.com');
+    expect(directive('style-src')).toContain('https://fonts.googleapis.com');
+    // The Lobby's intro video: YouTube (privacy mode) and Vimeo embeds.
+    expect(directive('frame-src')).toEqual([
+      'https://www.youtube-nocookie.com',
+      'https://player.vimeo.com',
+    ]);
+  });
+});

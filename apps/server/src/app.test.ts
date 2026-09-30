@@ -45,3 +45,16 @@ describe('GET /healthz', () => {
     expect(res.headers['access-control-allow-origin']).toBeUndefined();
   });
 });
+
+describe('security headers (Phase 7A)', () => {
+  it('sends strict headers on every answer', async () => {
+    const res = await request(createApp({ clientOrigins: [] })).get('/healthz');
+    expect(res.headers['content-security-policy']).toBe("default-src 'none';frame-ancestors 'none'");
+    expect(res.headers['strict-transport-security']).toBe('max-age=63072000; includeSubDomains');
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.headers['x-frame-options']).toBe('DENY');
+    expect(res.headers['referrer-policy']).toBe('no-referrer');
+    expect(res.headers['cross-origin-resource-policy']).toBe('same-site');
+    expect(res.headers['x-powered-by']).toBeUndefined();
+  });
+});
