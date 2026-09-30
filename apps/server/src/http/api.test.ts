@@ -1,7 +1,6 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../app';
-import { AuthService } from '../auth/service';
 import { FakeClock } from '../engine/clock';
 import { memoryEngine } from '../engine/memoryGame';
 import { ADMIN, COFAC, authFixture, teamPassword } from '../testSupport';
