@@ -8,6 +8,7 @@ import { GameEngine } from '../engine';
 import { canonicalJson, loadGame } from '../load';
 import { EngineRegistry } from '../registry';
 import { seededRng } from '../rng';
+import type { GameState } from '../state';
 import { MemoryPersistence } from './memory';
 import { PrismaPersistence } from './prisma';
 
@@ -18,6 +19,34 @@ import { PrismaPersistence } from './prisma';
 
 const url = testDatabaseUrl();
 const MIN = 60_000;
+
+// Everything that matters in a game, without the random ids new rows get.
+const byId = <T extends { id: string }>(list: T[]) =>
+  [...list].sort((a, b) => a.id.localeCompare(b.id));
+
+function facts(s: GameState) {
+  return {
+    clock: [s.phase, s.phaseStartedAt, s.phaseEndsAt, s.frozenAt, s.extensionSeconds],
+    teams: byId(Object.values(s.teams)).map((t) => ({
+      id: t.id,
+      funds: [t.taskFunds, t.supportFunds],
+      finished: [t.finishedAt, t.finishPlaySecondsRemaining],
+      tasks: byId(Object.values(t.tasks)).map((task) => ({
+        id: task.id,
+        status: task.status,
+        tries: task.attempts.map((a) => [a.result, a.endedAt, a.lockedUntil, a.frozenRemainingMs]),
+      })),
+    })),
+    transfers: byId(Object.values(s.transfers)).map((t) => [t.id, t.arrivesAt, t.arrivedAt]),
+    requests: byId(Object.values(s.requests)).map((r) => [r.id, r.status]),
+    inbox: Object.values(s.inboxItems)
+      .map((i) => [i.kind, i.title, i.releasedAt])
+      .sort((a, b) => String(a).localeCompare(String(b))),
+    ledger: Object.values(s.ledger)
+      .map((l) => [l.teamId, l.wallet, l.amount, l.kind, l.createdAt])
+      .sort((a, b) => String(a).localeCompare(String(b))),
+  };
+}
 
 describe.skipIf(!url)('restarting the server mid-game', () => {
   let prisma: PrismaClient;
@@ -120,12 +149,13 @@ describe.skipIf(!url)('restarting the server mid-game', () => {
         expect(rebuilt.teamView(id)?.tasks).toEqual(engine.teamView(id)?.tasks);
       }
 
-      // After the restart, things fall due at the same moments as without it.
+      // After the restart, things fall due at the same moments as without it. New rows (ledger
+      // lines, alerts) get fresh random ids in each copy, so the facts are compared, not ids.
       for (const at of [T0 + 5 * MIN, T0 + 14 * MIN, T0 + 16 * MIN, T0 + 30 * MIN]) {
         clock.set(at);
         await rebuilt.tick();
         await reference.tick();
-        expect(canonicalJson(rebuilt.state)).toBe(canonicalJson(reference.state));
+        expect(facts(rebuilt.state)).toEqual(facts(reference.state));
       }
       // The transfer arrived and the running tasks timed out, as they would have.
       const transfer = Object.values(rebuilt.state.transfers)[0];

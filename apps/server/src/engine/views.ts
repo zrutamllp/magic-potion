@@ -11,6 +11,7 @@ import { checkerContext, nextLockSeconds } from './rules/tasks';
 import {
   runningAttempt,
   tasksDone,
+  type FragmentState,
   type GameContent,
   type GameState,
   type TeamTaskState,
@@ -123,9 +124,20 @@ export function teamView(
       savedAnswer: dilemmaAnswer(content, task),
     };
   });
+  // A fixed order, so the cards never swap places (for example after a server restart loads the
+  // fragments in another order): held ones first, Vault before Find the Code, then released ones
+  // in the order they were released.
+  const held = (f: FragmentState) => (f.holderTeamId === teamId ? 0 : 1);
   const foundItems = Object.values(state.fragments)
     .filter(
       (f) => f.holderTeamId === teamId || (f.neededByTeamId === teamId && f.releasedAt !== null),
+    )
+    .sort(
+      (a, b) =>
+        held(a) - held(b) ||
+        (a.kind === b.kind ? 0 : a.kind === 'VAULT' ? -1 : 1) ||
+        (a.releasedAt ?? 0) - (b.releasedAt ?? 0) ||
+        a.id.localeCompare(b.id),
     )
     .map((f) => f.value);
   return {

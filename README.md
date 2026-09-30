@@ -219,7 +219,17 @@ Press **Live** next to a game (co-facilitators: **Open dashboard**). The page us
 | `--db`          | Save to the database in `DATABASE_URL`, rebuild the game from it and compare (slower) |
 | `--keep`        | With `--db`, keep the simulated game instead of deleting it                           |
 
-The database integration test runs with `npm test` only when `TEST_DATABASE_URL` is set. Point it at a Neon branch, not the database used for live events.
+The database tests (the save-and-reload test and the mid-game restart test) run with `npm test` only when `TEST_DATABASE_URL` is set. They refuse the branch in `DATABASE_URL` and any database marked as production.
+
+### Neon branches
+
+| Branch                     | Used for                                                                                                                                                               | Where its connection strings go                  |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `dev` (the default branch) | Local development, the demo game, screenshots                                                                                                                          | `apps/server/.env`: `DATABASE_URL`, `DIRECT_URL` |
+| `tests`                    | The database tests (made from `dev`, with data, so it has the main admin)                                                                                              | `apps/server/.env`: `TEST_DATABASE_URL`          |
+| `production`               | Live events only (made from `dev`, schema only, no data). Marked as production inside the database (`npm run db:mark-production -- --yes`, run from the Render shell). | Render only, never a local `.env`                |
+
+All three are set never to auto-delete. The seed, the test and screenshot scripts and the database tests refuse the production database, and a local server refuses to start on it.
 
 ## Environment variables
 

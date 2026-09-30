@@ -57,7 +57,8 @@ Server (`apps/server/.env`):
 - `CLIENT_ORIGIN`: the Vercel frontend URL, for CORS
 - `PORT`: provided by Render
 - `ADMIN_SEED_EMAIL`, `ADMIN_SEED_PASSWORD`: creates the first main admin on first run
-- `TEST_DATABASE_URL` (optional): a Neon branch for the database integration test; skipped when empty
+- `TEST_DATABASE_URL` (optional): the Neon `tests` branch, for the database tests; skipped when empty
+- Neon branches: `dev` (default, local work), `tests` (database tests), `production` (live only; its connection strings live only in Render). The production database is marked inside itself and every script and test refuses it.
 
 Web (`apps/web/.env`):
 - `VITE_API_URL`: the Render backend URL
