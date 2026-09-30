@@ -1,7 +1,6 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../app';
-import { LoginRateLimiter } from '../auth/rateLimit';
 import { AuthService } from '../auth/service';
 import { FakeClock } from '../engine/clock';
 import { memoryEngine } from '../engine/memoryGame';
@@ -116,27 +115,6 @@ describe('team login', () => {
       tokenId: 'made-up',
     });
     expect((await g.auth.verifyTeam(unknownSession)).ok).toBe(false);
-  });
-});
-
-describe('login rate limit', () => {
-  it('blocks after too many failures, then allows again after the window', async () => {
-    let now = T0;
-    const fx = authFixture();
-    const auth = new AuthService(
-      fx.store,
-      fx.tokens,
-      new LoginRateLimiter({ maxFailures: 3, windowMs: 60_000, now: () => now }),
-    );
-    const bad = { code: 'TEAM1', password: 'wrong' };
-    for (let i = 0; i < 3; i++)
-      expect(await auth.loginTeam(bad, '1.2.3.4')).toMatchObject({ status: 401 });
-    const good = { code: 'TEAM1', password: teamPassword(1) };
-    expect(await auth.loginTeam(good, '1.2.3.4')).toMatchObject({ code: 'TOO_MANY_TRIES' });
-    // Another address is not blocked.
-    expect((await auth.loginTeam(good, '5.6.7.8')).ok).toBe(true);
-    now += 60_000;
-    expect((await auth.loginTeam(good, '1.2.3.4')).ok).toBe(true);
   });
 });
 

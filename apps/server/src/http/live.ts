@@ -272,6 +272,23 @@ export function addLiveRoutes(staff: Router, deps: LiveDeps): void {
 
   // ---------- Main admin only ----------
 
+  // "Unblock logins": clears this game's login limits at once, for example when a room of teams
+  // behind one Wi-Fi address mistyped a lot. Audited.
+  staff.post(`${base}/unblock-logins`, mainAdminOnly, async (req, res: Res) => {
+    const engine = await gameEngine(req, res);
+    if (!engine) return;
+    const codes = Object.values(engine.state.teams).map((t) => t.code);
+    const cleared = auth.unblockTeamLogins(codes);
+    await auth.store.audit({
+      gameId: engine.state.id,
+      staffUserId: res.locals.staff.id,
+      action: 'UNBLOCK_LOGINS',
+      after: { cleared },
+    });
+    deps.onAudit?.(engine.state.id);
+    res.json({ ok: true, value: { cleared } });
+  });
+
   staff.post(`${base}/message`, mainAdminOnly, async (req, res: Res) => {
     const body = parse(BroadcastMessageSchema, req, res);
     if (!body) return;

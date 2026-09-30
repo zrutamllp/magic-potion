@@ -41,6 +41,18 @@ export class LoginRateLimiter {
     this.failures.delete(key);
   }
 
+  // Forgets every key that matches (staff "Unblock logins").
+  clear(match: (key: string) => boolean): number {
+    let cleared = 0;
+    for (const key of [...this.failures.keys()]) {
+      if (match(key)) {
+        this.failures.delete(key);
+        cleared++;
+      }
+    }
+    return cleared;
+  }
+
   private prune(): void {
     if (this.failures.size < 10_000) return;
     const now = this.now();

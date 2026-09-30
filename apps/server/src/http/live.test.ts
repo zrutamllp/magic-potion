@@ -220,6 +220,31 @@ describe('team actions', () => {
   });
 });
 
+describe('unblock logins', () => {
+  it('lets the main admin clear the game’s login limits at once, audited', async () => {
+    const g = await setup();
+    // In the real server the game and the logins read the same team row; align the fixtures.
+    (g.engine.state.teams['team-1'] as { code: string }).code = 'TEAM1';
+    for (let i = 0; i < 10; i++) {
+      await g.auth.loginTeam({ code: 'TEAM1', password: 'wrong' }, '10.0.0.1');
+    }
+    const blocked = await g.auth.loginTeam({ code: 'TEAM1', password: 'pass-1' }, '10.0.0.1');
+    expect(blocked).toMatchObject({ code: 'TOO_MANY_TRIES' });
+
+    expect((await g.call('post', '/unblock-logins', {}, COFAC)).status).toBe(403);
+    const res = await g.call('post', '/unblock-logins', {});
+    expect(res.body).toMatchObject({ ok: true });
+    expect(g.store.audits.at(-1)).toMatchObject({
+      action: 'UNBLOCK_LOGINS',
+      staffUserId: ADMIN.id,
+      gameId: 'game-1',
+    });
+    expect(g.audits).toContain('game-1');
+    const again = await g.auth.loginTeam({ code: 'TEAM1', password: 'pass-1' }, '10.0.0.1');
+    expect(again.ok).toBe(true);
+  });
+});
+
 describe('audit log and undo', () => {
   it('shows the admin every row; a co-facilitator only rows for their teams', async () => {
     const g = await setup();

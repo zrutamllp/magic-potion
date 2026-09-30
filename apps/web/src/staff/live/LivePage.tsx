@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   ClipboardList,
   FastForward,
+  LockOpen,
   Megaphone,
   MonitorPlay,
   Pause,
@@ -201,6 +202,22 @@ export function ControlBar({ status, onBack }: { status: LiveStatus; onBack: () 
       >
         <MonitorPlay className="h-4 w-4" aria-hidden /> Projector
       </SmallButton>
+      {isAdmin && (
+        <SmallButton
+          variant="outline"
+          tone="muted"
+          className={COMPACT}
+          onClick={() =>
+            action.run(
+              () => api.post(`/games/${gameId}/live/unblock-logins`),
+              'Team logins unblocked. Teams can log in again now.',
+            )
+          }
+          disabled={action.busy}
+        >
+          <LockOpen className="h-4 w-4" aria-hidden /> Unblock logins
+        </SmallButton>
+      )}
 
       {isAdmin && (
         <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -298,7 +315,7 @@ export function ControlBar({ status, onBack }: { status: LiveStatus; onBack: () 
         </p>
       )}
       <div className="basis-full empty:hidden">
-        <Status error={action.error} />
+        <Status ok={action.done} error={action.error} />
       </div>
 
       {confirm && (

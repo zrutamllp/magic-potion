@@ -11,7 +11,7 @@ import {
 import { PrismaPackStore } from './packs/prismaStore';
 import { PackService, ensureSamplePack } from './packs/service';
 import { PrismaAuthStore } from './auth/prismaStore';
-import { AuthService } from './auth/service';
+import { AuthService, DEFAULT_LOGIN_LIMITS } from './auth/service';
 import { Tokens } from './auth/tokens';
 import { createPrisma } from './db';
 import { databaseRoleProblem, isProductionDatabase } from './safety';
@@ -46,7 +46,10 @@ const engines = prisma ? new EngineRegistry(prisma, systemClock) : undefined;
 
 let realtime: Realtime | undefined;
 if (prisma && engines && env.JWT_SECRET) {
-  const auth = new AuthService(new PrismaAuthStore(prisma), new Tokens(env.JWT_SECRET));
+  const auth = new AuthService(new PrismaAuthStore(prisma), new Tokens(env.JWT_SECRET), {
+    ...DEFAULT_LOGIN_LIMITS,
+    perAddress: { ...DEFAULT_LOGIN_LIMITS.perAddress, maxFailures: env.LOGIN_FAILURES_PER_ADDRESS },
+  });
   realtime = new Realtime({ auth, engines, clock: systemClock, clientOrigins, devTools });
 }
 const live = realtime;

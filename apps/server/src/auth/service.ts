@@ -37,14 +37,53 @@ async function passwordMatches(password: string, hash: string | undefined): Prom
 
 export type SessionsEndedListener = (tokenIds: string[], code: AuthErrorCode) => void;
 
+// Login limits (Phase 7A). In-room events put every team behind one office Wi-Fi address and
+// remote teams often share a VPN address, so the limit that counts all codes from one address
+// is high: it only stops real attacks. Staff can clear a game's limits at once.
+export interface LoginLimits {
+  // Wrong passwords for one team code from one address.
+  perCode: { maxFailures: number; windowMs: number };
+  // Failed logins of any kind from one address (a setting: LOGIN_FAILURES_PER_ADDRESS).
+  perAddress: { maxFailures: number; windowMs: number };
+  // Wrong passwords for one staff email, from anywhere.
+  perStaffEmail: { maxFailures: number; windowMs: number };
+}
+
+const MIN = 60_000;
+export const DEFAULT_LOGIN_LIMITS: LoginLimits = {
+  perCode: { maxFailures: 10, windowMs: 5 * MIN },
+  perAddress: { maxFailures: 200, windowMs: 10 * MIN },
+  perStaffEmail: { maxFailures: 5, windowMs: 15 * MIN },
+};
+
 export class AuthService {
   private readonly listeners = new Set<SessionsEndedListener>();
+
+  private readonly perCode: LoginRateLimiter;
+  private readonly perAddress: LoginRateLimiter;
+  private readonly perStaffEmail: LoginRateLimiter;
 
   constructor(
     readonly store: AuthStore,
     private readonly tokens: Tokens,
-    private readonly limiter = new LoginRateLimiter({ maxFailures: 10, windowMs: 5 * 60_000 }),
-  ) {}
+    limits: LoginLimits = DEFAULT_LOGIN_LIMITS,
+    now?: () => number,
+  ) {
+    this.perCode = new LoginRateLimiter({ ...limits.perCode, now });
+    this.perAddress = new LoginRateLimiter({ ...limits.perAddress, now });
+    this.perStaffEmail = new LoginRateLimiter({ ...limits.perStaffEmail, now });
+  }
+
+  // "Unblock logins" (main admin, audited by the caller): forgets the failed logins for these
+  // team codes from every address, and every address count, so a room behind one Wi-Fi can log
+  // in at once. Returns how many limits were cleared.
+  unblockTeamLogins(codes: string[]): number {
+    const lower = new Set(codes.map((c) => c.toLowerCase()));
+    return (
+      this.perCode.clear((key) => lower.has(key.slice(key.lastIndexOf('|') + 1))) +
+      this.perAddress.clear(() => true)
+    );
+  }
 
   // The real-time layer listens, to tell and disconnect the browsers of ended sessions.
   onSessionsEnded(listener: SessionsEndedListener): void {
@@ -59,7 +98,10 @@ export class AuthService {
   // One login per team: a new login ends the older session (GAME_RULES section 1).
   async loginTeam(input: TeamLogin, ip: string): Promise<AuthResult<TeamLoginResponse>> {
     const key = `team|${ip}|${input.code.toLowerCase()}`;
-    if (this.limiter.blocked(key)) return authFail(429, 'TOO_MANY_TRIES');
+    const address = `address|${ip}`;
+    if (this.perCode.blocked(key) || this.perAddress.blocked(address)) {
+      return authFail(429, 'TOO_MANY_TRIES');
+    }
     const teams = await this.store.findLoginTeams(input.code);
     if (teams.length > 1) {
       await passwordMatches(input.password, undefined);
@@ -67,10 +109,11 @@ export class AuthService {
     }
     const team = teams[0];
     if (!(await passwordMatches(input.password, team?.passwordHash)) || !team) {
-      this.limiter.fail(key);
+      this.perCode.fail(key);
+      this.perAddress.fail(address);
       return authFail(401, 'BAD_TEAM_LOGIN');
     }
-    this.limiter.reset(key);
+    this.perCode.reset(key);
     const tokenId = randomUUID();
     const { endedTokenIds } = await this.store.openTeamSession(team.id, tokenId);
     this.sessionsEnded(endedTokenIds, 'SESSION_REPLACED');
@@ -86,15 +129,21 @@ export class AuthService {
   }
 
   async loginStaff(input: StaffLogin, ip: string): Promise<AuthResult<StaffLoginResponse>> {
-    const key = `staff|${ip}|${input.email.toLowerCase()}`;
-    if (this.limiter.blocked(key)) return authFail(429, 'TOO_MANY_TRIES');
+    // Staff: counted per email from anywhere, so guessing one account from many addresses
+    // stops too.
+    const key = `staff|${input.email.toLowerCase()}`;
+    const address = `address|${ip}`;
+    if (this.perStaffEmail.blocked(key) || this.perAddress.blocked(address)) {
+      return authFail(429, 'TOO_MANY_TRIES');
+    }
     const staff = await this.store.findStaffByEmail(input.email);
     const matches = await passwordMatches(input.password, staff?.passwordHash);
     if (!staff || !matches || !staff.active) {
-      this.limiter.fail(key);
+      this.perStaffEmail.fail(key);
+      this.perAddress.fail(address);
       return authFail(401, 'BAD_STAFF_LOGIN');
     }
-    this.limiter.reset(key);
+    this.perStaffEmail.reset(key);
     return {
       ok: true,
       value: {

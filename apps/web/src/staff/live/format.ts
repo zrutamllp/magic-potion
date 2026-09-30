@@ -111,6 +111,8 @@ export function auditText(row: AuditRowView): string {
       return 'Removed the team from the game';
     case 'REJECT_PHOTO':
       return 'Rejected the team photo';
+    case 'UNBLOCK_LOGINS':
+      return 'Unblocked team logins (cleared the login limits)';
     case 'UNDO': {
       const amount = num(row.after, 'amount');
       if (str(row.after, 'undid') === 'RENAME_TEAM') {

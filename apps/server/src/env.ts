@@ -15,6 +15,9 @@ const EnvSchema = z.object({
   // Vercel Blob read-write token, for uploaded pictures (client logo, task images). Uploads are
   // switched off without it. Never log it.
   BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
+  // Failed logins of any kind from one address in 10 minutes before that address must wait.
+  // High on purpose: a whole room of teams can share one office Wi-Fi or VPN address.
+  LOGIN_FAILURES_PER_ADDRESS: z.coerce.number().int().min(20).max(10_000).default(200),
   // Team photos (Phase 7A): a PRIVATE Vercel Blob store, and the secret that signs the
   // short-lived staff-only photo links (its own secret, separate from JWT_SECRET). Photo upload
   // is off unless both are set. Never log them.

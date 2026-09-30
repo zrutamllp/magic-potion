@@ -217,9 +217,19 @@ describe('live controls', () => {
     );
   });
 
+  it('lets the main admin unblock team logins at once', async () => {
+    const post = vi.fn(async () => ({ ok: true, value: { cleared: 3 } }));
+    renderLive(<ControlBar status="online" onBack={vi.fn()} />, {
+      api: fakeApi({ post: post as unknown as StaffApi['post'] }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Unblock logins/ }));
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/games/game-1/live/unblock-logins'));
+    expect(await screen.findByRole('status')).toHaveTextContent('Team logins unblocked.');
+  });
+
   it('shows no game controls to a co-facilitator', () => {
     renderLive(<ControlBar status="online" onBack={vi.fn()} />, { login: COFAC });
-    expect(screen.queryByRole('button', { name: /Pause|End|Message/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Pause|End|Message|Unblock/ })).toBeNull();
   });
 });
 
