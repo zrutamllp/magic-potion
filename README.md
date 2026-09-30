@@ -244,14 +244,18 @@ Live addresses: web `https://play.zrutam.com` (Vercel), API `https://potion-api.
 | Render start       | `npm run start -w @magic-potion/server`                                                                                                                                                                                                              |
 | Render pre-deploy  | `cd apps/server && npx prisma migrate deploy`                                                                                                                                                                                                        |
 | Render environment | `NODE_ENV=production`, `NODE_VERSION=22`, `CLIENT_ORIGIN=https://play.zrutam.com`, `DATABASE_URL`, `DIRECT_URL` (Neon `production`), `JWT_SECRET`, `PHOTO_LINK_SECRET`, `BLOB_READ_WRITE_TOKEN`, `BLOB_PRIVATE_READ_WRITE_TOKEN`, `ADMIN_SEED_EMAIL` |
-| Vercel project     | `magic-potion-web`, root `apps/web`, install `cd ../.. && npm ci`, build `npm run build`, output `dist`; `VITE_API_URL` and `VITE_SOCKET_URL` = `https://potion-api.zrutam.com` (Production only)                                                    |
+| Vercel project     | `magic-potion-web`, root `apps/web`, install `cd ../.. && npm ci`, build `npm run build`, output `dist`; `VITE_API_URL` and `VITE_SOCKET_URL` = `https://potion-api.zrutam.com` (type Config, not Secret: they are public; Production only)          |
 | Blob stores        | Production has its own: `magic-potion-prod-public` (public) and `magic-potion-prod-photos` (private). Local `.env` files use the dev stores.                                                                                                         |
 | Neon               | Branch `production`, scale-to-zero off                                                                                                                                                                                                               |
-| DNS (Hostinger)    | `CNAME api` → the Render service host, `CNAME play` → the value Vercel shows                                                                                                                                                                         |
+| DNS (Hostinger)    | `CNAME potion-api` → `magic-potion-server.onrender.com`, `CNAME play` → the value Vercel shows, TTL 300. (`api.zrutam.com` belongs to another project.)                                                                                              |
 
 The server refuses to start in production unless every variable above is set and safe (`apps/server/src/productionCheck.ts`) and the database is marked as production (`apps/server/src/safety.ts`).
 
 One-time database setup (done in 7B, from the Render shell, while a placeholder start command kept the instance up): check that the schema matches (`npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code`), mark every existing migration as applied (`npx prisma migrate resolve --applied <name>`), `npx prisma migrate deploy`, `npm run db:mark-production -- --yes`, then `npm run db:seed` (on production it adds only the main admin and the task definitions). `ADMIN_SEED_PASSWORD` was removed from Render afterwards.
+
+Keep Render's **Deploy Hook** URL secret (Settings): anyone who has it can start a deploy.
+
+Checked live in 7B: `/healthz` answers `ok` with the database; http redirects to https on both sites; the security headers on the API and on the web pages (including `/staff` and `/projector`, which load through the rewrite); CORS allows only `https://play.zrutam.com`; Socket.IO connects over WebSocket (101) and long-polling; staff login; the start check refuses dev tools, a localhost `CLIENT_ORIGIN` and a non-production server on the production database.
 
 ### When
 
