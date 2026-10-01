@@ -151,8 +151,8 @@ async function makeTestStaff(game: AdminGame, users: StaffMember[]) {
       password: pw,
     });
     api.testStaffIds.add(made.id);
-    const per = Math.ceil(game.teams.length / STAFF_COUNT);
-    const teamIds = game.teams.slice((i - 1) * per, i * per).map((t) => t.id);
+    // Dealt out in turn (12 teams: 3, 3, 2, 2, 2), so every co-facilitator has teams.
+    const teamIds = game.teams.filter((_, t) => t % STAFF_COUNT === i - 1).map((t) => t.id);
     await api.call('PUT', `/games/${game.id}/assignments`, { staffUserId: made.id, teamIds });
     const own = new StaffApi(API, log);
     await own.login(`loadtest-${i}@zrutam.invalid`, pw);
