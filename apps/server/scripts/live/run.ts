@@ -275,15 +275,17 @@ async function runLoad(game: AdminGame, logins: TeamLogin[], users: StaffMember[
   for (const s of staff) watchers.push(await connectStaff(API, s.token, game.id, 'staff', s.label));
   watchers.push(await connectStaff(API, api.bearer, game.id, 'projector', 'projector'));
   console.log(
-    `Connected: ${bots.length} teams (${POLLING_TEAMS} long-polling only), ${staff.length} staff, 1 projector.`,
+    `Connected: ${logins.length} teams × ${TABS} tab(s) = ${bots.length} team connections (${POLLING_TEAMS} teams on long-polling only), ${staff.length} staff, 1 projector.`,
   );
 
   // Start storm: every team starts a task in the first seconds of Round 1.
   await api.call('POST', `/games/${game.id}/start`);
   const startAt = now();
   await waitAll('Round 1 start', (b) => b.state?.game.phase === 'ROUND1', 10_000);
+  // One tab per team starts it, as one player would.
+  const firstTabs = bots.filter((_, i) => i % TABS === 0);
   const storm = await Promise.all(
-    bots.map(async (b) => {
+    firstTabs.map(async (b) => {
       const task = b.state?.team.tasks.find((t) => t.status === 'NOT_STARTED');
       const sent = now();
       const ack = task ? await act(log, b.socket, 'task:start', { taskId: task.id }) : null;
@@ -291,6 +293,7 @@ async function runLoad(game: AdminGame, logins: TeamLogin[], users: StaffMember[
     }),
   );
   results['startStorm'] = {
+    teams: firstTabs.length,
     started: storm.filter((s) => s.ok).length,
     lastDoneAfterMs: Math.max(...storm.map((s) => s.doneAt - startAt)),
     slowestAckMs: Math.max(...storm.map((s) => s.ms)),
@@ -513,13 +516,14 @@ function report() {
   check('Lost state updates', '0', `${lost} of ${updatesChecked}`, lost === 0);
   const ls = results['loginStorm'] as { totalMs: number } | undefined;
   if (ls) check('Login storm', '< 10 s', `${ls.totalMs} ms`, ls.totalMs < 10_000);
-  const ss = results['startStorm'] as { started: number; lastDoneAfterMs: number } | undefined;
+  const ss = results['startStorm'] as
+    { teams: number; started: number; lastDoneAfterMs: number } | undefined;
   if (ss) {
     check(
       'Start storm',
-      `${bots.length} tasks started within 5 s`,
+      `${ss.teams} tasks started within 5 s`,
       `${ss.started} started, last after ${ss.lastDoneAfterMs} ms`,
-      ss.started === bots.length && ss.lastDoneAfterMs < 5_000,
+      ss.started === ss.teams && ss.lastDoneAfterMs < 5_000,
     );
   }
   const bc = results['broadcast'] as Record<string, number | null> | undefined;

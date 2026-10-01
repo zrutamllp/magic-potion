@@ -448,6 +448,12 @@ export async function botTurn(
     const ack = await act(log, bot.socket, 'task:giveUp', { taskId: running.id });
     return { event: 'task:giveUp', ok: ack?.ok === true };
   }
+  // Below zero no task can start: ask another team for money, as a real team would.
+  if (s.team.taskFunds < 0) {
+    if (!other) return { event: 'idle', ok: false };
+    const ack = await act(log, bot.socket, 'funds:request', { payerTeamId: other.id, amount: 300 });
+    return { event: 'funds:request', ok: ack?.ok === true };
+  }
   const next = pick(s.team.tasks.filter((t) => t.status !== 'DONE'));
   if (next) {
     const ack = await act(log, bot.socket, 'task:start', { taskId: next.id });
