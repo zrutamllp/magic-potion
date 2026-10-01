@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import {
   AUTH_ERRORS,
   type AuthErrorCode,
@@ -20,15 +20,17 @@ export function authFail<T = never>(status: number, code: AuthErrorCode): AuthRe
 }
 
 // Compared against when no account matches, so a wrong code takes as long as a wrong password.
-let dummyHash: string | undefined;
-function getDummyHash(): string {
-  dummyHash ??= bcrypt.hashSync('not-a-real-password', 12);
+// Native bcrypt hashes and compares on Node's worker threads, never on the main thread, so a
+// room full of teams logging in at once does not freeze the live games (Phase 7C).
+let dummyHash: Promise<string> | undefined;
+function getDummyHash(): Promise<string> {
+  dummyHash ??= bcrypt.hash('not-a-real-password', 12);
   return dummyHash;
 }
 
 async function passwordMatches(password: string, hash: string | undefined): Promise<boolean> {
   try {
-    return await bcrypt.compare(password, hash ?? getDummyHash());
+    return await bcrypt.compare(password, hash ?? (await getDummyHash()));
   } catch {
     // Not a bcrypt hash (for example a simulated team): nobody can log in with it.
     return false;

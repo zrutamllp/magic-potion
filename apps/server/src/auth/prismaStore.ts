@@ -16,21 +16,23 @@ export class PrismaAuthStore implements AuthStore {
   }
 
   openTeamSession(teamId: string, tokenId: string): Promise<{ endedTokenIds: string[] }> {
-    return this.prisma.$transaction(async (tx) => {
-      // Lock the team row so two logins at the same moment cannot both stay open.
-      await tx.$queryRaw`SELECT id FROM "Team" WHERE id = ${teamId} FOR UPDATE`;
-      const open = await tx.teamSession.findMany({
-        where: { teamId, endedAt: null },
-        select: { tokenId: true },
-      });
-      const now = new Date();
-      await tx.teamSession.updateMany({
-        where: { teamId, endedAt: null },
-        data: { endedAt: now, endReason: 'REPLACED' },
-      });
-      await tx.teamSession.create({ data: { teamId, tokenId, createdAt: now, lastSeenAt: now } });
-      return { endedTokenIds: open.map((s) => s.tokenId) };
-    });
+    return this.prisma.$transaction(
+      async (tx) => {
+        // Lock the team row so two logins at the same moment cannot both stay open.
+        await tx.$queryRaw`SELECT id FROM "Team" WHERE id = ${teamId} FOR UPDATE`;
+        const now = new Date();
+        // Ends the open sessions and says which they were, in one step.
+        const ended = await tx.$queryRaw<{ tokenId: string }[]>`
+          UPDATE "TeamSession" SET "endedAt" = ${now}, "endReason" = 'REPLACED'
+          WHERE "teamId" = ${teamId} AND "endedAt" IS NULL
+          RETURNING "tokenId"`;
+        await tx.teamSession.create({ data: { teamId, tokenId, createdAt: now, lastSeenAt: now } });
+        return { endedTokenIds: ended.map((s) => s.tokenId) };
+      },
+      // Three small queries: a login never holds a connection for long. When the server is too
+      // busy to start in 5 s, the login answers "busy, try again" (503).
+      { maxWait: 5_000, timeout: 5_000 },
+    );
   }
 
   async teamSession(tokenId: string): Promise<TeamSessionInfo | null> {

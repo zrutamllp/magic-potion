@@ -8,6 +8,8 @@ import {
   FundsSendSchema,
   InboxAnswerSchema,
   RequestIdSchema,
+  SERVER_BUSY,
+  SERVER_BUSY_MESSAGE,
   StaffWatchSchema,
   TaskIdSchema,
   TaskSubmitSchema,
@@ -19,6 +21,7 @@ import {
   type ServerToClientEvents,
 } from '@magic-potion/shared';
 import type { AuthService } from '../auth/service';
+import { isBusyError } from '../busy';
 import type { StaffAccount } from '../auth/store';
 import type { Clock } from '../engine/clock';
 import type { GameEngine } from '../engine/engine';
@@ -278,6 +281,10 @@ export class Realtime {
         try {
           ack(toAck(await run(engine, parsed.data)));
         } catch (error) {
+          if (isBusyError(error)) {
+            ack({ ok: false, code: SERVER_BUSY, message: SERVER_BUSY_MESSAGE });
+            return;
+          }
           console.error(`Socket action ${event} failed:`, error);
           ack({ ok: false, message: 'Something went wrong. Please try again.' });
         }

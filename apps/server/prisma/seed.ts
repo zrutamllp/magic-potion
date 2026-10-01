@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { TASK_DEFINITIONS, TaskKeySchema, parseTaskContent } from '@magic-potion/shared';
 import { createPrisma } from '../src/db';
 import { assertNotProduction, isProductionDatabase } from '../src/safety';

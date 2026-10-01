@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import type { Ack, GameSettings, TeamLoginResponse } from '@magic-potion/shared';
-import { apiPost, apiUpload, ApiError } from '../lib/api';
+import { apiLogin, apiUpload, ApiError } from '../lib/api';
 import { useTeamLive, type Live } from '../lib/live';
 import { load, save } from '../lib/session';
 import { msLeft, useTicker } from '../lib/time';
@@ -102,7 +102,7 @@ export function Login({
     setBusy(true);
     setError(null);
     try {
-      onLogin(await apiPost<TeamLoginResponse>('/api/team/login', { code, password }));
+      onLogin(await apiLogin<TeamLoginResponse>('/api/team/login', { code, password }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not log in.');
     } finally {

@@ -10,7 +10,7 @@
 // Local use only. Existing games, packs and staff are never touched.
 import { randomBytes } from 'node:crypto';
 import { del } from '@vercel/blob';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { createPrisma } from '../src/db';
 import { loadEnv } from '../src/env';
 import { assertNotProduction } from '../src/safety';

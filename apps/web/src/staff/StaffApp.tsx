@@ -1,7 +1,7 @@
 import { useCallback, useState, type FormEvent, type ReactNode } from 'react';
 import { Gamepad2, Library, LogOut, Users, type LucideIcon } from 'lucide-react';
 import type { StaffLoginResponse } from '@magic-potion/shared';
-import { ApiError, apiPost } from '../lib/api';
+import { ApiError, apiLogin } from '../lib/api';
 import { load, save } from '../lib/session';
 import { Button, fieldClass } from '../player/ui/basics';
 import { PotionBottle } from '../player/ui/PotionBottle';
@@ -211,7 +211,7 @@ export function StaffLogin({
     setBusy(true);
     setError(null);
     try {
-      onLogin(await apiPost<StaffLoginResponse>('/api/staff/login', { email, password }));
+      onLogin(await apiLogin<StaffLoginResponse>('/api/staff/login', { email, password }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not log in.');
     } finally {

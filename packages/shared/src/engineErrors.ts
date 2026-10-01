@@ -71,3 +71,9 @@ export const AUTH_ERRORS = {
 } as const;
 
 export type AuthErrorCode = keyof typeof AUTH_ERRORS;
+
+// The server was too busy to reach the database in time (Phase 7C). Sent as HTTP 503 with a
+// Retry-After header; the login screens wait and try again by themselves before showing it.
+export const SERVER_BUSY = 'SERVER_BUSY';
+export const SERVER_BUSY_MESSAGE = 'The game server is busy. Please try again in a few seconds.';
+export const SERVER_BUSY_RETRY_SECONDS = 3;

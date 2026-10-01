@@ -6,7 +6,7 @@
 //   node --env-file-if-exists=.env --import tsx scripts/screenshotGames.ts delete <gameId>...
 //
 // The real Demo Game is never touched. Local use only: it signs a staff token with JWT_SECRET.
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { DEFAULT_SETTINGS } from '@magic-potion/shared';
 import { Tokens } from '../src/auth/tokens';
 import { createPrisma } from '../src/db';

@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { MemoryAuthStore } from './auth/memoryStore';
 import { AuthService } from './auth/service';
 import { Tokens } from './auth/tokens';

@@ -1,5 +1,5 @@
 import { randomInt } from 'node:crypto';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import {
   DEFAULT_SETTINGS,
   GameSettingsSchema,
@@ -233,13 +233,18 @@ export class AdminService {
     if (!g) return fail(404, 'GAME_NOT_FOUND');
     const teams = teamIds ? g.teams.filter((t) => teamIds.includes(t.id)) : g.teams;
     if (teamIds && teams.length !== new Set(teamIds).size) return fail(404, 'TEAM_NOT_FOUND');
-    const logins: TeamLoginCard[] = [];
-    const rows: { teamId: string; passwordHash: string }[] = [];
-    for (const t of teams) {
-      const password = generateTeamPassword(this.random);
-      logins.push({ code: t.code, name: t.name, password });
-      rows.push({ teamId: t.id, passwordHash: await bcrypt.hash(password, this.rounds.team) });
-    }
+    const logins: TeamLoginCard[] = teams.map((t) => ({
+      code: t.code,
+      name: t.name,
+      password: generateTeamPassword(this.random),
+    }));
+    // Hashed in parallel on Node's worker threads, so the game server never stalls.
+    const rows = await Promise.all(
+      teams.map(async (t, i) => ({
+        teamId: t.id,
+        passwordHash: await bcrypt.hash(logins[i]!.password, this.rounds.team),
+      })),
+    );
     await this.store.setTeamPasswords(rows);
     for (const t of teams) {
       await this.store.audit({
@@ -504,14 +509,19 @@ export class AdminService {
   // Codes that clash with no other team in any game, and fresh passwords.
   private async newTeams(count: number, names: string[], already: number) {
     const codes = generateTeamCodes(count, await this.store.allTeamCodes(), this.random);
-    const rows: NewTeamRow[] = [];
-    const logins: TeamLoginCard[] = [];
-    for (const [i, code] of codes.entries()) {
-      const name = names[i]?.trim() || `Team ${already + i + 1}`;
-      const password = generateTeamPassword(this.random);
-      rows.push({ code, name, passwordHash: await bcrypt.hash(password, this.rounds.team) });
-      logins.push({ code, name, password });
-    }
+    const logins: TeamLoginCard[] = codes.map((code, i) => ({
+      code,
+      name: names[i]?.trim() || `Team ${already + i + 1}`,
+      password: generateTeamPassword(this.random),
+    }));
+    // Hashed in parallel on Node's worker threads, so the game server never stalls.
+    const rows: NewTeamRow[] = await Promise.all(
+      logins.map(async ({ code, name, password }) => ({
+        code,
+        name,
+        passwordHash: await bcrypt.hash(password, this.rounds.team),
+      })),
+    );
     return { rows, logins };
   }
 }

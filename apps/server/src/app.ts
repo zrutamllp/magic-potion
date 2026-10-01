@@ -1,7 +1,15 @@
 import cors from 'cors';
 import express, { type ErrorRequestHandler, type Express, type Router } from 'express';
 import helmet from 'helmet';
-import type { HealthResponse } from '@magic-potion/shared';
+import {
+  SERVER_BUSY,
+  SERVER_BUSY_MESSAGE,
+  SERVER_BUSY_RETRY_SECONDS,
+  type HealthResponse,
+} from '@magic-potion/shared';
+import { isBusyError } from './busy';
+
+const describe = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 const DB_CHECK_TIMEOUT_MS = 3000;
 
@@ -30,6 +38,15 @@ async function dbStatus(checkDb: AppOptions['checkDb']): Promise<HealthResponse[
 }
 
 const handleError: ErrorRequestHandler = (error, _req, res, _next) => {
+  if (isBusyError(error)) {
+    console.warn('Server busy (database not reached in time):', describe(error));
+    if (res.headersSent) return;
+    res
+      .status(503)
+      .setHeader('Retry-After', String(SERVER_BUSY_RETRY_SECONDS))
+      .json({ code: SERVER_BUSY, message: SERVER_BUSY_MESSAGE });
+    return;
+  }
   console.error('Request failed:', error);
   if (res.headersSent) return;
   res
