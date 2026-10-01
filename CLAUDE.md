@@ -47,6 +47,7 @@ design/         Screen designs (images)
 - If a rule in `docs/GAME_RULES.md` is unclear or contradicts a design, stop and ask. Do not guess.
 - Use plain, simple English in all player-facing text.
 - Never run a database migration that deletes or rewrites existing data without asking me first and explaining what will be lost. Once we are live, back up the Neon database (create a Neon branch) before any migration.
+- Never stop processes by name (e.g. taskkill /IM node.exe). Only stop a specific process by its PID, after confirming it is the one you started.
 
 ## Environment variables
 

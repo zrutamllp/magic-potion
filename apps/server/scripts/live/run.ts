@@ -62,6 +62,13 @@ const LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(API);
 const EMAIL = arg('email', LOCAL ? (process.env['ADMIN_SEED_EMAIL'] ?? '') : 'ceo@zrutam.com');
 const LOAD_MINUTES = Number(arg('minutes', '10'));
 const LOAD_TEAMS = Number(arg('teams', '25'));
+// --name "bots A" names the game "LOADTEST – bots A" (default: date, time and mode).
+const NAME = arg('name', '');
+// Game mode with bots on every team and no person (no Enter prompts).
+const BOTS_ONLY = process.argv.includes('--bots-only');
+// Browser tabs per team. A team has one login; its tabs share it, like several players
+// watching one logged-in screen. The team's pace stays the same, spread over its tabs.
+const TABS = Math.max(1, Number(arg('tabs', '1')));
 const STAFF_COUNT = 5;
 const POLLING_TEAMS = 5;
 
@@ -164,16 +171,39 @@ async function loginStorm(logins: TeamLogin[]) {
 
 async function connectBots(logins: TeamLogin[], auths: { token: string; teamId: string }[]) {
   const connected = await Promise.all(
-    logins.map((l, i) =>
-      connectTeam(
-        API,
-        l,
-        auths[i]!,
-        MODE === 'load' && i < POLLING_TEAMS ? 'polling' : 'websocket',
+    logins.flatMap((l, i) =>
+      Array.from({ length: TABS }, (_, tab) =>
+        connectTeam(
+          API,
+          TABS > 1 ? { ...l, code: `${l.code}#${tab + 1}` } : l,
+          auths[i]!,
+          MODE === 'load' && i < POLLING_TEAMS ? 'polling' : 'websocket',
+        ),
       ),
     ),
   );
   bots.push(...connected);
+}
+
+// Every connection drops at the same moment. Each must get its full state back, with the
+// phase end time unchanged.
+async function reconnectStorm() {
+  const endsBefore = new Map(bots.map((b) => [b, phaseEndsAt(b.state)]));
+  const dropAt = now();
+  for (const b of bots) b.socket.io.engine.close();
+  const backMs = await waitAll('Reconnect', (b) => b.lastFullAt > dropAt, 30_000);
+  const perTeam = bots.map((b) => b.lastFullAt - dropAt);
+  const drift = bots.map((b) => {
+    const before = endsBefore.get(b);
+    const after = phaseEndsAt(b.state);
+    return before && after ? Math.abs(after - before) : 0;
+  });
+  results['reconnectStorm'] = {
+    connections: bots.length,
+    allBackMs: backMs,
+    slowestMs: Math.max(...perTeam),
+    maxTimerDriftMs: Math.max(...drift),
+  };
 }
 
 // ---------- Checks during play ----------
@@ -271,7 +301,7 @@ async function runLoad(game: AdminGame, logins: TeamLogin[], users: StaffMember[
   const until = () => now() >= stopAt;
   const healthTimes = new Timings();
   const loops = [
-    ...bots.map((b) => botLoop(b, until, [4_000, 8_000])),
+    ...bots.map((b) => botLoop(b, until, [4_000 * TABS, 8_000 * TABS])),
     health(until, healthTimes),
     ...watchers
       .filter((w) => w.label.startsWith('staff'))
@@ -307,22 +337,7 @@ async function runLoad(game: AdminGame, logins: TeamLogin[], users: StaffMember[
 
     // Reconnect storm: every team's connection drops at the same moment.
     await at(0.7);
-    const endsBefore = new Map(bots.map((b) => [b, phaseEndsAt(b.state)]));
-    const dropAt = now();
-    for (const b of bots) b.socket.io.engine.close();
-    const backMs = await waitAll('Reconnect', (b) => b.lastFullAt > dropAt, 30_000);
-    const perTeam = bots.map((b) => b.lastFullAt - dropAt);
-    const drift = bots.map((b) => {
-      const before = endsBefore.get(b);
-      const after = phaseEndsAt(b.state);
-      return before && after ? Math.abs(after - before) : 0;
-    });
-    results['reconnectStorm'] = {
-      teams: bots.length,
-      allBackMs: backMs,
-      slowestTeamMs: Math.max(...perTeam),
-      maxTimerDriftMs: Math.max(...drift),
-    };
+    await reconnectStorm();
   })();
 
   await Promise.all([...loops, events]);
@@ -333,13 +348,19 @@ async function runLoad(game: AdminGame, logins: TeamLogin[], users: StaffMember[
 }
 
 async function runGame(game: AdminGame, logins: TeamLogin[]) {
-  const people = logins.at(-1)!;
-  const botLogins = logins.slice(0, -1);
-  console.log('');
-  console.log(`Your team is ${people.name} (code ${people.code}).`);
-  console.log('In the admin panel, open this LOADTEST game, give that team a new password there,');
-  console.log('and log in as it at https://play.zrutam.com (its password is only on your screen).');
-  await waitForEnter('Press Enter when you are logged in and ready to start... ');
+  const people = BOTS_ONLY ? null : logins.at(-1)!;
+  const botLogins = BOTS_ONLY ? logins : logins.slice(0, -1);
+  if (people) {
+    console.log('');
+    console.log(`Your team is ${people.name} (code ${people.code}).`);
+    console.log(
+      'In the admin panel, open this LOADTEST game, give that team a new password there,',
+    );
+    console.log(
+      'and log in as it at https://play.zrutam.com (its password is only on your screen).',
+    );
+    await waitForEnter('Press Enter when you are logged in and ready to start... ');
+  }
 
   const auths = await loginStorm(botLogins);
   await connectBots(botLogins, auths);
@@ -352,9 +373,15 @@ async function runGame(game: AdminGame, logins: TeamLogin[]) {
   console.log(
     `Started. The server's own timers now run Round 1 (${GAME_ROUND / 60} min), the Pause (${GAME_PAUSE / 60} min), Round 2 and the end.`,
   );
-  console.log(
-    'Halfway through Round 1: block WebSockets in DevTools (see the checklist) and reload.',
-  );
+  if (people) {
+    console.log(
+      'Halfway through Round 1: block WebSockets in DevTools (see the checklist) and reload.',
+    );
+  }
+  // Bots only: a reconnect storm halfway through Round 1.
+  const storm = BOTS_ONLY
+    ? sleep((GAME_ROUND / 2) * 1000).then(() => (done() ? undefined : reconnectStorm()))
+    : Promise.resolve();
   const limit = startAt + (2 * GAME_ROUND + GAME_PAUSE + 180) * 1000;
   const done = () => projector.lastPhase === 'REVEAL' || now() > limit;
   const healthTimes = new Timings();
@@ -371,9 +398,10 @@ async function runGame(game: AdminGame, logins: TeamLogin[]) {
     }
   })();
   await Promise.all([
-    ...bots.map((b) => botLoop(b, done, [6_000, 12_000])),
+    ...bots.map((b) => botLoop(b, done, [6_000 * TABS, 12_000 * TABS])),
     health(done, healthTimes),
     watch,
+    storm,
   ]);
   phases.push(`${projector.lastPhase ?? '?'} at ${Math.round((now() - startAt) / 1000)} s`);
   results['phases'] = phases;
@@ -398,7 +426,9 @@ async function runGame(game: AdminGame, logins: TeamLogin[]) {
   if (!zip.ok) log.errors.push(`all.zip: ${zip.status}`);
   results['exports'] = exportsChecked;
   console.log('Exports:', exportsChecked);
-  await waitForEnter('Look at the Reveal and the Debrief now. Press Enter to clean up... ');
+  if (people) {
+    await waitForEnter('Look at the Reveal and the Debrief now. Press Enter to clean up... ');
+  }
 }
 
 // ---------- Clean-up ----------
@@ -432,6 +462,8 @@ async function cleanup(before: { id: string; name: string }[]) {
   // Proof, from the API: nothing left, and every other game as it was.
   const after = await api.games();
   const users = await api.call<StaffMember[]>('GET', '/users');
+  // Nothing is made unless this server can delete it again afterwards.
+  await api.preflight();
   const others = (list: { id: string; name: string }[]) =>
     list
       .filter((g) => !isTestGameName(g.name))
@@ -571,7 +603,7 @@ async function main() {
   process.on('SIGINT', () => stop('Stopped'));
 
   try {
-    gameName = `${TEST_GAME_PREFIX}${stamp()} ${MODE}`;
+    gameName = `${TEST_GAME_PREFIX}${NAME || `${stamp()} ${MODE}`}`;
     const teamCount = MODE === 'game' ? GAME_TEAMS : LOAD_TEAMS;
     const created = await api.call<{ game: AdminGame; logins: TeamLogin[] }>('POST', '/games', {
       name: gameName,

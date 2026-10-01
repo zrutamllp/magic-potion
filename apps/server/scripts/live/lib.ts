@@ -211,6 +211,22 @@ export class StaffApi {
     return (type.includes('json') ? JSON.parse(text) : text) as T;
   }
 
+  // Checks that this server has the guarded test-game delete (Phase 7C) before anything is made:
+  // asking it to delete a game that does not exist must say "not found" in its own words.
+  async preflight(): Promise<void> {
+    const res = await fetch(`${this.api}/api/staff/games/no-such-game/delete-test-game`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${this.token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ confirmName: '' }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { code?: string };
+    if (res.status !== 404 || body.code !== 'GAME_NOT_FOUND') {
+      throw new Error(
+        'This server cannot delete test games yet (deploy the Phase 7C code first). Nothing was made.',
+      );
+    }
+  }
+
   games(): Promise<StaffGameSummary[]> {
     return this.call<StaffGameSummary[]>('GET', '/games');
   }
