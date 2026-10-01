@@ -24,6 +24,7 @@ import {
   type StaffMember,
 } from '@magic-potion/shared';
 import {
+  SLOW_MS,
   StaffApi,
   Timings,
   act,
@@ -40,6 +41,7 @@ import {
   pick,
   sleep,
   teamLogin,
+  timeline,
   waitForEnter,
   type Bot,
   type TeamLogin,
@@ -189,9 +191,16 @@ async function connectBots(logins: TeamLogin[], auths: { token: string; teamId: 
 // phase end time unchanged.
 async function reconnectStorm() {
   const endsBefore = new Map(bots.map((b) => [b, phaseEndsAt(b.state)]));
+  const before = timeline.label;
+  timeline.label = 'reconnect storm';
   const dropAt = now();
+  timeline.deliberateDropAt = dropAt;
   for (const b of bots) b.socket.io.engine.close();
   const backMs = await waitAll('Reconnect', (b) => b.lastFullAt > dropAt, 30_000);
+  // The few seconds after everyone is back still count as the storm.
+  void sleep(5_000).then(() => {
+    if (timeline.label === 'reconnect storm') timeline.label = before;
+  });
   const perTeam = bots.map((b) => b.lastFullAt - dropAt);
   const drift = bots.map((b) => {
     const before = endsBefore.get(b);
@@ -279,8 +288,10 @@ async function runLoad(game: AdminGame, logins: TeamLogin[], users: StaffMember[
   );
 
   // Start storm: every team starts a task in the first seconds of Round 1.
+  timeline.label = 'start storm';
   await api.call('POST', `/games/${game.id}/start`);
   const startAt = now();
+  timeline.startedAt = startAt;
   await waitAll('Round 1 start', (b) => b.state?.game.phase === 'ROUND1', 10_000);
   // One tab per team starts it, as one player would.
   const firstTabs = bots.filter((_, i) => i % TABS === 0);
@@ -292,6 +303,7 @@ async function runLoad(game: AdminGame, logins: TeamLogin[], users: StaffMember[
       return { ok: ack?.ok === true, doneAt: now(), ms: now() - sent };
     }),
   );
+  timeline.label = 'normal load';
   results['startStorm'] = {
     teams: firstTabs.length,
     started: storm.filter((s) => s.ok).length,
@@ -320,12 +332,17 @@ async function runLoad(game: AdminGame, logins: TeamLogin[], users: StaffMember[
   const events = (async () => {
     // Broadcast: pause and resume once, and one message to every team.
     await at(0.3);
+    timeline.label = 'pause';
     await api.call('POST', `/games/${game.id}/freeze`);
     const frozenMs = await waitAll('Pause', (b) => b.state?.game.frozen === true, 10_000);
     await sleep(15_000);
+    timeline.label = 'resume';
     await api.call('POST', `/games/${game.id}/resume`);
     const resumedMs = await waitAll('Resume', (b) => b.state?.game.frozen === false, 10_000);
+    await sleep(5_000);
+    timeline.label = 'normal load';
     await at(0.4);
+    timeline.label = 'message all';
     const title = `Load test message ${stamp()}`;
     await api.call('POST', `/games/${game.id}/live/message`, {
       title,
@@ -337,6 +354,8 @@ async function runLoad(game: AdminGame, logins: TeamLogin[], users: StaffMember[
       10_000,
     );
     results['broadcast'] = { frozenMs, resumedMs, messageMs };
+    await sleep(5_000);
+    timeline.label = 'normal load';
 
     // Reconnect storm: every team's connection drops at the same moment.
     await at(0.7);
@@ -344,6 +363,7 @@ async function runLoad(game: AdminGame, logins: TeamLogin[], users: StaffMember[
   })();
 
   await Promise.all([...loops, events]);
+  timeline.label = 'wind-down';
   await sleep(3_500);
   results['healthz'] = healthTimes.summary();
   console.log('Load finished. Ending the test game...');
@@ -371,8 +391,10 @@ async function runGame(game: AdminGame, logins: TeamLogin[]) {
   const projector = await connectStaff(API, api.bearer, game.id, 'projector', 'projector');
   watchers.push(projector);
 
+  timeline.label = 'ROUND1';
   await api.call('POST', `/games/${game.id}/start`);
   const startAt = now();
+  timeline.startedAt = startAt;
   console.log(
     `Started. The server's own timers now run Round 1 (${GAME_ROUND / 60} min), the Pause (${GAME_PAUSE / 60} min), Round 2 and the end.`,
   );
@@ -394,6 +416,7 @@ async function runGame(game: AdminGame, logins: TeamLogin[]) {
     while (!done()) {
       if (projector.lastPhase && projector.lastPhase !== last) {
         last = projector.lastPhase;
+        if (timeline.label !== 'reconnect storm') timeline.label = last;
         phases.push(`${last} at ${Math.round((now() - startAt) / 1000)} s`);
         console.log(`  Phase: ${last} (${Math.round((now() - startAt) / 1000)} s)`);
       }
@@ -487,9 +510,44 @@ async function cleanup(before: { id: string; name: string }[]) {
 
 // ---------- Results ----------
 
+// Slow answers (over 1 s) by what the test was doing, and the slowest ten with their minute.
+function slowSection(): string[] {
+  const out = [`## Answers slower than ${SLOW_MS / 1000} s: ${log.slow.length}`, ''];
+  const by = new Map<string, number>();
+  for (const s of log.slow) by.set(s.during, (by.get(s.during) ?? 0) + 1);
+  if (by.size > 0) {
+    out.push('| During | How many |', '|---|---|');
+    for (const [during, n] of by) out.push(`| ${during} | ${n} |`);
+    out.push('', '| Action | Answer time | Sent at (m:ss) | During | Connection dropped |');
+    out.push('|---|---|---|---|---|');
+    for (const s of [...log.slow].sort((a, b) => b.ms - a.ms).slice(0, 10)) {
+      out.push(
+        `| ${s.event} | ${s.ms} ms | ${s.sentAt} | ${s.during} | ${s.connectionDropped ? 'yes' : 'no'} |`,
+      );
+    }
+  }
+  const lost = log.lostInDeliberateDrop;
+  out.push(
+    '',
+    `## Answers lost because the test cut their connection on purpose: ${lost.length}`,
+    '',
+    'Not counted as errors. A real player would see "The server did not answer" and could press again.',
+  );
+  for (const l of lost) out.push(`- ${l.event}, sent at ${l.sentAt} during ${l.during}`);
+  const w = log.acksWithoutDeliberateDrop.summary();
+  out.push(
+    '',
+    `Answer times without the answers caught in the deliberate drop: p95 ${w.p95} ms, max ${w.max} ms (${w.count} answers). The pass/fail lines above use every answer.`,
+  );
+  return out;
+}
+
 function report() {
   const acks = log.acks.summary();
   results['acks'] = acks;
+  results['acksWithoutDeliberateDrop'] = log.acksWithoutDeliberateDrop.summary();
+  results['slowAnswers'] = log.slow;
+  results['lostInDeliberateDrop'] = log.lostInDeliberateDrop;
   results['byEvent'] = Object.fromEntries([...log.byEvent].map(([k, v]) => [k, v.summary()]));
   results['refusedByRules'] = Object.fromEntries(log.refused);
   results['errors'] = log.errors;
@@ -573,6 +631,9 @@ function report() {
     '| Check | Target | Result | |',
     '|---|---|---|---|',
     ...checks.map((c) => `| ${c.name} | ${c.target} | ${c.value} | ${c.pass ? 'PASS' : 'FAIL'} |`),
+    '',
+    '',
+    ...slowSection(),
     '',
     'Full numbers are in the .json file next to this one.',
   ].join('\n');

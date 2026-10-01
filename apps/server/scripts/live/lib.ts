@@ -82,19 +82,67 @@ export class Timings {
   }
 }
 
+// What the test is doing right now, so a slow or lost answer can be tied to a minute and an
+// event (a storm, the pause...). Set by run.ts.
+export const timeline = {
+  // Round 1 started (0 before that).
+  startedAt: 0,
+  label: 'setup',
+  // When the deliberate reconnect storm cut every team connection (0 = not yet).
+  deliberateDropAt: 0,
+};
+
+export function minuteOf(at: number): string {
+  if (!timeline.startedAt || at < timeline.startedAt) return 'before start';
+  const s = Math.floor((at - timeline.startedAt) / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+export interface SlowAnswer {
+  event: string;
+  ms: number;
+  // When it was sent, as m:ss after Round 1 started, and what the test was doing then.
+  sentAt: string;
+  during: string;
+  // Its connection dropped while it waited.
+  connectionDropped: boolean;
+}
+
 export interface ActionLog {
   acks: Timings;
+  // The same, without answers whose connection was cut on purpose while they waited.
+  acksWithoutDeliberateDrop: Timings;
   byEvent: Map<string, Timings>;
   refused: Map<string, number>;
   errors: string[];
+  // Every answer slower than 1 s.
+  slow: SlowAnswer[];
+  // Actions whose answer never came because the test cut their connection on purpose
+  // (the reconnect storm). Counted here, not as errors, and never hidden.
+  lostInDeliberateDrop: { event: string; sentAt: string; during: string }[];
 }
 
 export const newLog = (): ActionLog => ({
   acks: new Timings(),
+  acksWithoutDeliberateDrop: new Timings(),
   byEvent: new Map(),
   refused: new Map(),
   errors: [],
+  slow: [],
+  lostInDeliberateDrop: [],
 });
+
+export const SLOW_MS = 1_000;
+
+// How many times each connection has dropped, to see if one dropped while an answer waited.
+const drops = new WeakMap<Client, number>();
+function dropCount(socket: Client): number {
+  if (!drops.has(socket)) {
+    drops.set(socket, 0);
+    socket.on('disconnect', () => drops.set(socket, (drops.get(socket) ?? 0) + 1));
+  }
+  return drops.get(socket) ?? 0;
+}
 
 const RULE_CODES = new Set(Object.keys(ENGINE_ERRORS));
 
@@ -108,12 +156,27 @@ export function act(
   timeoutMs = 10_000,
 ): Promise<Ack | null> {
   const started = now();
+  const sentAt = minuteOf(started);
+  const during = timeline.label;
+  const dropsBefore = dropCount(socket);
+  // Its connection was cut on purpose while it waited.
+  const deliberatelyDropped = () =>
+    dropCount(socket) > dropsBefore &&
+    timeline.deliberateDropAt >= started - 1_000 &&
+    timeline.deliberateDropAt <= now();
   return new Promise((resolve) => {
     let done = false;
     const timer = setTimeout(() => {
       if (done) return;
       done = true;
-      log.errors.push(`${event}: no answer within ${timeoutMs / 1000} s`);
+      if (deliberatelyDropped()) {
+        log.lostInDeliberateDrop.push({ event, sentAt, during });
+      } else {
+        const dropped = dropCount(socket) > dropsBefore ? ' (its connection dropped)' : '';
+        log.errors.push(
+          `${event}: no answer within ${timeoutMs / 1000} s, sent at ${sentAt} during ${during}${dropped}`,
+        );
+      }
       resolve(null);
     }, timeoutMs);
     const emit = socket.emit as unknown as (e: string, p: object, ack: (a: Ack) => void) => void;
@@ -123,6 +186,16 @@ export function act(
       clearTimeout(timer);
       const ms = now() - started;
       log.acks.add(ms);
+      if (!deliberatelyDropped()) log.acksWithoutDeliberateDrop.add(ms);
+      if (ms > SLOW_MS) {
+        log.slow.push({
+          event,
+          ms,
+          sentAt,
+          during,
+          connectionDropped: dropCount(socket) > dropsBefore,
+        });
+      }
       let t = log.byEvent.get(event);
       if (!t) log.byEvent.set(event, (t = new Timings()));
       t.add(ms);
