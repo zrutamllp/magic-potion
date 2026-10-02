@@ -2,6 +2,8 @@
 
 Tests run against the live site (`https://potion-api.zrutam.com`, Render Singapore, Neon `production` in Singapore) from a PC in India, with `npm run live-test` (see the README, "Testing the live site"). Every run used its own `LOADTEST – …` game and deleted it afterwards; every clean-up check found 0 test games, 0 test staff and the other games unchanged.
 
+**Status: the load tests are complete (2026-10-02).** Every target is met at up to 12 teams on Starter and 13 to 20 teams on Standard. Still open in 7C: the network checks at the end of this page.
+
 ## Event sizing rule
 
 | Teams | Render instance | When to switch |
@@ -20,6 +22,7 @@ Changing the instance type restarts the server. **Never change it during an even
 | B | 20 teams × 5 tabs | Starter | 682 ms | 8.3 s | 1 | The 8.3 s answer and the error were both money-request accepts, most likely caught in the deliberate reconnect storm (the script did not record times yet). |
 | C | 12 teams × 5 tabs | Starter | 614 ms | 1.35 s | 0 | Every check passes against the adopted p95 target (750 ms); only the first target (500 ms) was missed. |
 | B on Standard | 20 teams × 5 tabs | Standard | 588 ms | 1.5 s | 0 | Every check passes against the adopted p95 target (750 ms). 1 answer lost in the deliberate reconnect storm (counted apart, not an error). |
+| D: full short game, after the action-ID fix | 4 teams × 4 tabs | Starter | 202 ms | 894 ms | 0 | All 8 targets met on the live site with action IDs: phases on the server's own timers (Pause at 240 s, Round 2 at 301 s, Reveal at 578 s), reconnect storm back in 1.3 s with timers unchanged, 0 lost updates (151 checked), no answer over 1 s. |
 
 Every load run also passed: login storm (all teams within 1.6 to 2.7 s), start storm (every team's task started within 2.2 s), pause, resume and "Message all" reaching every connection (within 0.4 s), reconnect storm (every connection back within 2.5 to 3.9 s, timers unchanged), 0 lost state updates (over 1,000 checked per run).
 
@@ -57,9 +60,9 @@ All under the 70% target.
 
 ## Must-do before the first client event
 
-- ✅ **Action IDs (safe to repeat)** – built and tested; deploy before the first client event. If an answer is lost because a connection drops at that moment and the player or facilitator presses again, some actions are applied twice: sending money, money requests, a wrong answer (an extra wrong try), chat, staff money adjustments, "Message all", **End phase** (would also end the next phase) and **Extend** (adds the time twice). See `docs/BUILD_PLAN.md`, Phase 7C.
+- ✅ **Action IDs (safe to repeat)** – live since 2026-10-02 (commit `845608f`), confirmed by run D. If an answer is lost because a connection drops at that moment and the player or facilitator presses again, some actions are applied twice: sending money, money requests, a wrong answer (an extra wrong try), chat, staff money adjustments, "Message all", **End phase** (would also end the next phase) and **Extend** (adds the time twice). See `docs/BUILD_PLAN.md`, Phase 7C.
 
-## Still to do in 7C
+## Still to do in 7C (network checks)
 
 - The full short game with a person playing and **WebSockets blocked** in the browser (`docs/NETWORK_CHECKLIST.md`, "Blocking WebSockets on purpose"). Long-polling under load already passed: 5 teams in every load run used long-polling only.
 - The corporate laptop and phone hotspot checklist (`docs/NETWORK_CHECKLIST.md`).
