@@ -2,12 +2,16 @@ import cors from 'cors';
 import express, { type ErrorRequestHandler, type Express, type Router } from 'express';
 import helmet from 'helmet';
 import {
+  CHECK_IMAGE_PATH,
+  CHECK_TOO_MANY,
   SERVER_BUSY,
   SERVER_BUSY_MESSAGE,
   SERVER_BUSY_RETRY_SECONDS,
+  type CheckInfo,
   type HealthResponse,
 } from '@magic-potion/shared';
 import { isBusyError } from './busy';
+import { CheckLimiter } from './realtime/check';
 
 const describe = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -19,6 +23,8 @@ export interface AppOptions {
   checkDb?: () => Promise<unknown>;
   /** Mounted at /api. Omitted when there is no database (the health check still works). */
   api?: Router;
+  /** The connection check page: its limits (shared with the check sockets) and picture store. */
+  check?: { limiter: CheckLimiter; publicBlobHost: string | null };
 }
 
 async function dbStatus(checkDb: AppOptions['checkDb']): Promise<HealthResponse['db']> {
@@ -75,7 +81,7 @@ const PERMISSIONS_POLICY = [
   .map((feature) => `${feature}=()`)
   .join(', ');
 
-export function createApp({ clientOrigins, checkDb, api }: AppOptions): Express {
+export function createApp({ clientOrigins, checkDb, api, check }: AppOptions): Express {
   const app = express();
   app.disable('x-powered-by');
   // Render sits in front as one proxy; this makes req.ip the player's address (for login limits).
@@ -111,6 +117,21 @@ export function createApp({ clientOrigins, checkDb, api }: AppOptions): Express 
       time: new Date().toISOString(),
     };
     res.json(body);
+  });
+
+  // For the public connection check page: where its test picture is. No login, no database,
+  // no game data; limited per address, separately from the login limits.
+  const checkLimiter = check?.limiter ?? new CheckLimiter();
+  const publicBlobHost = check?.publicBlobHost ?? null;
+  app.get('/check-info', (req, res) => {
+    if (!checkLimiter.take(req.ip ?? '')) {
+      res.status(429).json({ code: 'CHECK_LIMIT', message: CHECK_TOO_MANY });
+      return;
+    }
+    const body: CheckInfo = {
+      testImageUrl: publicBlobHost ? `https://${publicBlobHost}/${CHECK_IMAGE_PATH}` : null,
+    };
+    res.setHeader('Cache-Control', 'no-store').json(body);
   });
 
   if (api) app.use('/api', api);

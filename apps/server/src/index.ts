@@ -21,6 +21,7 @@ import { EngineRegistry } from './engine/registry';
 import { devToolsEnabled, loadEnv, parseOrigins } from './env';
 import { createApiRouter } from './http/api';
 import { PrismaLiveStore } from './live/prismaStore';
+import { CheckLimiter, attachCheckNamespace } from './realtime/check';
 import { Realtime } from './realtime/server';
 import { BlobFileStore } from './uploads/blob';
 import { GameDataCleanup } from './retention/gameDataCleanup';
@@ -139,8 +140,12 @@ const gameDataCleanup = admin
   ? new GameDataCleanup({ deleteDue: () => admin.deleteDueGameData() })
   : undefined;
 
+// The public connection check page (/check): one limiter for its sockets and its info route.
+const checkLimiter = new CheckLimiter();
+
 const app = createApp({
   clientOrigins,
+  check: { limiter: checkLimiter, publicBlobHost: env.PUBLIC_BLOB_HOST ?? null },
   checkDb: prisma ? () => prisma.$queryRaw`SELECT 1` : undefined,
   api: live
     ? createApiRouter({
@@ -158,7 +163,8 @@ const app = createApp({
     : undefined,
 });
 const server = createServer(app);
-live?.attach(server);
+const io = live?.attach(server);
+if (io) attachCheckNamespace(io, { limiter: checkLimiter });
 
 server.listen(env.PORT, () => {
   console.log(`Server listening on port ${env.PORT}`);
