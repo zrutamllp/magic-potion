@@ -22,6 +22,7 @@ A short note on where the Magic Potion Challenge stands, for whoever picks it up
   - SSL Labs: both **A+** (one of Vercel's servers A).
 
   The API's Permissions-Policy header is added and tested but **not deployed yet**: it goes out with the next deploy.
+- **The /check connection page is built and tested, not deployed yet** (README, "Connection check page"). It also brings the hidden `?transport=polling` switch for the long-polling network test. Before the deploy: upload `docs/connection-check/pixel.png` to `magic-potion-prod-public` as `connection-check/pixel.png`.
 - Client IT note (hosts, ports, WebSocket, personal data, retention, security): https://claude.ai/code/artifact/532fddc7-2991-4660-8bfb-6a831b308c96
 
 ## What is live
@@ -34,7 +35,7 @@ A short note on where the Magic Potion Challenge stands, for whoever picks it up
 | Files | Vercel Blob `magic-potion-prod-public` (`3webxzmniefozaez.public.blob.vercel-storage.com`) and `magic-potion-prod-photos` (private), both BOM1 Mumbai | Production only; local work uses the dev stores |
 | Main admin | `ceo@zrutam.com` | |
 
-The server running on Render is commit `e5033d2`. Later commits: the API Permissions-Policy header (waits for the next deploy) and documents. How to deploy, when, and how to roll back: README, "Deploy safely". Never deploy, and never change the Render instance, during an event.
+The server running on Render is commit `e5033d2`. Later commits wait for the next deploy: the API Permissions-Policy header, and the /check page (its socket namespace and `/check-info` on the server, the page on Vercel). How to deploy, when, and how to roll back: README, "Deploy safely". Never deploy, and never change the Render instance, during an event.
 
 ## Event sizing rule
 
@@ -47,9 +48,9 @@ Changing the instance restarts the server, so only do it when no game is running
 
 ## What is left
 
-1. **The /check connection page.** Not specified yet: agree what it shows before building it.
-2. **Corporate network test** (`docs/NETWORK_CHECKLIST.md`):
-   - a short game played by a person in Chrome with **WebSockets blocked** (the long-polling fallback with a real browser; bots already passed it under load);
+1. **Deploy the /check page** with the Permissions-Policy header (upload the test picture first), then check `/check` on a laptop and a phone, and the API on securityheaders.com.
+2. **Corporate network test** (`docs/NETWORK_CHECKLIST.md`, step 0 is now `/check`):
+   - a short game played by a person on **long-polling only** with `?transport=polling` (the fallback with a real browser; bots already passed it under load);
    - the **corporate laptop** and **phone hotspot** checklist.
 
    Use a test game: `npm run live-test -w @magic-potion/server -- --mode game` makes a `LOADTEST – …` game with one team for a person and deletes it afterwards.

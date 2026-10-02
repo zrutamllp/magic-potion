@@ -6,6 +6,7 @@ Write the result next to each line: ✅, ❌ or a note.
 
 | # | Check | How | Corporate laptop | Phone hotspot |
 | - | ----- | --- | ---------------- | ------------- |
+| 0 | Connection check | Open `https://play.zrutam.com/check` and wait about 20 seconds. Note the overall result (Ready to play / Will work, with limits / Blocked) and press **Copy results** to keep the summary. | | |
 | 1 | The site opens | Go to `https://play.zrutam.com`. No certificate or "blocked site" warning. | | |
 | 2 | No proxy warning | No "this site is not allowed" or login page from the company proxy (Zscaler, Netskope and similar). | | |
 | 3 | The API answers | Open `https://potion-api.zrutam.com/healthz`. It shows `"status":"ok","db":"ok"`. | | |
@@ -22,6 +23,6 @@ Write the result next to each line: ✅, ❌ or a note.
 
 **If step 1, 2 or 3 fails on the corporate network:** ask the client's IT to allow `play.zrutam.com` and `potion-api.zrutam.com` (HTTPS, port 443, including WebSockets). The phone hotspot is the fallback for that room.
 
-## Blocking WebSockets on purpose (the fallback test)
+## Long-polling only on purpose (the fallback test)
 
-In Chrome: F12 → press **Ctrl+Shift+P** → type `Show Network request blocking` → Enter → tick **Enable network request blocking** → click **+** → type `*transport=websocket*` → Add. Reload the page. The game must keep working (green dot, timers, chat, tasks). The Network tab now shows repeated `transport=polling` requests instead of one WebSocket. Untick it when done.
+Open the player screen with `?transport=polling` (for example `https://play.zrutam.com/?transport=polling`) and log in with the test team. That tab now uses long-polling only for the whole game, even after a refresh, and shows "Test mode: polling only" in the bottom corner. The game must keep working (green dot, timers, chat, tasks). F12 → Network shows repeated `transport=polling` requests and no WebSocket row. Open `?transport=auto` or close the tab when done. (Chrome's DevTools request blocking did not stop the WebSocket, so it is not used.)

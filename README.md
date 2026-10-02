@@ -292,6 +292,18 @@ Checked live in 7B: `/healthz` answers `ok` with the database; http redirects to
 
 The corporate laptop and phone hotspot checks are in `docs/NETWORK_CHECKLIST.md`.
 
+## Connection check page (/check)
+
+`https://play.zrutam.com/check` is public: client IT teams and participants open it before an event to see whether the game will work on their network. No login, nothing stored, no client branding, and it never joins or sees a game.
+
+- It checks: the website, the game server over HTTPS (`/healthz`, with the time), the live connection on long-polling and then on WebSocket, the speed (median of 10 pings: Good under 150 ms, OK under 400 ms, else Slow), a test picture from the public store, Google Fonts, YouTube and Vimeo (information only), and the browser version (minimums: Vite's default build target).
+- Overall: **Ready to play**, **Will work, with limits** (WebSocket blocked, slow, pictures failing or an old browser) or **Blocked** (no server or no live connection), the addresses to allow for whatever failed, and **Copy results** (a text summary with the date and time, nothing personal).
+- Its live connection is the server's own `/check` Socket.IO namespace (`apps/server/src/realtime/check.ts`): no login, no game rooms, one ping event, closed by the server after 30 s or 20 pings. Limits, separate from the login limits: 400 check connections per address per 10 minutes (a run uses 2, so a whole office on one address can run it the same morning) and 300 open at once.
+- The test picture is `connection-check/pixel.png` in the public store (`PUBLIC_BLOB_HOST`); the file is `docs/connection-check/pixel.png`. `GET /check-info` tells the page its address.
+- Only `/check` may contact YouTube and Vimeo (its own Content-Security-Policy in `apps/web/vercel.json`); every other page keeps the game's policy.
+
+**Forcing long-polling for a whole game (our own tests):** open the player screen with `?transport=polling`, for example `https://play.zrutam.com/?transport=polling`. That browser tab then uses long-polling only, even after a refresh, and shows "Test mode: polling only" in the corner. `?transport=auto` or closing the tab switches it off. Normal players are never affected.
+
 ## Environment variables
 
 Every variable is documented in `apps/server/.env.example` and `apps/web/.env.example`. `.env` files are ignored by git; never commit secrets.
