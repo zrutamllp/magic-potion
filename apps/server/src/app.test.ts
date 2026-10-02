@@ -58,5 +58,11 @@ describe('security headers (Phase 7A)', () => {
     expect(res.headers['referrer-policy']).toBe('no-referrer');
     expect(res.headers['cross-origin-resource-policy']).toBe('same-site');
     expect(res.headers['x-powered-by']).toBeUndefined();
+    // The API never serves a page, so no browser feature is ever allowed from it.
+    const allowed = (res.headers['permissions-policy'] as string | undefined)?.split(', ') ?? [];
+    for (const feature of ['camera', 'microphone', 'geolocation', 'payment', 'usb', 'fullscreen']) {
+      expect(allowed).toContain(`${feature}=()`);
+    }
+    expect(allowed.every((d) => d.endsWith('=()'))).toBe(true);
   });
 });

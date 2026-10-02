@@ -268,7 +268,7 @@ Checked live in 7B: `/healthz` answers `ok` with the database; http redirects to
 ### How
 
 1. CI is green on `main`.
-2. If the deploy includes a database migration: in Neon, create a backup branch from `production` (for example `backup-2026-10-01`). Migrations must only add; anything that deletes or rewrites data needs a separate, agreed plan.
+2. If the deploy includes a database migration: in Neon, create a backup branch from `production` (for example `backup-2026-10-01`). **Every backup branch gets an automatic expiry of 30 days or less** (set when creating it), so deleted game data never outlives its deletion date by more than about 30 days, as the client IT note promises. The main `dev`, `tests` and `production` branches never expire. Migrations must only add; anything that deletes or rewrites data needs a separate, agreed plan.
 3. Render → the service → **Manual Deploy → Deploy latest commit**. The pre-deploy step runs the migrations first; if it fails, the old server keeps running.
 4. Watch the logs for `Server listening` and `Loaded N live game(s)`, and no `Refusing to start`.
 5. Open `https://potion-api.zrutam.com/healthz` (`"status":"ok","db":"ok"`), then log in at `https://play.zrutam.com/staff`.

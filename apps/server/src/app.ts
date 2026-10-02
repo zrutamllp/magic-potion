@@ -54,6 +54,27 @@ const handleError: ErrorRequestHandler = (error, _req, res, _next) => {
     .json({ code: 'SERVER_ERROR', message: 'Something went wrong. Please try again.' });
 };
 
+const PERMISSIONS_POLICY = [
+  'accelerometer',
+  'autoplay',
+  'camera',
+  'display-capture',
+  'fullscreen',
+  'geolocation',
+  'gyroscope',
+  'magnetometer',
+  'microphone',
+  'midi',
+  'payment',
+  'picture-in-picture',
+  'publickey-credentials-get',
+  'screen-wake-lock',
+  'usb',
+  'xr-spatial-tracking',
+]
+  .map((feature) => `${feature}=()`)
+  .join(', ');
+
 export function createApp({ clientOrigins, checkDb, api }: AppOptions): Express {
   const app = express();
   app.disable('x-powered-by');
@@ -74,6 +95,12 @@ export function createApp({ clientOrigins, checkDb, api }: AppOptions): Express 
       xFrameOptions: { action: 'deny' },
     }),
   );
+  // Helmet does not set Permissions-Policy. The API never serves a page, so every browser
+  // feature is switched off.
+  app.use((_req, res, next) => {
+    res.setHeader('Permissions-Policy', PERMISSIONS_POLICY);
+    next();
+  });
   app.use(cors({ origin: clientOrigins, credentials: true }));
   app.use(express.json({ limit: '100kb' }));
 
