@@ -1,4 +1,4 @@
-# Handoff (2026-10-02, evening)
+# Handoff (2026-10-02, end of day)
 
 A short note on where the Magic Potion Challenge stands, for whoever picks it up next (including a new Claude Code session). The rules and numbers are in `docs/GAME_RULES.md`, the phases in `docs/BUILD_PLAN.md`, and the working rules in `CLAUDE.md`.
 
@@ -18,12 +18,10 @@ A short note on where the Magic Potion Challenge stands, for whoever picks it up
 
   Both production games show "Data will be deleted on 30 Dec 2026".
 - **Security scans (2026-10-02):**
-  - securityheaders.com: `play.zrutam.com` **A+**, `potion-api.zrutam.com` **A** (only Permissions-Policy missing);
+  - securityheaders.com: both **A+** (`potion-api.zrutam.com` rescanned after the Permissions-Policy header went live; only a harmless note that `/` returns 404);
   - SSL Labs: both **A+** (one of Vercel's servers A).
-
-  The API's Permissions-Policy header is now live (deployed 2026-10-02 with /check).
-- **The /check connection page is live** (deployed 2026-10-02, commit `bf8d02c`; README, "Connection check page"), with the hidden `?transport=polling` switch for the long-polling network test. The test picture is in `magic-potion-prod-public` at `connection-check/pixel.png`. Checked live: `/check` and `/check/` get the CSP that adds YouTube and Vimeo, every other page keeps the game's (one CSP header each); `/check-info` gives the picture; the check socket connects over polling and WebSocket without a login, ignores game events and is closed by the server after 30 s.
-- Client IT note (hosts, ports, WebSocket, personal data, retention, security): https://claude.ai/code/artifact/532fddc7-2991-4660-8bfb-6a831b308c96
+- **The /check connection page is live** (deployed 2026-10-02, commit `bf8d02c`; README, "Connection check page"), with the hidden `?transport=polling` switch for the long-polling network test. The test picture is in `magic-potion-prod-public` at `connection-check/pixel.png`. Checked live: `/check` and `/check/` get the CSP that adds YouTube and Vimeo, every other page keeps the game's (one CSP header each); `/check-info` gives the picture; the check socket connects over polling and WebSocket without a login, ignores game events and is closed by the server after 30 s. Checked by hand: **Ready to play** on a laptop (Chrome, 108 ms, WebSocket) and an iPhone (Safari, iOS 26.6, 105 ms, WebSocket). On both, Vimeo showed as blocked, possibly a false result (under "Later" in `docs/BUILD_PLAN.md`); for clients we recommend YouTube or our own uploaded video.
+- Client IT note (hosts, ports, WebSocket, personal data, retention, security; scan table now A+ for both sites): https://claude.ai/code/artifact/532fddc7-2991-4660-8bfb-6a831b308c96
 
 ## What is live
 
@@ -48,15 +46,14 @@ Changing the instance restarts the server, so only do it when no game is running
 
 ## What is left
 
-1. **Check the live /check page by hand** on a laptop and a phone, and rescan the API on securityheaders.com (it should now be A+).
-2. **Corporate network test** (`docs/NETWORK_CHECKLIST.md`, step 0 is now `/check`):
-   - a short game played by a person on **long-polling only** with `?transport=polling` (the fallback with a real browser; bots already passed it under load);
+1. **Corporate network test** (`docs/NETWORK_CHECKLIST.md`, step 0 is now `/check`):
+   - **open:** a short game played on **long-polling only** with `?transport=polling`, in real browser windows (a test game with real team logins, not the bot script's game, whose teams you cannot log in to). The fallback with a real browser; bots already passed it under load;
    - the **corporate laptop** and **phone hotspot** checklist.
 
-   Use a test game: `npm run live-test -w @magic-potion/server -- --mode game` makes a `LOADTEST – …` game with one team for a person and deletes it afterwards.
-3. **The client 1-page note:** a short version of the IT note above for the client.
-4. **7D event readiness:** an event-day runbook for you and the co-facilitators (before, during, after), and a dry run with at least 4 real teams. Done when the dry run completes with no manual fixes.
-5. **The first content pack** for a real event.
+   Use a test game made in the admin panel (named `LOADTEST – …`), with team logins you can use in real windows, and delete it afterwards.
+2. **The client 1-page note:** a short version of the IT note above for the client.
+3. **7D event readiness:** an event-day runbook for you and the co-facilitators (before, during, after), and a dry run with at least 4 real teams. Done when the dry run completes with no manual fixes.
+4. **The first content pack** for a real event.
 
 Not planned now (see "Later" in `docs/BUILD_PLAN.md`): gathering other teams' updates to bring p95 under 500 ms and support more than 20 teams, a Redis adapter for more than one server, other languages.
 

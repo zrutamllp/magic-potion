@@ -101,6 +101,7 @@ Original list:
 ## Later (out of scope for now)
 
 - From 7C: gather the state updates for other teams over about 200 ms and send them once, so an action no longer waits for every team's state to be rebuilt. Would bring p95 from India under 500 ms and help games over 20 teams. The adopted target is p95 under 750 ms (`docs/LOAD_TEST_RESULTS.md`).
+- Check whether the /check Vimeo test gives a false 'blocked' (seen on laptop + iPhone, 2 Oct). For clients we recommend YouTube or our own uploaded video anyway.
 - Multiple Render instances with a Redis adapter.
 - Hostinger VPS as a self-hosted option for clients who need it.
 - ~~More questions per task, set from the admin panel.~~ Done in 6B: question pools (Riddle, Hangman, Pictionary, Guess the Celebrity, Data Story questions) draw a fresh set per try; the per-try counts are settings; Ethical Dilemma plays one scenario per game, chosen by the admin.
