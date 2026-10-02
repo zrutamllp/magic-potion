@@ -568,7 +568,8 @@ function report() {
 
   console.log('');
   console.log('Targets:');
-  check('Action answer time p95', '< 500 ms', `${acks.p95} ms`, acks.p95 < 500);
+  // Target adopted in 7C for players in India (docs/LOAD_TEST_RESULTS.md).
+  check('Action answer time p95', '< 750 ms', `${acks.p95} ms`, acks.p95 < 750);
   check('Action answer time max', '< 2000 ms', `${acks.max} ms`, acks.max < 2_000);
   check('Errors', '0', String(log.errors.length), log.errors.length === 0);
   check('Lost state updates', '0', `${lost} of ${updatesChecked}`, lost === 0);
