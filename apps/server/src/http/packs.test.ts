@@ -332,14 +332,20 @@ describe('archive and delete', () => {
     expect(stored.archivedAt).toBeNull();
   });
 
-  it('never deletes a game that has been played', async () => {
+  it('never deletes a game that is still being played', async () => {
     const g = await setup();
     const game = await newGame(g, 'Played');
-    g.adminStore.games.find((x) => x.id === game.id)!.startedAt = new Date(T0);
+    Object.assign(
+      g.adminStore.games.find((x) => x.id === game.id)!,
+      {
+        startedAt: new Date(T0),
+        phase: 'ROUND1',
+      },
+    );
     const res = await g.call('delete', `/games/${game.id}`, { confirmName: 'Played' });
     expect(res.status).toBe(409);
     expect(res.body.message).toBe(
-      'This game has been played, so it cannot be deleted. Archive it instead.',
+      'End the game first. A game being played or paused cannot be deleted.',
     );
     expect(g.adminStore.games.some((x) => x.id === game.id)).toBe(true);
   });

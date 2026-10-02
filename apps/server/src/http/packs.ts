@@ -9,7 +9,6 @@ import {
   TASK_KEYS,
   type ImportTaskKey,
   CreatePackSchema,
-  DeleteGameSchema,
   PackItemBodySchema,
   PackNameSchema,
   ReorderItemsSchema,
@@ -290,10 +289,5 @@ export function addPackRoutes(
 
   staff.post('/games/:gameId/unarchive', mainAdminOnly, async (req, res: StaffResponse) => {
     send(res, await admin.setArchived(me(res), id(req.params.gameId), false));
-  });
-
-  staff.delete('/games/:gameId', mainAdminOnly, async (req, res: StaffResponse) => {
-    const b = body(DeleteGameSchema, req, res);
-    if (b) send(res, await admin.deleteGame(me(res), id(req.params.gameId), b.confirmName));
   });
 }

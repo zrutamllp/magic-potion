@@ -1,4 +1,5 @@
 import {
+  GameSettingsSchema,
   TEST_GAME_PREFIX,
   TEST_STAFF_EMAIL,
   type AdminInboxItem,
@@ -7,7 +8,8 @@ import {
 } from '@magic-potion/shared';
 import { createSampleGame, type NewTeamRow } from '../engine/dbGame';
 import { Prisma, type PrismaClient } from '../generated/prisma/client';
-import type { AdminAuditEntry, AdminStore, StoredGame } from './store';
+import { retentionGames, retentionSince, type RetentionGame } from '../retention/prismaFacts';
+import type { AdminAuditEntry, AdminStore, GameDeletionCounts, StoredGame } from './store';
 
 const json = (v: unknown) =>
   v === undefined || v === null ? Prisma.DbNull : (v as Prisma.InputJsonValue);
@@ -31,6 +33,7 @@ export class PrismaAdminStore implements AdminStore {
         startedAt: true,
         endedAt: true,
         archivedAt: true,
+        frozenAt: true,
         settings: { select: { data: true } },
         teams: {
           select: { id: true, code: true, name: true, status: true },
@@ -48,6 +51,7 @@ export class PrismaAdminStore implements AdminStore {
       startedAt: g.startedAt,
       endedAt: g.endedAt,
       archivedAt: g.archivedAt,
+      frozenAt: g.frozenAt,
       settings: g.settings?.data ?? null,
       teams: g.teams,
       assignments: g.staffAssignments,
@@ -185,13 +189,64 @@ export class PrismaAdminStore implements AdminStore {
     await this.prisma.game.update({ where: { id: gameId }, data: { archivedAt: at } });
   }
 
-  async deleteGame(gameId: string): Promise<void> {
+  retentionGames(only?: string[]): Promise<RetentionGame[]> {
+    return retentionGames(this.prisma, only);
+  }
+
+  retentionSince(now: number, create: boolean): Promise<number> {
+    return retentionSince(this.prisma, now, create);
+  }
+
+  async setDataRetentionDays(gameId: string, days: number): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
-      // Checked again inside the transaction: a game that has started is never deleted.
-      const g = await tx.game.findUnique({ where: { id: gameId }, select: { startedAt: true } });
-      if (!g || g.startedAt) throw new Error('Only a game that never started can be deleted.');
-      await tx.game.delete({ where: { id: gameId } });
+      const row = await tx.gameSettings.findUniqueOrThrow({ where: { gameId } });
+      const settings = GameSettingsSchema.parse(row.data);
+      settings.retention.gameDataDays = days;
+      await tx.gameSettings.update({
+        where: { gameId },
+        data: { data: settings as Prisma.InputJsonValue },
+      });
     });
+  }
+
+  async deleteGameData(
+    gameId: string,
+    record: { deletedBy: string; at: Date; photos: number },
+    eligible: (g: RetentionGame) => boolean,
+  ): Promise<GameDeletionCounts | null> {
+    return this.prisma.$transaction(
+      async (tx) => {
+        // Checked again inside the transaction, on the game as it is now.
+        const [g] = await retentionGames(tx, [gameId]);
+        if (!g || !eligible(g)) return null;
+        const team = { team: { gameId } };
+        const counts: GameDeletionCounts = {
+          teams: await tx.team.count({ where: { gameId } }),
+          sessions: await tx.teamSession.count({ where: team }),
+          chatMessages: await tx.chatMessage.count({ where: { gameId } }),
+          taskAttempts: await tx.taskAttempt.count({ where: { teamTask: team } }),
+          transfers: await tx.transfer.count({ where: { gameId } }),
+          fundTransactions: await tx.fundTransaction.count({ where: team }),
+          fundRequests: await tx.fundRequest.count({ where: { gameId } }),
+          inboxResponses: await tx.inboxResponse.count({ where: team }),
+          auditEntries: await tx.auditLog.count({ where: { gameId } }),
+          photos: record.photos,
+        };
+        await tx.gameDeletion.create({
+          data: {
+            gameId,
+            gameName: g.name,
+            deletedAt: record.at,
+            deletedBy: record.deletedBy,
+            counts: counts as unknown as Prisma.InputJsonValue,
+          },
+        });
+        // Every row of the game goes with it (onDelete: Cascade), its audit lines included.
+        await tx.game.delete({ where: { id: gameId } });
+        return counts;
+      },
+      { timeout: 60_000 },
+    );
   }
 
   async deleteTestGame(gameId: string): Promise<void> {

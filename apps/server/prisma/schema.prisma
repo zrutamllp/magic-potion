@@ -591,6 +591,22 @@ model AuditLog {
   @@index([teamId])
 }
 
+// One row per deleted game (by the scheduled job or "Delete played game now"). Holds no
+// personal data: no team names or codes, chat, answers or photos; only counts of what was removed.
+model GameDeletion {
+  id        String   @id @default(cuid())
+  // No relation: the game is gone.
+  gameId    String
+  gameName  String
+  deletedAt DateTime @default(now())
+  // "auto" or the staff user id.
+  deletedBy String
+  // { teams, sessions, chatMessages, ... }: numbers only.
+  counts    Json
+
+  @@index([deletedAt])
+}
+
 // Facts about this database itself. "environment" = "production" marks the live database:
 // the seed, test scripts and tests refuse to change data there, and a local server refuses to
 // start on it (Phase 7A). Set once with `npm run db:mark-production`.

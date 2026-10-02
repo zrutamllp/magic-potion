@@ -23,6 +23,7 @@ import { createApiRouter } from './http/api';
 import { PrismaLiveStore } from './live/prismaStore';
 import { Realtime } from './realtime/server';
 import { BlobFileStore } from './uploads/blob';
+import { GameDataCleanup } from './retention/gameDataCleanup';
 import { PhotoCleanup } from './uploads/photoCleanup';
 import { BlobPhotoStore, PhotoLinks, isPhotoKey } from './uploads/photos';
 import { PrismaPhotoCleanupStore } from './uploads/photoCleanupStore';
@@ -95,7 +96,8 @@ const admin =
         auth: live.auth,
         onLobbyChange: reload,
         afterCreate: packs ? (gameId) => packs.assignDefault(gameId) : undefined,
-        forgetGame: (gameId) => live.forgetGame(gameId),
+        forgetGame: (gameId, force) => live.forgetGame(gameId, force),
+        publicBlobHost: env.PUBLIC_BLOB_HOST ?? null,
         removeGamePhotos:
           prisma && photos
             ? async (gameId) => {
@@ -130,6 +132,12 @@ const photoCleanup =
       })
     : undefined;
 photoCleanup?.start();
+
+// Deletes game data after its keep time (every 3 hours, and once at start). Started after the
+// live games are loaded, so a game is never loaded again just after it was deleted.
+const gameDataCleanup = admin
+  ? new GameDataCleanup({ deleteDue: () => admin.deleteDueGameData() })
+  : undefined;
 
 const app = createApp({
   clientOrigins,
@@ -167,12 +175,14 @@ if (engines) {
       // Listen to them now, so phase changes reach browsers as soon as they connect.
       if (live) await Promise.all(loaded.map((id) => live.engine(id)));
     })
-    .catch((error: unknown) => console.error('Could not load live games:', error));
+    .catch((error: unknown) => console.error('Could not load live games:', error))
+    .finally(() => gameDataCleanup?.start());
 }
 
 async function shutdown(signal: string): Promise<void> {
   console.log(`${signal} received, shutting down`);
   photoCleanup?.stop();
+  gameDataCleanup?.stop();
   await live?.close();
   server.close();
   await engines?.stop();

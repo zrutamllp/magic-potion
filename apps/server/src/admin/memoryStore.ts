@@ -1,4 +1,5 @@
 import {
+  GameSettingsSchema,
   TEST_GAME_PREFIX,
   TEST_STAFF_EMAIL,
   type AdminInboxItem,
@@ -7,7 +8,14 @@ import {
 } from '@magic-potion/shared';
 import type { MemoryAuthStore } from '../auth/memoryStore';
 import type { NewTeamRow } from '../engine/dbGame';
-import type { AdminAuditEntry, AdminStore, StoredGame } from './store';
+import type { RetentionGame } from '../retention/prismaFacts';
+import type {
+  AdminAuditEntry,
+  AdminStore,
+  GameDeletionCounts,
+  GameDeletionRecord,
+  StoredGame,
+} from './store';
 
 // An in-memory AdminStore for tests. It shares teams, staff and assignments with a
 // MemoryAuthStore, so a team made here can log in through the auth routes.
@@ -19,6 +27,9 @@ interface MemoryGame {
   startedAt: Date | null;
   endedAt: Date | null;
   archivedAt: Date | null;
+  frozenAt: Date | null;
+  // Tests set this; the database works it out from team actions, chat and staff changes.
+  lastActivityAt: number | null;
   contentPackId: string | null;
   dilemmaItemId: string | null;
   settings: unknown;
@@ -29,6 +40,9 @@ export class MemoryAdminStore implements AdminStore {
   statuses = new Map<string, 'ACTIVE' | 'REMOVED'>();
   audits: AdminAuditEntry[] = [];
   inbox = new Map<string, AdminInboxItem[]>();
+  deletions: GameDeletionRecord[] = [];
+  // When deletion was switched on (SystemFlag in the database). Null until the first run.
+  retentionSinceAt: number | null = null;
   private nextId = 1;
 
   constructor(private readonly auth: MemoryAuthStore) {}
@@ -46,6 +60,8 @@ export class MemoryAdminStore implements AdminStore {
       startedAt: null,
       endedAt: null,
       archivedAt: null,
+      frozenAt: null,
+      lastActivityAt: null,
       contentPackId: null,
       dilemmaItemId: null,
       settings,
@@ -198,13 +214,69 @@ export class MemoryAdminStore implements AdminStore {
     this.games.find((g) => g.id === gameId)!.archivedAt = at;
   }
 
-  async deleteGame(gameId: string): Promise<void> {
-    const g = this.games.find((x) => x.id === gameId);
-    if (!g || g.startedAt) throw new Error('Only a game that never started can be deleted.');
+  async retentionGames(only?: string[]): Promise<RetentionGame[]> {
+    return this.games
+      .filter((g) => (only ? only.includes(g.id) : g.startedAt !== null))
+      .map((g) => ({
+        id: g.id,
+        name: g.name,
+        phase: g.phase,
+        frozenAt: g.frozenAt?.getTime() ?? null,
+        startedAt: g.startedAt?.getTime() ?? null,
+        endedAt: g.endedAt?.getTime() ?? null,
+        lastActivityAt: g.lastActivityAt,
+        days: GameSettingsSchema.parse(g.settings).retention.gameDataDays,
+      }));
+  }
+
+  async retentionSince(now: number, create: boolean): Promise<number> {
+    if (this.retentionSinceAt !== null) return this.retentionSinceAt;
+    if (create) this.retentionSinceAt = now;
+    return now;
+  }
+
+  async setDataRetentionDays(gameId: string, days: number): Promise<void> {
+    const g = this.games.find((x) => x.id === gameId)!;
+    const settings = GameSettingsSchema.parse(g.settings);
+    settings.retention.gameDataDays = days;
+    g.settings = settings;
+  }
+
+  async deleteGameData(
+    gameId: string,
+    record: { deletedBy: string; at: Date; photos: number },
+    eligible: (g: RetentionGame) => boolean,
+  ): Promise<GameDeletionCounts | null> {
+    const [g] = await this.retentionGames([gameId]);
+    if (!g || !eligible(g)) return null;
+    const teamIds = new Set(this.auth.teams.filter((t) => t.gameId === gameId).map((t) => t.id));
+    const counts: GameDeletionCounts = {
+      teams: teamIds.size,
+      sessions: this.auth.sessions.filter((s) => teamIds.has(s.teamId)).length,
+      chatMessages: 0,
+      taskAttempts: 0,
+      transfers: 0,
+      fundTransactions: 0,
+      fundRequests: 0,
+      inboxResponses: 0,
+      auditEntries: this.audits.filter((a) => a.gameId === gameId).length,
+      photos: record.photos,
+    };
+    this.deletions.push({
+      gameId,
+      gameName: g.name,
+      deletedAt: record.at,
+      deletedBy: record.deletedBy,
+      counts,
+    });
     this.games = this.games.filter((x) => x.id !== gameId);
     this.auth.games = this.auth.games.filter((x) => x.id !== gameId);
     this.auth.teams = this.auth.teams.filter((t) => t.gameId !== gameId);
+    this.auth.assignments = this.auth.assignments.filter((a) => a.gameId !== gameId);
+    this.auth.sessions = this.auth.sessions.filter((s) => !teamIds.has(s.teamId));
+    this.audits = this.audits.filter((a) => a.gameId !== gameId);
     this.inbox.delete(gameId);
+    return counts;
   }
 
   async deleteTestGame(gameId: string): Promise<void> {

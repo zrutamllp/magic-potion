@@ -103,6 +103,12 @@ export const GameSettingsSchema = z.object({
       stuckIdleSeconds: seconds,
     })
     .default({ coFacilitatorAdjustLimit: 2_000, stuckIdleSeconds: 300 }),
+  // Game data is deleted this many days after End game, or after the last activity of a game
+  // that was never ended (see retention.ts). Unlike every other setting it can change after
+  // the game starts, through its own route. Games saved before it existed load with 90.
+  retention: z
+    .object({ gameDataDays: z.number().int().min(7).max(365) })
+    .default({ gameDataDays: 90 }),
 });
 
 export type GameSettings = z.infer<typeof GameSettingsSchema>;

@@ -12,6 +12,7 @@ import {
   ResetStaffPasswordSchema,
   SaveSettingsSchema,
   SetAssignmentsSchema,
+  SetDataRetentionSchema,
   UpdateStaffSchema,
 } from '@magic-potion/shared';
 import type { AdminResult, AdminService } from '../admin/service';
@@ -111,6 +112,22 @@ export function addAdminRoutes(
     const b = body(SaveSettingsSchema, req, res);
     if (b) {
       send(res, await admin.saveSettings(res.locals.staff, id(req.params.gameId), b.settings));
+    }
+  });
+
+  // "Delete played game now" (or a game that never started), after typing its name.
+  staff.delete('/games/:gameId', mainAdminOnly, async (req, res: StaffResponse) => {
+    const b = body(DeleteGameSchema, req, res);
+    if (b) {
+      send(res, await admin.deleteGame(res.locals.staff, id(req.params.gameId), b.confirmName));
+    }
+  });
+
+  // "Delete game data after (days)": the one setting that can change after the game starts.
+  staff.put('/games/:gameId/data-retention', mainAdminOnly, async (req, res: StaffResponse) => {
+    const b = body(SetDataRetentionSchema, req, res);
+    if (b) {
+      send(res, await admin.setDataRetention(res.locals.staff, id(req.params.gameId), b.days));
     }
   });
 

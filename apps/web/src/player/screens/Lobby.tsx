@@ -1,4 +1,5 @@
 import { LogOut } from 'lucide-react';
+import { anyPublicStoreHost, introVideoSrc, parseIntroVideo } from '@magic-potion/shared';
 import { useGame } from '../GameContext';
 import { ConnectionDot } from '../layout/Shell';
 import { Card } from '../ui/basics';
@@ -8,13 +9,14 @@ import { RulesContent } from './Rules';
 // The Lobby: teams log in, watch the intro video and read the rules until the facilitator
 // starts the game.
 
-// YouTube and Vimeo links play in their own player; anything else as a plain video file.
-export function videoEmbed(url: string): { kind: 'iframe' | 'video'; src: string } {
-  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{6,})/);
-  if (yt) return { kind: 'iframe', src: `https://www.youtube-nocookie.com/embed/${yt[1]}` };
-  const vimeo = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  if (vimeo) return { kind: 'iframe', src: `https://player.vimeo.com/video/${vimeo[1]}` };
-  return { kind: 'video', src: url };
+// YouTube and Vimeo links play in their own privacy players; a file from our own picture store
+// as a plain video. Any other link plays nothing (the server refuses it on save; an old one
+// shows the admin a warning).
+export function videoEmbed(url: string): { kind: 'iframe' | 'video'; src: string } | null {
+  const video = parseIntroVideo(url, anyPublicStoreHost(url));
+  const src = introVideoSrc(video);
+  if (!src) return null;
+  return { kind: video.kind === 'file' ? 'video' : 'iframe', src };
 }
 
 // Without onLogOut (staff "View as team") there is no Log out button.

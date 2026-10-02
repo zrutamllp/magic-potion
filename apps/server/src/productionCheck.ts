@@ -45,6 +45,7 @@ export function productionProblems(env: Env): string[] {
     'BLOB_READ_WRITE_TOKEN',
     'BLOB_PRIVATE_READ_WRITE_TOKEN',
     'PHOTO_LINK_SECRET',
+    'PUBLIC_BLOB_HOST',
   ] as const;
   for (const name of required) {
     if (!env[name]) problems.push(`${name} is missing.`);

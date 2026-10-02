@@ -1,13 +1,17 @@
 import { randomInt } from 'node:crypto';
 import bcrypt from 'bcrypt';
 import {
+  DATA_DELETE_WARNING_DAYS,
   DEFAULT_SETTINGS,
   GameSettingsSchema,
+  INTRO_VIDEO_REFUSED,
   MAX_TEAMS,
   TEST_GAME_PREFIX,
   TEST_STAFF_EMAIL,
   generateTeamCodes,
+  gameDataDueAt,
   generateTeamPassword,
+  parseIntroVideo,
   type AddTeams,
   type AdminGame,
   type CreateGame,
@@ -20,6 +24,7 @@ import {
 import type { AuthService } from '../auth/service';
 import type { StaffAccount } from '../auth/store';
 import type { NewTeamRow } from '../engine/dbGame';
+import type { RetentionGame } from '../retention/prismaFacts';
 import type { AdminStore, StoredGame } from './store';
 
 // The admin panel's setup actions (Phase 6A). Main admin only; the routes check that.
@@ -36,7 +41,12 @@ export const ADMIN_ERRORS = {
   OWN_ACCOUNT: 'You cannot switch off your own account.',
   MAIN_ADMIN: 'The main admin account cannot be changed here.',
   NOT_FINISHED: 'Only a finished game can be archived.',
-  PLAYED: 'This game has been played, so it cannot be deleted. Archive it instead.',
+  NOT_ENDED: 'End the game first. A game being played or paused cannot be deleted.',
+  RETENTION_TOO_SOON:
+    'That would delete the data within 7 days. Use Delete played game now instead.',
+  PHOTOS_NOT_REMOVED:
+    'The team photos could not be deleted just now, so nothing was deleted. Try again.',
+  INTRO_VIDEO_NOT_ALLOWED: INTRO_VIDEO_REFUSED,
   NAME_MISMATCH: 'Type the game name exactly as shown to delete it.',
   INBOX_ITEM_NOT_FOUND: 'That bonus task was not found in this game.',
   NO_ANSWERS: 'A question needs at least one accepted answer.',
@@ -72,21 +82,34 @@ export interface AdminServiceOptions {
   // Runs after a game is created, to give it the default content pack.
   afterCreate?: (gameId: string) => Promise<void>;
   random?: (max: number) => number;
-  // Live-site test clean-up (Phase 7C): drops a finished or Lobby game from the running server
-  // (false while it is still being played), and deletes its team photos (returns how many).
-  forgetGame?: (gameId: string) => Promise<boolean>;
+  // Before a game is deleted: drops it from the running server and closes its browsers (false
+  // while it is still being played, unless `force`: an abandoned game, see deleteDueGameData),
+  // and deletes its team photos (returns how many).
+  forgetGame?: (gameId: string, force?: boolean) => Promise<boolean>;
   removeGamePhotos?: (gameId: string) => Promise<number>;
+  // The public picture store's host. Intro video files must come from it; null refuses files.
+  publicBlobHost?: string | null;
+  now?: () => number;
 }
+
+const DAY = 24 * 60 * 60 * 1000;
+
+// "Delete played game now": a game that never started, or one in the Reveal or ended and not
+// paused. Never a game in Round 1, the Pause or Round 2.
+const deletableByHand = (g: RetentionGame) =>
+  g.startedAt === null || ((g.phase === 'REVEAL' || g.endedAt !== null) && g.frozenAt === null);
 
 export class AdminService {
   private readonly store: AdminStore;
   private readonly rounds: { staff: number; team: number };
   private readonly random: (max: number) => number;
+  private readonly now: () => number;
 
   constructor(private readonly opts: AdminServiceOptions) {
     this.store = opts.store;
     this.rounds = opts.bcryptRounds ?? { staff: 12, team: 10 };
     this.random = opts.random ?? ((max) => randomInt(max));
+    this.now = opts.now ?? (() => Date.now());
   }
 
   // ---------- Games ----------
@@ -110,7 +133,7 @@ export class AdminService {
 
   async getGame(gameId: string): Promise<AdminResult<AdminGame>> {
     const g = await this.store.game(gameId);
-    return g ? ok(this.view(g)) : fail(404, 'GAME_NOT_FOUND');
+    return g ? ok(await this.view(g)) : fail(404, 'GAME_NOT_FOUND');
   }
 
   async renameGame(
@@ -143,6 +166,12 @@ export class AdminService {
     if (!g) return fail(404, 'GAME_NOT_FOUND');
     if (g.startedAt) return fail(409, 'GAME_STARTED');
     const before = GameSettingsSchema.parse(g.settings);
+    // Only a new link is checked, so an old one never blocks saving other settings (the admin
+    // sees a warning for it instead).
+    const video = settings.branding.introVideoUrl;
+    if (video && video !== before.branding.introVideoUrl && this.introVideoProblem(video)) {
+      return fail(400, 'INTRO_VIDEO_NOT_ALLOWED');
+    }
     await this.store.saveSettings(gameId, settings);
     const changed = changedPaths(before, settings);
     await this.store.audit({
@@ -406,26 +435,100 @@ export class AdminService {
     return ok(null);
   }
 
-  // Only a game that never started, and only when its name is typed exactly.
+  // "Delete played game now" (and a game that never started), only when its name is typed
+  // exactly. Uses the same deletion as the scheduled job.
   async deleteGame(staff: StaffAccount, gameId: string, confirmName: string) {
-    const g = await this.store.game(gameId);
+    const [g] = await this.store.retentionGames([gameId]);
     if (!g) return fail(404, 'GAME_NOT_FOUND');
-    if (g.startedAt) return fail(409, 'PLAYED');
     if (confirmName.trim() !== g.name) return fail(400, 'NAME_MISMATCH');
-    await this.store.deleteGame(gameId);
-    // The game's own audit lines go with it, so this line belongs to no game.
+    if (!deletableByHand(g)) return fail(409, 'NOT_ENDED');
+    const result = await this.removeGameData(g, staff.id, false, deletableByHand);
+    if (!result.ok) return result;
+    // The game's own audit lines went with it, so this line belongs to no game. No team names.
     await this.store.audit({
       gameId: null,
       staffUserId: staff.id,
       action: 'DELETE_GAME',
-      before: {
-        id: g.id,
-        name: g.name,
-        teams: g.teams.map((t) => ({ code: t.code, name: t.name })),
-      },
+      before: { id: g.id, name: g.name, played: g.startedAt !== null },
     });
-    this.opts.onLobbyChange?.(gameId);
-    return ok(null);
+    return ok(result.value);
+  }
+
+  // ---------- Game data retention ----------
+
+  // "Delete game data after (days)". Unlike every other setting it can change after the game
+  // starts, until the data is deleted, but never to a date less than 7 days away.
+  async setDataRetention(staff: StaffAccount, gameId: string, days: number) {
+    const [g] = await this.store.retentionGames([gameId]);
+    if (!g) return fail(404, 'GAME_NOT_FOUND');
+    const now = this.now();
+    const since = await this.store.retentionSince(now, false);
+    const due = gameDataDueAt({ ...g, days, deletionSince: since });
+    if (due && due.at < now + DATA_DELETE_WARNING_DAYS * DAY) {
+      return fail(400, 'RETENTION_TOO_SOON');
+    }
+    await this.store.setDataRetentionDays(gameId, days);
+    await this.store.audit({
+      gameId,
+      staffUserId: staff.id,
+      action: 'SET_DATA_RETENTION',
+      before: { gameDataDays: g.days },
+      after: { gameDataDays: days },
+    });
+    return this.getGame(gameId);
+  }
+
+  // The scheduled job: deletes every game whose deletion date has passed. Every date is worked
+  // out from database times, so a restart changes nothing. `only` limits it (database tests).
+  // Returns the ids deleted.
+  async deleteDueGameData(opts: { only?: string[] } = {}): Promise<string[]> {
+    const now = this.now();
+    const since = await this.store.retentionSince(now, true);
+    const isDue = (g: RetentionGame) => {
+      const due = gameDataDueAt({ ...g, deletionSince: since });
+      return due !== null && due.at <= now;
+    };
+    const deleted: string[] = [];
+    for (const g of (await this.store.retentionGames(opts.only)).filter(isDue)) {
+      // A game left paused or mid-round with no activity for the whole time is abandoned: it
+      // is dropped from the server too.
+      const result = await this.removeGameData(g, 'auto', true, isDue);
+      if (result.ok) {
+        deleted.push(g.id);
+        console.log(
+          `Deleted the data of game ${g.id}, ${g.days} days after it ended or went quiet.`,
+        );
+      } else {
+        console.error(`Could not delete the data of game ${g.id}: ${result.message}`);
+      }
+    }
+    return deleted;
+  }
+
+  // The one deletion: team photos first (if that fails, nothing is deleted and the next run
+  // tries again), then the game leaves the running server, then every row goes in one
+  // transaction with the deletion record.
+  private async removeGameData(
+    g: RetentionGame,
+    deletedBy: string,
+    force: boolean,
+    eligible: (g: RetentionGame) => boolean,
+  ) {
+    const photos = await this.opts.removeGamePhotos?.(g.id).then(
+      (n) => n,
+      () => null,
+    );
+    if (photos === null) return fail(503, 'PHOTOS_NOT_REMOVED');
+    if (this.opts.forgetGame && !(await this.opts.forgetGame(g.id, force))) {
+      return fail(409, 'NOT_ENDED');
+    }
+    const counts = await this.store.deleteGameData(
+      g.id,
+      { deletedBy, at: new Date(this.now()), photos: photos ?? 0 },
+      eligible,
+    );
+    if (!counts) return fail(409, 'NOT_ENDED');
+    return ok(counts);
   }
 
   // ---------- Live-site tests (Phase 7C) ----------
@@ -479,18 +582,33 @@ export class AdminService {
 
   // ---------- Helpers ----------
 
-  private view(g: StoredGame): AdminGame {
+  private async view(g: StoredGame): Promise<AdminGame> {
     const assignments: Record<string, string[]> = {};
     for (const a of g.assignments) (assignments[a.staffUserId] ??= []).push(a.teamId);
+    const settings = GameSettingsSchema.parse(g.settings);
+    const [facts] = await this.store.retentionGames([g.id]);
+    const now = this.now();
+    const due = facts
+      ? gameDataDueAt({ ...facts, deletionSince: await this.store.retentionSince(now, false) })
+      : null;
+    const video = settings.branding.introVideoUrl;
     return {
       id: g.id,
       name: g.name,
       phase: g.phase,
       locked: g.startedAt !== null,
-      settings: GameSettingsSchema.parse(g.settings),
+      settings,
       teams: g.teams,
       assignments,
+      dataDeleteAt: due ? new Date(due.at).toISOString() : null,
+      dataDeleteFrom: due?.from ?? null,
+      introVideoProblem: video ? this.introVideoProblem(video) : null,
     };
+  }
+
+  private introVideoProblem(url: string): string | null {
+    const video = parseIntroVideo(url, this.opts.publicBlobHost ?? null);
+    return video.kind === 'refused' ? video.reason : null;
   }
 
   private async lobbyTeam(gameId: string, teamId: string) {

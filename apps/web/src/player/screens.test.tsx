@@ -510,11 +510,19 @@ describe('Lobby, Pause and Reveal', () => {
       kind: 'iframe',
       src: 'https://www.youtube-nocookie.com/embed/abcdefgh',
     });
-    expect(videoEmbed('https://vimeo.com/123456').kind).toBe('iframe');
-    expect(videoEmbed('https://cdn.example.com/intro.mp4')).toEqual({
-      kind: 'video',
-      src: 'https://cdn.example.com/intro.mp4',
-    });
+    expect(videoEmbed('https://vimeo.com/123456')?.kind).toBe('iframe');
+    const ours = 'https://abc123.public.blob.vercel-storage.com/videos/intro.mp4';
+    expect(videoEmbed(ours)).toEqual({ kind: 'video', src: ours });
+  });
+
+  it('plays nothing for a link from any other site', () => {
+    expect(videoEmbed('https://cdn.example.com/intro.mp4')).toBeNull();
+    const state = playerState({ leaderboard: null });
+    state.game = { ...state.game, phase: 'LOBBY', phaseMsLeft: null };
+    state.branding = { ...state.branding, introVideoUrl: 'https://cdn.example.com/intro.mp4' };
+    renderGame(<Lobby onLogOut={() => undefined} />, { state });
+    expect(screen.queryByTitle('Introduction video')).toBeNull();
+    expect(document.querySelector('video')).toBeNull();
   });
 
   it('Pause: the potion and the countdown only', () => {

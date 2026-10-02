@@ -205,3 +205,12 @@ export function Dialog({
     </div>
   );
 }
+
+// A date as "30 Dec 2026", in the viewer's time zone.
+export function formatDay(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}

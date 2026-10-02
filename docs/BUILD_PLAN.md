@@ -116,8 +116,8 @@ Original list:
 - ~~Facilitator messages in the inbox: Phase 6.~~ Done in 6C (Message all).
 - ~~From 6A: renaming a team or changing settings after the start needs the live engine to take the change.~~ Done in 6C: live rename from the dashboard; settings stay locked.
 - ~~From 6A: co-facilitators see their games in the list but have no screen yet.~~ Done in 6C: Open dashboard.
-- ~~From 6A: deleting a whole game from the admin panel.~~ Done in 6B as Sunny asked: only games that never started, after typing the game name; finished games are archived instead.
 - From 6B: Spot the Difference marking shows the default click room (4%); a game can change it in Settings, and the preview uses the default unless opened from a game.
+- Intro video upload: an admin upload button for MP4/WebM files to the public picture store. Today a video file is uploaded in the Vercel dashboard and its link pasted in Branding; only YouTube, Vimeo and our own store are allowed.
 - From 6B: task pictures in packs that are deleted stay in Vercel Blob (they may still be used by a game's frozen copy). A clean-up of unused pictures could come later.
 - From 6B: `exceljs` (spreadsheet import) brings a moderate `uuid` advisory for functions it does not use. Revisit when exceljs updates.
 - From 6A: `npm audit` reports issues inside Prisma's and tsup's own tooling (dev only). The only automatic fix downgrades Prisma to v6; revisit when Prisma ships a fix.

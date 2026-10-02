@@ -76,4 +76,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
     coFacilitatorAdjustLimit: 2_000,
     stuckIdleSeconds: minutes(5),
   },
+  retention: {
+    gameDataDays: 90,
+  },
 };

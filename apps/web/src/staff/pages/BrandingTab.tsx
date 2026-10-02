@@ -1,6 +1,11 @@
 import { useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { ImageUp, Trash2 } from 'lucide-react';
-import type { AdminGame, GameSettings } from '@magic-potion/shared';
+import {
+  anyPublicStoreHost,
+  parseIntroVideo,
+  type AdminGame,
+  type GameSettings,
+} from '@magic-potion/shared';
 import { PotionBottle } from '../../player/ui/PotionBottle';
 import { useStaff } from '../StaffContext';
 import { Panel, SmallButton, Status, inputBase, inputClass, useAction } from '../ui';
@@ -38,9 +43,12 @@ export function BrandingTab({ game, onChange }: GameTabProps) {
   async function save(e: FormEvent) {
     e.preventDefault();
     const video = videoText.trim();
-    if (video && !/^https:\/\/\S+$/.test(video)) {
-      action.setError('The intro video must be a web address starting with https://');
-      return;
+    if (video) {
+      const parsed = parseIntroVideo(video, anyPublicStoreHost(video));
+      if (parsed.kind === 'refused') {
+        action.setError(parsed.reason);
+        return;
+      }
     }
     if (!HEX.test(branding.primaryColor) || !HEX.test(branding.accentColor)) {
       action.setError('Colours must look like #7c3aed.');
@@ -143,6 +151,13 @@ export function BrandingTab({ game, onChange }: GameTabProps) {
             </div>
           </Panel>
           <Panel title="Intro video">
+            {game.introVideoProblem &&
+              videoText.trim() === (game.settings.branding.introVideoUrl ?? '') && (
+                <p role="alert" className="mb-2 font-semibold text-danger">
+                  This intro video link is no longer allowed and will not play. Replace it or clear
+                  it.
+                </p>
+              )}
             <label className="block font-semibold">
               Video web address (optional)
               <input
@@ -156,7 +171,8 @@ export function BrandingTab({ game, onChange }: GameTabProps) {
               />
             </label>
             <p className="mt-1 text-sm text-ink-muted">
-              Played in the Lobby before the game starts.
+              Played in the Lobby before the game starts. A YouTube or Vimeo link, or a video file
+              (MP4, WebM or MOV) from our own picture store.
             </p>
           </Panel>
         </div>

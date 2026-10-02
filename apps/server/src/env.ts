@@ -23,6 +23,15 @@ const EnvSchema = z.object({
   // is off unless both are set. Never log them.
   BLOB_PRIVATE_READ_WRITE_TOKEN: z.string().min(1).optional(),
   PHOTO_LINK_SECRET: z.string().min(32).optional(),
+  // The public picture store's host (e.g. "abc123.public.blob.vercel-storage.com"), the start
+  // of any logo address. Intro video files must come from it. Not a secret.
+  PUBLIC_BLOB_HOST: z
+    .string()
+    .regex(
+      /^[a-z0-9]+\.public\.blob\.vercel-storage\.com$/,
+      'must look like abc123.public.blob.vercel-storage.com',
+    )
+    .optional(),
   // Local testing helpers (such as "finish all tasks"). Ignored in production.
   ENABLE_DEV_TOOLS: z.enum(['true', 'false']).optional(),
 });

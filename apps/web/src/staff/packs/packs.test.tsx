@@ -324,7 +324,7 @@ describe('games list', () => {
     { id: 'g3', name: 'Old event', phase: 'REVEAL', started: true, finished: true, archived: true },
   ];
 
-  it('offers Archive for finished games, Delete for unplayed ones, and hides archived games', async () => {
+  it('offers Archive for finished games, Delete for unplayed and finished ones, and hides archived games', async () => {
     withStaff(<GamesPage />, {
       api: fakeApi({ get: vi.fn(async () => games) as StaffApi['get'] }),
     });
@@ -333,7 +333,8 @@ describe('games list', () => {
     expect(within(dry).getByRole('button', { name: /Delete/ })).toBeInTheDocument();
     expect(within(dry).queryByRole('button', { name: /Archive/ })).not.toBeInTheDocument();
     expect(within(march).getByRole('button', { name: /Archive/ })).toBeInTheDocument();
-    expect(within(march).queryByRole('button', { name: /Delete/ })).not.toBeInTheDocument();
+    // A finished game can be deleted too ("Delete played game now").
+    expect(within(march).getByRole('button', { name: /Delete/ })).toBeInTheDocument();
     expect(screen.queryByText('Old event')).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Show archived (1)'));
     expect(screen.getByText('Old event')).toBeInTheDocument();

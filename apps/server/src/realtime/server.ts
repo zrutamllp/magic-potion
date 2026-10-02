@@ -51,7 +51,7 @@ export interface EngineSource {
   get(gameId: string): Promise<GameEngine>;
   // Optional, so tests with a fixed engine can leave it out.
   evict?(gameId: string): Promise<boolean>;
-  forget?(gameId: string): Promise<boolean>;
+  forget?(gameId: string, force?: boolean): Promise<boolean>;
 }
 
 export interface RealtimeOptions {
@@ -149,10 +149,10 @@ export class Realtime {
     for (const socket of this.staffSockets.get(gameId) ?? []) socket.disconnect();
   }
 
-  // Before a finished live-site test game is deleted (Phase 7C): stop listening to it and close
-  // every browser still connected to it. False while the game is being played.
-  async forgetGame(gameId: string): Promise<boolean> {
-    if (this.opts.engines.forget && !(await this.opts.engines.forget(gameId))) return false;
+  // Before a game is deleted: stop listening to it and close every browser still connected to
+  // it. False while the game is being played, unless `force` (an abandoned game).
+  async forgetGame(gameId: string, force = false): Promise<boolean> {
+    if (this.opts.engines.forget && !(await this.opts.engines.forget(gameId, force))) return false;
     this.engines.delete(gameId);
     this.io?.in(`game:${gameId}`).disconnectSockets();
     for (const socket of this.staffSockets.get(gameId) ?? []) socket.disconnect();

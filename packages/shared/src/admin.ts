@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { GamePhase, StaffRole } from './enums';
+import type { GameDataDeleteFrom } from './retention';
 import { GameSettingsSchema, MAX_TEAMS, MIN_TEAMS, type GameSettings } from './settings';
 
 // Admin panel requests and replies (Phase 6A). The server checks every body with these schemas.
@@ -76,6 +77,11 @@ export interface AdminGame {
   teams: AdminTeam[];
   // staffUserId -> team ids.
   assignments: Record<string, string[]>;
+  // When the game's data will be deleted (ISO time); null for a game that never started.
+  dataDeleteAt?: string | null;
+  dataDeleteFrom?: GameDataDeleteFrom | null;
+  // Set when the saved intro video link is no longer allowed (it will not play).
+  introVideoProblem?: string | null;
 }
 
 export interface CreatedGame {

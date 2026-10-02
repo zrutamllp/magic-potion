@@ -1,6 +1,7 @@
-import type { StaffGameSummary } from '@magic-potion/shared';
+import { gameDataDueAt, type StaffGameSummary } from '@magic-potion/shared';
 import { Prisma, type PrismaClient } from '../generated/prisma/client';
 import type { AuditEntry, AuthStore, LoginTeam, StaffAccount, TeamSessionInfo } from './store';
+import { retentionGames, retentionSince } from '../retention/prismaFacts';
 
 const json = (v: unknown) =>
   v === undefined || v === null ? Prisma.DbNull : (v as Prisma.InputJsonValue);
@@ -106,14 +107,31 @@ export class PrismaAuthStore implements AuthStore {
       },
       orderBy: { createdAt: 'desc' },
     });
-    return games.map((g) => ({
-      id: g.id,
-      name: g.name,
-      phase: g.phase,
-      archived: g.archivedAt !== null,
-      started: g.startedAt !== null,
-      finished: g.phase === 'REVEAL' || g.endedAt !== null,
-    }));
+    // When each game's data will be deleted (see packages/shared/src/retention.ts).
+    const facts = new Map(
+      (
+        await retentionGames(
+          this.prisma,
+          games.map((g) => g.id),
+        )
+      ).map((f) => [f.id, f]),
+    );
+    const since = await retentionSince(this.prisma, Date.now(), false);
+    return games.map((g) => {
+      const f = facts.get(g.id);
+      const due = f ? gameDataDueAt({ ...f, deletionSince: since }) : null;
+      return {
+        id: g.id,
+        name: g.name,
+        phase: g.phase,
+        archived: g.archivedAt !== null,
+        started: g.startedAt !== null,
+        finished: g.phase === 'REVEAL' || g.endedAt !== null,
+        dataDeleteAt: due ? new Date(due.at).toISOString() : null,
+        dataDeleteFrom: due?.from ?? null,
+        ...(f ? { dataDeleteDays: f.days } : {}),
+      };
+    });
   }
 
   async audit(entry: AuditEntry): Promise<void> {

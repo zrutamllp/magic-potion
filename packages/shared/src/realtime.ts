@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { GamePhase, StaffRole } from './enums';
 import type { StaffWatchSchema } from './live';
 import type { FeedItem, PlayerState, ProjectorState, StaffState } from './playerState';
+import type { GameDataDeleteFrom } from './retention';
 
 // The Socket.IO contract between server and browser, and the REST login bodies.
 // Every payload a browser sends is checked against these schemas on the server.
@@ -44,6 +45,11 @@ export interface StaffGameSummary {
   started?: boolean;
   // The game has reached the Reveal or ended (it can be archived).
   finished?: boolean;
+  // When its data will be deleted (ISO time), counted from End game or the last activity, and
+  // the days setting. Null for a game that never started.
+  dataDeleteAt?: string | null;
+  dataDeleteFrom?: GameDataDeleteFrom | null;
+  dataDeleteDays?: number;
 }
 
 // The engine enforces the per-game message length; this only stops huge payloads.

@@ -14,6 +14,8 @@ const GOOD = {
   BLOB_READ_WRITE_TOKEN: 'public-token',
   BLOB_PRIVATE_READ_WRITE_TOKEN: 'private-token',
   CLIENT_ORIGIN: 'https://play.zrutam.com',
+  // A made-up store host; the real one is set only in Render.
+  PUBLIC_BLOB_HOST: 'abc123xyz.public.blob.vercel-storage.com',
 };
 
 const problems = (patch: Record<string, string | undefined>) => {
@@ -32,6 +34,20 @@ describe('the production start check', () => {
     expect(
       problems({ NODE_ENV: 'development', ENABLE_DEV_TOOLS: 'true', JWT_SECRET: undefined }),
     ).toEqual([]);
+  });
+
+  it('needs the public picture store host, for intro video files', () => {
+    expect(problems({ PUBLIC_BLOB_HOST: undefined })).toEqual(['PUBLIC_BLOB_HOST is missing.']);
+  });
+
+  it('refuses a store host that is not a Vercel public Blob host', () => {
+    for (const bad of [
+      'evil.example',
+      'https://abc.public.blob.vercel-storage.com',
+      'a.b.public.blob.vercel-storage.com',
+    ]) {
+      expect(() => problems({ PUBLIC_BLOB_HOST: bad })).toThrow('PUBLIC_BLOB_HOST');
+    }
   });
 
   it('refuses dev tools', () => {

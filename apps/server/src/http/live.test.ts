@@ -29,6 +29,8 @@ async function setup(opts: { start?: boolean } = {}) {
     startedAt: opts.start === false ? null : new Date(T0),
     endedAt: null,
     archivedAt: null,
+    frozenAt: null,
+    lastActivityAt: null,
     contentPackId: null,
     dilemmaItemId: null,
     settings: engine.state.settings,
