@@ -3,6 +3,7 @@ import type { Ack, GameSettings, TeamLoginResponse } from '@magic-potion/shared'
 import { apiLogin, apiUpload, ApiError } from '../lib/api';
 import { useTeamLive, type Live } from '../lib/live';
 import { load, save } from '../lib/session';
+import { pollingOnly, readTransportSwitch } from '../lib/transport';
 import { msLeft, useTicker } from '../lib/time';
 import type { PlayerState } from '@magic-potion/shared';
 import { GameContext, type Game, type Notice } from './GameContext';
@@ -26,6 +27,8 @@ import { TaskScreen } from './tasks/TaskShell';
 const SESSION_KEY = 'mp.team';
 
 export function PlayerApp() {
+  // The hidden ?transport=polling test switch, read once.
+  useState(readTransportSwitch);
   const [login, setLogin] = useState(() => load<TeamLoginResponse>(SESSION_KEY));
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -47,7 +50,16 @@ export function PlayerApp() {
       />
     );
   }
-  return <Connection key={login.token} token={login.token} onLogOut={logOut} />;
+  return (
+    <>
+      <Connection key={login.token} token={login.token} onLogOut={logOut} />
+      {pollingOnly() && (
+        <p className="pointer-events-none fixed right-2 bottom-2 z-50 rounded-md bg-warning px-2 py-0.5 text-xs font-semibold text-page">
+          Test mode: polling only
+        </p>
+      )}
+    </>
+  );
 }
 
 async function uploadPhoto(token: string, itemId: string, file: Blob): Promise<Ack> {

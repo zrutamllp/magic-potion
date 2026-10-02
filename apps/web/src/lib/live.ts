@@ -13,6 +13,7 @@ import { SOCKET_URL } from '../config';
 import { emitWithAck } from './emit';
 import { upsertFeed } from './feed';
 import { monotonicNow } from './time';
+import { liveTransports, type Transports } from './transport';
 
 // The live connection. The server sends the full state on every (re)connect, then updates.
 // Socket.IO reconnects by itself after a drop (long-polling first, so it also works on
@@ -50,6 +51,7 @@ function useLive<S>(
   updateEvent: 'state:update' | 'staff:update' | 'projector:update',
   // Extra listeners for this kind of connection (the staff dashboard). Must be stable.
   extra?: (socket: Client) => void,
+  transports: Transports = ['polling', 'websocket'],
 ): Live<S> {
   const [status, setStatus] = useState<LiveStatus>('connecting');
   const [snapshot, setSnapshot] = useState<Snapshot<S> | null>(null);
@@ -58,12 +60,15 @@ function useLive<S>(
   const [problem, setProblem] = useState<string | null>(null);
   const socketRef = useRef<Client | null>(null);
   const authKey = auth ? JSON.stringify(auth) : null;
+  const transportKey = transports.join(',');
 
   useEffect(() => {
     if (!authKey) return;
     const socket: Client = io(SOCKET_URL, {
       auth: JSON.parse(authKey) as Record<string, string>,
-      transports: ['polling', 'websocket'],
+      transports: transportKey.split(',') as Transports,
+      // Only on: a forced long-polling test never moves up to WebSocket.
+      upgrade: transportKey.includes('websocket'),
     });
     // Callers remount this hook (React key) for a new login, so the state starts fresh.
     socketRef.current = socket;
@@ -113,7 +118,7 @@ function useLive<S>(
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [authKey, fullEvent, updateEvent, extra]);
+  }, [authKey, fullEvent, updateEvent, extra, transportKey]);
 
   const send = useCallback<Live<S>['send']>((event, payload) => {
     const socket = socketRef.current;
@@ -127,7 +132,14 @@ function useLive<S>(
 }
 
 export function useTeamLive(token: string | null): Live<PlayerState> {
-  return useLive<PlayerState>(token ? { token, as: 'team' } : null, 'state:full', 'state:update');
+  // The hidden ?transport=polling test switch applies to the player screen only.
+  return useLive<PlayerState>(
+    token ? { token, as: 'team' } : null,
+    'state:full',
+    'state:update',
+    undefined,
+    liveTransports(),
+  );
 }
 
 // The projector view (Phase 6D): read only, every team.

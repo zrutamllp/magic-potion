@@ -10,11 +10,26 @@ interface VercelConfig {
 }
 
 const config = JSON.parse(readFileSync('vercel.json', 'utf8')) as VercelConfig;
-const all = config.headers.find((h) => h.source === '/(.*)')?.headers ?? [];
-const header = (key: string) => all.find((h) => h.key === key)?.value ?? '';
 
-function directive(name: string): string[] {
-  const part = header('Content-Security-Policy')
+// Vercel matches a rule's source against the whole path. These sources are plain regular
+// expressions after the leading slash, so they can be tried here the same way.
+function headersFor(path: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const rule of config.headers) {
+    if (!new RegExp(`^${rule.source}$`).test(path)) continue;
+    for (const h of rule.headers) {
+      // Two matching rules must never both set the same header.
+      expect(out.has(h.key), `${h.key} set twice for ${path}`).toBe(false);
+      out.set(h.key, h.value);
+    }
+  }
+  return out;
+}
+
+const header = (key: string, path = '/') => headersFor(path).get(key) ?? '';
+
+function directive(name: string, path = '/'): string[] {
+  const part = header('Content-Security-Policy', path)
     .split(';')
     .map((p) => p.trim())
     .find((p) => p.startsWith(`${name} `));
@@ -60,6 +75,30 @@ describe('web security headers', () => {
     expect(media[0]).toBe("'self'");
     expect(media).toHaveLength(2);
     expect(media[1]).toMatch(/^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com$/);
+  });
+
+  it('sets every security header on every page, including /check and its assets', () => {
+    for (const path of ['/', '/staff', '/staff/live', '/check', '/check/', '/assets/a.js']) {
+      const h = headersFor(path);
+      expect(h.get('Content-Security-Policy'), path).toBeTruthy();
+      expect(h.get('Strict-Transport-Security'), path).toBeTruthy();
+      expect(h.get('X-Frame-Options'), path).toBe('DENY');
+      expect(h.get('Permissions-Policy'), path).toBeTruthy();
+    }
+  });
+
+  it('lets only the /check page reach YouTube and Vimeo, to test them; otherwise the same', () => {
+    const extra = ['https://www.youtube-nocookie.com', 'https://player.vimeo.com'];
+    expect(directive('connect-src', '/check')).toEqual([...directive('connect-src'), ...extra]);
+    expect(directive('connect-src', '/check/')).toEqual(directive('connect-src', '/check'));
+    // Pages that only start with "check" keep the game's policy.
+    expect(directive('connect-src', '/checks')).toEqual(directive('connect-src'));
+    const others = (path: string) =>
+      header('Content-Security-Policy', path)
+        .split(';')
+        .map((p) => p.trim())
+        .filter((p) => !p.startsWith('connect-src'));
+    expect(others('/check')).toEqual(others('/'));
   });
 
   it('sends every page address to the app, so links such as /staff load in production', () => {
