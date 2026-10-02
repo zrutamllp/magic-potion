@@ -21,8 +21,8 @@ A short note on where the Magic Potion Challenge stands, for whoever picks it up
   - securityheaders.com: `play.zrutam.com` **A+**, `potion-api.zrutam.com` **A** (only Permissions-Policy missing);
   - SSL Labs: both **A+** (one of Vercel's servers A).
 
-  The API's Permissions-Policy header is added and tested but **not deployed yet**: it goes out with the next deploy.
-- **The /check connection page is built and tested, not deployed yet** (README, "Connection check page"). It also brings the hidden `?transport=polling` switch for the long-polling network test. Before the deploy: upload `docs/connection-check/pixel.png` to `magic-potion-prod-public` as `connection-check/pixel.png`.
+  The API's Permissions-Policy header is now live (deployed 2026-10-02 with /check).
+- **The /check connection page is live** (deployed 2026-10-02, commit `bf8d02c`; README, "Connection check page"), with the hidden `?transport=polling` switch for the long-polling network test. The test picture is in `magic-potion-prod-public` at `connection-check/pixel.png`. Checked live: `/check` and `/check/` get the CSP that adds YouTube and Vimeo, every other page keeps the game's (one CSP header each); `/check-info` gives the picture; the check socket connects over polling and WebSocket without a login, ignores game events and is closed by the server after 30 s.
 - Client IT note (hosts, ports, WebSocket, personal data, retention, security): https://claude.ai/code/artifact/532fddc7-2991-4660-8bfb-6a831b308c96
 
 ## What is live
@@ -35,7 +35,7 @@ A short note on where the Magic Potion Challenge stands, for whoever picks it up
 | Files | Vercel Blob `magic-potion-prod-public` (`3webxzmniefozaez.public.blob.vercel-storage.com`) and `magic-potion-prod-photos` (private), both BOM1 Mumbai | Production only; local work uses the dev stores |
 | Main admin | `ceo@zrutam.com` | |
 
-The server running on Render is commit `e5033d2`. Later commits wait for the next deploy: the API Permissions-Policy header, and the /check page (its socket namespace and `/check-info` on the server, the page on Vercel). How to deploy, when, and how to roll back: README, "Deploy safely". Never deploy, and never change the Render instance, during an event.
+The server running on Render is commit `bf8d02c`. Later commits: documents only. How to deploy, when, and how to roll back: README, "Deploy safely". Never deploy, and never change the Render instance, during an event.
 
 ## Event sizing rule
 
@@ -48,7 +48,7 @@ Changing the instance restarts the server, so only do it when no game is running
 
 ## What is left
 
-1. **Deploy the /check page** with the Permissions-Policy header (upload the test picture first), then check `/check` on a laptop and a phone, and the API on securityheaders.com.
+1. **Check the live /check page by hand** on a laptop and a phone, and rescan the API on securityheaders.com (it should now be A+).
 2. **Corporate network test** (`docs/NETWORK_CHECKLIST.md`, step 0 is now `/check`):
    - a short game played by a person on **long-polling only** with `?transport=polling` (the fallback with a real browser; bots already passed it under load);
    - the **corporate laptop** and **phone hotspot** checklist.
