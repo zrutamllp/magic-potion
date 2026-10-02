@@ -1,5 +1,6 @@
 import { SERVER_BUSY, SERVER_BUSY_RETRY_SECONDS } from '@magic-potion/shared';
 import { API_URL } from '../config';
+import { newActionId } from './emit';
 
 // Small JSON helpers for the REST routes. Errors carry the server's plain-English message.
 
@@ -17,13 +18,60 @@ export class ApiError extends Error {
   }
 }
 
-async function call<T>(method: string, path: string, body?: unknown, token?: string): Promise<T> {
+const CHANGES = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+// Never sent again by themselves: files and spreadsheets, previews and logins run as before.
+const NO_RESEND = [
+  /\/uploads\//,
+  /\/import(\?|$)/,
+  /\/items\/bulk$/,
+  /\/preview(\/|$)/,
+  /\/login$/,
+];
+const RESEND_AFTER_MS = 2_000;
+
+// Safe to repeat (Phase 7C): every change carries an Idempotency-Key. If the network drops
+// before the answer comes, the same change is sent once more with the same key; the server
+// answers a repeat with its first answer and applies it once (so "End phase" pressed during a
+// network blip never ends two phases).
+async function send(
+  method: string,
+  path: string,
+  init: RequestInit,
+  wait: (ms: number) => Promise<void>,
+): Promise<Response> {
+  const isChange = CHANGES.has(method);
+  const headers = new Headers(init.headers);
+  if (isChange) headers.set('Idempotency-Key', newActionId());
+  const resend = isChange && !(init.body instanceof Blob) && !NO_RESEND.some((r) => r.test(path));
+  try {
+    return await fetch(`${API_URL}${path}`, { ...init, method, headers });
+  } catch {
+    if (!resend) throw new ApiError(NO_SERVER, 0);
+  }
+  await wait(RESEND_AFTER_MS);
+  try {
+    return await fetch(`${API_URL}${path}`, { ...init, method, headers });
+  } catch {
+    throw new ApiError(NO_SERVER, 0);
+  }
+}
+
+const NO_SERVER = 'Cannot reach the server. Check your connection and try again.';
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+async function call<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  token?: string,
+  wait: (ms: number) => Promise<void> = sleep,
+): Promise<T> {
   // A file (picture upload) is sent as it is, with its own type; anything else as JSON.
   const isFile = body instanceof Blob;
-  let res: Response;
-  try {
-    res = await fetch(`${API_URL}${path}`, {
-      method,
+  const res = await send(
+    method,
+    path,
+    {
       headers: {
         ...(body === undefined
           ? {}
@@ -33,10 +81,9 @@ async function call<T>(method: string, path: string, body?: unknown, token?: str
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: body === undefined ? undefined : isFile ? body : JSON.stringify(body),
-    });
-  } catch {
-    throw new ApiError('Cannot reach the server. Check your connection and try again.', 0);
-  }
+    },
+    wait,
+  );
   const data = (await res.json().catch(() => ({}))) as { message?: string; code?: string };
   if (!res.ok) {
     const retryAfter = Number(res.headers.get('Retry-After'));
@@ -54,6 +101,13 @@ async function call<T>(method: string, path: string, body?: unknown, token?: str
 export const apiGet = <T>(path: string, token?: string) => call<T>('GET', path, undefined, token);
 export const apiPost = <T>(path: string, body?: unknown, token?: string) =>
   call<T>('POST', path, body ?? {}, token);
+// For tests: a POST with a chosen wait between the two tries.
+export const apiPostWithWait = <T>(
+  path: string,
+  body: unknown,
+  token: string | undefined,
+  wait: (ms: number) => Promise<void>,
+) => call<T>('POST', path, body, token, wait);
 export const apiPut = <T>(path: string, body: unknown, token?: string) =>
   call<T>('PUT', path, body, token);
 export const apiPatch = <T>(path: string, body: unknown, token?: string) =>

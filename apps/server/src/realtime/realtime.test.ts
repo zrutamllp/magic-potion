@@ -12,6 +12,7 @@ import type {
   ServerToClientEvents,
   StaffState,
 } from '@magic-potion/shared';
+import { SERVER_BUSY_MESSAGE } from '@magic-potion/shared';
 import { createApp } from '../app';
 import { FakeClock } from '../engine/clock';
 import { finishAllTasks } from '../engine/devTools';
@@ -667,5 +668,122 @@ describe('projector (Phase 6D)', () => {
       new Promise((resolve) => setTimeout(() => resolve('no answer'), 300)),
     ]);
     expect(ack).toBe('no answer');
+  });
+});
+
+describe('safe to repeat (action IDs, Phase 7C)', () => {
+  // The browser sends the same action ID again when the answer was lost.
+  const withId = <T extends object>(payload: T, actionId: string) => ({ ...payload, actionId });
+  const transfers = () => Object.keys(engine.state.transfers).length;
+
+  it('sends money once when the same action comes twice', async () => {
+    await started();
+    const a = await team(1);
+    const first = await send(a, 'funds:send', withId({ toTeamId: B, amount: 500 }, 'send-0001'));
+    const again = await send(a, 'funds:send', withId({ toTeamId: B, amount: 500 }, 'send-0001'));
+    expect(first).toMatchObject({ ok: true });
+    expect(again).toEqual(first);
+    expect(transfers()).toBe(1);
+    await waitFor(() => a.state().team.taskFunds === 9_500, 'debited once');
+  });
+
+  it('also when both arrive at the same moment', async () => {
+    await started();
+    const a = await team(1);
+    const payload = withId({ toTeamId: B, amount: 300 }, 'send-0002');
+    const [x, y] = await Promise.all([
+      send(a, 'funds:send', payload),
+      send(a, 'funds:send', payload),
+    ]);
+    expect(x).toEqual(y);
+    expect(transfers()).toBe(1);
+  });
+
+  it('sends twice for two different presses, and works without an ID as before', async () => {
+    await started();
+    const a = await team(1);
+    await send(a, 'funds:send', withId({ toTeamId: B, amount: 100 }, 'send-0003'));
+    await send(a, 'funds:send', withId({ toTeamId: B, amount: 100 }, 'send-0004'));
+    await send(a, 'funds:send', { toTeamId: B, amount: 100 });
+    expect(transfers()).toBe(3);
+  });
+
+  it('a request comes once, so the other team can never pay twice', async () => {
+    await started();
+    const a = await team(1);
+    const payload = withId({ payerTeamId: B, amount: 200 }, 'request-0001');
+    await send(a, 'funds:request', payload);
+    await send(a, 'funds:request', payload);
+    expect(Object.keys(engine.state.requests)).toHaveLength(1);
+  });
+
+  it('a chat message comes once and uses one message of the round', async () => {
+    await started();
+    const a = await team(1);
+    const payload = withId({ body: 'only once please' }, 'chat-0001');
+    await send(a, 'chat:send', payload);
+    const again = await send(a, 'chat:send', payload);
+    expect(again).toMatchObject({ ok: true, value: { messagesLeft: 4 } });
+    await waitFor(() => a.state().chat.messagesLeft === 4);
+    expect(a.feed.filter((f) => f.kind === 'chat')).toHaveLength(1);
+  });
+
+  it('a wrong answer counts as one wrong try', async () => {
+    await started();
+    const a = await team(1);
+    const WRONG: Record<string, object> = {
+      vault: { code: '000000' },
+      spot_difference: { x: -1000, y: -1000 },
+    };
+    const SKIP = new Set(['picture_puzzle', 'ethical_dilemma', 'hangman', 'riddle', 'data_story']);
+    const task = a.state().team.tasks.find((t) => !SKIP.has(t.key));
+    if (!task) throw new Error('No task with a simple wrong answer in this game');
+    expect(await send(a, 'task:start', { taskId: task.id })).toMatchObject({ ok: true });
+    const payload = withId(
+      { taskId: task.id, submission: WRONG[task.key] ?? { answer: 'not this one' } },
+      'answer-0001',
+    );
+    const first = await send(a, 'task:submit', payload);
+    const again = await send(a, 'task:submit', payload);
+    expect(again).toEqual(first);
+    await waitFor(() => a.state().team.tasks.find((t) => t.id === task.id)?.running !== null);
+    expect(a.state().team.tasks.find((t) => t.id === task.id)?.running?.wrongCount).toBe(1);
+  });
+});
+
+describe('when the database is busy while a browser connects (Phase 7C)', () => {
+  it('refuses without a code, so the browser keeps reconnecting instead of giving up', async () => {
+    const token = await teamToken(1);
+    const real = engines.get;
+    // engines.get is only reached once the engine is not loaded yet.
+    realtime = new Realtime({
+      auth: fx.auth,
+      engines: {
+        get: async () => {
+          throw Object.assign(new Error('Unable to start a transaction'), { code: 'P2028' });
+        },
+      },
+      clock,
+      clientOrigins: [],
+      devTools: true,
+    });
+    const busyHttp = createServer();
+    realtime.attach(busyHttp);
+    await new Promise<void>((resolve) => busyHttp.listen(0, resolve));
+    const busyUrl = `http://localhost:${(busyHttp.address() as AddressInfo).port}`;
+    const socket: Client = connectClient(busyUrl, {
+      auth: { token, as: 'team' },
+      transports: ['websocket'],
+      forceNew: true,
+      reconnection: false,
+    });
+    open.push(socket);
+    const error = await new Promise<{ message: string; data?: { code?: string } }>((resolve) =>
+      socket.on('connect_error', (e) => resolve(e as never)),
+    );
+    expect(error.data?.code).toBeUndefined();
+    expect(error.message).toBe(SERVER_BUSY_MESSAGE);
+    engines.get = real;
+    busyHttp.close();
   });
 });

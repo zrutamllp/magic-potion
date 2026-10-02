@@ -261,6 +261,7 @@ Checked live in 7B: `/healthz` answers `ok` with the database; http redirects to
 
 - Only when no game is running or paused (check the games list in the admin panel). Ideally the day before an event. **Never during an event**: a deploy restarts the server and drops every connection.
 - Vercel rebuilds the web app on every push to `main`, so do not push to `main` during an event either.
+- **Safe to repeat:** every player action and staff change carries an action ID (`Idempotency-Key` for staff). After a network drop the page sends it once more with the same ID and the server applies it only once. Uploads, spreadsheet imports and previews are never replayed.
 - **Event size:** up to 12 teams on Render **Starter**; 13 to 20 teams on **Standard**, switched the day before and back after the event (never during one: it restarts the server). Results behind this rule: `docs/LOAD_TEST_RESULTS.md`.
 
 ### How

@@ -1,6 +1,7 @@
 // Helpers for the live-site tests (Phase 7C): a guarded staff API client, team and staff
 // sockets that record every action, and the numbers the pass/fail targets need.
 // Nothing here ever prints a password or a token.
+import { randomUUID } from 'node:crypto';
 import { io, type Socket } from 'socket.io-client';
 import {
   ENGINE_ERRORS,
@@ -180,7 +181,9 @@ export function act(
       resolve(null);
     }, timeoutMs);
     const emit = socket.emit as unknown as (e: string, p: object, ack: (a: Ack) => void) => void;
-    emit.call(socket, event, payload, (ack: Ack) => {
+    // Every action carries an action ID, like the web app (Phase 7C).
+    const body = { ...payload, actionId: randomUUID() };
+    emit.call(socket, event, body, (ack: Ack) => {
       if (done) return;
       done = true;
       clearTimeout(timer);

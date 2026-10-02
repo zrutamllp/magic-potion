@@ -42,7 +42,7 @@ To decide. The action-ID fix (below) comes first.
 
 ## Must-do before the first client event
 
-- **Action IDs (safe to repeat).** If an answer is lost because a connection drops at that moment and the player or facilitator presses again, some actions are applied twice: sending money, money requests, a wrong answer (an extra wrong try), chat, staff money adjustments, "Message all", **End phase** (would also end the next phase) and **Extend** (adds the time twice). See `docs/BUILD_PLAN.md`, Phase 7C.
+- ✅ **Action IDs (safe to repeat)** – built and tested; deploy before the first client event. If an answer is lost because a connection drops at that moment and the player or facilitator presses again, some actions are applied twice: sending money, money requests, a wrong answer (an extra wrong try), chat, staff money adjustments, "Message all", **End phase** (would also end the next phase) and **Extend** (adds the time twice). See `docs/BUILD_PLAN.md`, Phase 7C.
 
 ## Still to do in 7C
 

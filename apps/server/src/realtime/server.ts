@@ -22,6 +22,7 @@ import {
 } from '@magic-potion/shared';
 import type { AuthService } from '../auth/service';
 import { isBusyError } from '../busy';
+import { RecentActions } from '../idempotency';
 import type { StaffAccount } from '../auth/store';
 import type { Clock } from '../engine/clock';
 import type { GameEngine } from '../engine/engine';
@@ -62,6 +63,9 @@ export interface RealtimeOptions {
   // How often open dashboards get fresh state even with no game event, so the "stuck team"
   // flag appears on time. Tests turn it off with 0.
   staffRefreshMs?: number;
+  // Player actions already answered, so a repeat is answered the same and applied once
+  // (Phase 7C). Shared with the staff routes in index.ts; tests may leave it out.
+  recent?: RecentActions;
 }
 
 // Events that only change what staff see (a team's last activity time).
@@ -116,9 +120,11 @@ export class Realtime {
   private readonly watching = new Map<IoSocket, string>();
   private refreshTimer: NodeJS.Timeout | null = null;
   readonly auth: AuthService;
+  private readonly recent: RecentActions;
 
   constructor(private readonly opts: RealtimeOptions) {
     this.auth = opts.auth;
+    this.recent = opts.recent ?? new RecentActions();
     opts.auth.onSessionsEnded((tokenIds, code) => this.endSessions(tokenIds, code));
   }
 
@@ -243,6 +249,9 @@ export class Realtime {
     try {
       return await this.engine(gameId);
     } catch (error) {
+      // Busy: an error without a code, so the browser keeps reconnecting by itself instead of
+      // showing "game not found" and giving up (Phase 7C).
+      if (isBusyError(error)) throw new Error(SERVER_BUSY_MESSAGE, { cause: error });
       console.error(`Could not load game ${gameId}:`, error);
       throw authError('GAME_NOT_FOUND');
     }
@@ -278,8 +287,16 @@ export class Realtime {
           ack({ ok: false, code: 'INVALID_REQUEST', message: AUTH_ERRORS.INVALID_REQUEST });
           return;
         }
+        // The browser sends the same action ID again when an answer was lost (Phase 7C).
+        const actionId =
+          payload && typeof payload === 'object'
+            ? (payload as { actionId?: unknown }).actionId
+            : undefined;
         try {
-          ack(toAck(await run(engine, parsed.data)));
+          const result = await this.recent.run(`team:${teamId}`, actionId, () =>
+            run(engine, parsed.data),
+          );
+          ack(toAck(result));
         } catch (error) {
           if (isBusyError(error)) {
             ack({ ok: false, code: SERVER_BUSY, message: SERVER_BUSY_MESSAGE });

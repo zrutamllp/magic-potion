@@ -16,7 +16,10 @@ import type { PhotoLinks, PhotoStore } from '../uploads/photos';
 import { PreviewService } from '../packs/preview';
 import type { PackService } from '../packs/service';
 import type { LiveStore } from '../live/store';
+import { isBusyError } from '../busy';
+import { RecentActions } from '../idempotency';
 import { addAdminRoutes } from './admin';
+import { idempotentStaffChanges, keepFinalAnswers } from './idempotentRoutes';
 import { addDebriefRoutes } from './debrief';
 import { addLiveRoutes } from './live';
 import { addTeamRoutes } from './team';
@@ -112,6 +115,8 @@ export function createApiRouter({
     res.locals.staff = result.value;
     next();
   });
+  // Every staff change is safe to repeat with the same Idempotency-Key (Phase 7C).
+  staff.use(idempotentStaffChanges(new RecentActions({ keep: keepFinalAnswers })));
 
   const mainAdminOnly = (
     _req: Request,
@@ -129,6 +134,8 @@ export function createApiRouter({
     try {
       return await engine(String(req.params.gameId));
     } catch (error) {
+      // Busy is not "not found": the error handler answers 503, try again (Phase 7C).
+      if (isBusyError(error)) throw error;
       console.error(`Could not load game ${String(req.params.gameId)}:`, error);
       res.status(404).json({ code: 'GAME_NOT_FOUND', message: AUTH_ERRORS.GAME_NOT_FOUND });
       return null;

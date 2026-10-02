@@ -411,6 +411,33 @@ describe('spreadsheet import', () => {
     expect(after.items.filter((i) => i.taskKey === 'riddle')).toHaveLength(12);
   });
 
+  it('runs every import as before, also with an Idempotency-Key (never replayed)', async () => {
+    const g = await setup();
+    const pack = await copySample(g);
+    const csv = ['Riddle,Accepted answers,Clue (the hint)', 'What runs?,water,Wet'].join('\n');
+    const upload = () =>
+      request(g.app)
+        .post(`/api/staff/packs/${pack.id}/import?task=riddle`)
+        .set('Authorization', `Bearer ${g.token}`)
+        .set('Idempotency-Key', 'import-0001')
+        .set('Content-Type', 'text/csv')
+        .send(Buffer.from(csv));
+    for (const res of [await upload(), await upload()]) {
+      expect(res.status).toBe(200);
+      expect(res.body.items).toHaveLength(1);
+    }
+    // Confirming the import twice with the same key adds twice, exactly as without a key.
+    const confirm = () =>
+      request(g.app)
+        .post(`/api/staff/packs/${pack.id}/items/bulk`)
+        .set('Authorization', `Bearer ${g.token}`)
+        .set('Idempotency-Key', 'import-0002')
+        .send({ taskKey: 'riddle', mode: 'add', items: [riddle(99)] });
+    await confirm();
+    const after = (await confirm()).body as PackDetail;
+    expect(after.items.filter((i) => i.taskKey === 'riddle')).toHaveLength(14);
+  });
+
   it('downloads the templates', async () => {
     const g = await setup();
     const csv = await g.call('get', '/packs-import-template?task=hangman&format=csv');

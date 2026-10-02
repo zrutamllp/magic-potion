@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SERVER_BUSY, SERVER_BUSY_MESSAGE } from '@magic-potion/shared';
-import { apiLogin } from './api';
+import { apiGet, apiLogin, apiPost, apiPostWithWait } from './api';
 
 // Logins during a storm (Phase 7C): "busy, try again" is retried by itself before any message.
 
@@ -53,5 +53,48 @@ describe('logging in while the server is busy', () => {
       apiLogin('/api/team/login', { code: 'A' }, { wait: async () => {} }),
     ).rejects.toThrow('Not right.');
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('staff changes are safe to repeat (Phase 7C)', () => {
+  const ok = () => new Response(JSON.stringify({ ok: true }), { status: 200 });
+  const key = (call: unknown[]) =>
+    new Headers((call[1] as RequestInit).headers).get('Idempotency-Key');
+
+  it('sends a key with every change and none with a read', async () => {
+    const fetch = mockFetch(ok, ok);
+    await apiPost('/api/staff/games/g/end-phase', {}, 't');
+    await apiGet('/api/staff/games', 't');
+    expect(key(fetch.mock.calls[0]!)).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+    expect(key(fetch.mock.calls[1]!)).toBeNull();
+  });
+
+  it('after a network drop sends the same change once more with the same key', async () => {
+    const fetch = vi.fn();
+    fetch.mockImplementationOnce(async () => {
+      throw new TypeError('Failed to fetch');
+    });
+    fetch.mockImplementationOnce(async () => ok());
+    vi.stubGlobal('fetch', fetch);
+    const waits: number[] = [];
+    await apiPostWithWait('/api/staff/games/g/end-phase', {}, 't', async (ms) => {
+      waits.push(ms);
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(key(fetch.mock.calls[1]!)).toBe(key(fetch.mock.calls[0]!));
+    expect(waits).toEqual([2_000]);
+  });
+
+  it('never resends an import or an upload by itself', async () => {
+    for (const path of ['/api/staff/packs/p/import?task=riddle', '/api/staff/packs/p/items/bulk']) {
+      const fetch = vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      });
+      vi.stubGlobal('fetch', fetch);
+      await expect(apiPostWithWait(path, {}, 't', async () => {})).rejects.toThrow(
+        'Cannot reach the server',
+      );
+      expect(fetch).toHaveBeenCalledTimes(1);
+    }
   });
 });
