@@ -83,9 +83,15 @@ describe.skipIf(!url)('deleting game data in the database', () => {
     };
   }
 
+  // Every other game: the ones already on the branch (older than an hour) and this test's own.
+  // Other database test files run at the same time and add and delete their own games, so
+  // those are left out.
   async function allOtherGames(except: string) {
     const ids = await prisma.game.findMany({
-      where: { id: { not: except } },
+      where: {
+        id: { not: except },
+        OR: [{ createdAt: { lt: new Date(Date.now() - 60 * 60 * 1000) } }, { id: { in: games } }],
+      },
       select: { id: true },
     });
     const out: Record<string, Awaited<ReturnType<typeof rows>>> = {};
@@ -172,6 +178,8 @@ describe.skipIf(!url)('deleting game data in the database', () => {
       const teams = await prisma.team.findMany({ where: { gameId } });
       const name = (await prisma.game.findUniqueOrThrow({ where: { id: gameId } })).name;
       const others = await allOtherGames(gameId);
+      // The branch's own 2 games, this test's game B and the Lobby game C.
+      expect(Object.keys(others).length).toBeGreaterThanOrEqual(4);
 
       const removed: string[] = [];
       const admin = service(() => clock.now(), removed);

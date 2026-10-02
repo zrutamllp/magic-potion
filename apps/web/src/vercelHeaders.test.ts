@@ -53,6 +53,15 @@ describe('web security headers', () => {
     ]);
   });
 
+  it('plays intro video files only from our own picture store', () => {
+    // YouTube and Vimeo play in frames (frame-src); a file must come from our public Blob
+    // store, named exactly: never any https site, nor another customer's store.
+    const media = directive('media-src');
+    expect(media[0]).toBe("'self'");
+    expect(media).toHaveLength(2);
+    expect(media[1]).toMatch(/^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com$/);
+  });
+
   it('sends every page address to the app, so links such as /staff load in production', () => {
     // Vercel serves real files (such as /assets/*) first; only other addresses are rewritten.
     expect(config.rewrites).toContainEqual({ source: '/(.*)', destination: '/index.html' });
